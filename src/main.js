@@ -4,7 +4,7 @@ import { WebSocketServer } from 'ws';
 import Auth from './auth.js';
 import World from './world.js';
 
-const configPath = './config.json';
+const configPath = '../config.json';
 
 const main = config => {
   // start game server

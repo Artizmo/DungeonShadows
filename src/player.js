@@ -2,7 +2,7 @@ import fs from 'fs';
 
 import Character from './character.js';
 
-const charPath = './characters.json';
+const charPath = '../characters.json';
 
 class Player {
   constructor(playerFile, connection) {

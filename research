@@ -1,0 +1,89 @@
+GAME FLOW
+---------
+server
+-http server handles client browser app
+-web sockets server handles connections
+-start worldserver game loop
+
+client
+- react app
+- react canvas
+- character create screen
+- login screen
+1. player can create and/or login
+2. once authed, make connection to game server
+
+RESOURCES
+---------
+Client side predication and server reconciliation
+https://alankydd.wordpress.com/2017/07/31/client-side-prediction-and-server-reconciliation-with-node-js-socket-io-phaser/
+
+fonts: Great Vibes from Google Fonts
+
+WORLD
+-ITEMS
+-INSTANCES
+-MODULES
+-NPCS
+-ZONES
+
+client side: phaser.io
+
+COMBAT STYLES
+-------------
+1) PHYSICAL
+  -melee (conventional weaponry)
+  -range (coventional throwing and balistical weaponry)
+
+2) METAPHYSICAL
+  -melee (magical weaponry, magical touch)
+  -range (fireball, lightning bolt)
+
+SKILLTREES
+----------
+
+BQ FLOW
+-------
+index.html    : html, app root, (has <script> for including home.js)
+home.js       : just imports main.js (also imports some util files)
+main.js       : calls new App(), new Game()
+app.js        : App class, handles ui state
+game.js       : Game class, handles game mechanics, 
+              new Updater(), new Renderer(), new Camera(), new Map()
+              new Sprite(), new Animation(), new AudioManager()
+              new PathFinder(), new GameClient(), new Character()
+
+starts game loop uses requestAnimFrame() for client graphic updates
+
+DS FLOW
+-------
+index.html    : app root
+app.js        : handles ui, declarative approach client app, uses
+              composition: App, Game, Canvas components.
+game.js       : handles client
+
+URLS
+----
+https://www.dungeonshadows.com            : main intro, login
+https://www.dungeonshadows.com/register   : register
+https://www.dungeonshadows.com/play       : character select, character generator, game
+
+WORLD UPDATE BREAKDOWN
+-global updates
+-areas
+-zones
+
+loop queue
+  player count > 0? (do we have any players logged on?)
+  process any global update
+  loop areas
+    players in area > 0?
+    process area-wide updates
+    loop area zones
+      players in zone > 0?
+      process zone updates
+  
+CLIENT INPUT
+------------
+The goal with client inputs is to make them well-structured but as lite as possible. With client prediction and server reconciliation in mind, having inputs be arrays may be best. (ex. [1, 45, 32, 23] etc.)
+

@@ -1,7 +1,7 @@
 {
-  "name": "sephus-server",
+  "name": "dungeonshadows-server",
   "version": "1.0.0",
-  "description": "Sephus world server",
+  "description": "Dungeon Shadows server",
   "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
