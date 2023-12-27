@@ -2,8 +2,8 @@
   "name": "dungeonshadows-server",
   "version": "1.0.0",
   "description": "Dungeon Shadows server",
-  "main": "main.js",
   "scripts": {
+    "start": "ts-node --esm ./src/main.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -11,7 +11,14 @@
   "type": "module",
   "dependencies": {
     "chalk": "^5.0.1",
+    "jsonwebtoken": "^9.0.2",
     "uuid": "^8.3.2",
     "ws": "^8.7.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/ws": "^8.5.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
   }
 }

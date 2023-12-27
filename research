@@ -1,3 +1,13 @@
+RUN
+---
+cd dungeonShadowsServer dir
+npm run start
+
+RUN TEST
+--------
+cd dungeonShadowsServer dir
+node .\test.js
+
 GAME FLOW
 ---------
 server
@@ -26,8 +36,6 @@ WORLD
 -MODULES
 -NPCS
 -ZONES
-
-client side: phaser.io
 
 COMBAT STYLES
 -------------
@@ -87,3 +95,20 @@ CLIENT INPUT
 ------------
 The goal with client inputs is to make them well-structured but as lite as possible. With client prediction and server reconciliation in mind, having inputs be arrays may be best. (ex. [1, 45, 32, 23] etc.)
 
+MISC
+----
+Client IP Address
+
+    server.on('connection', async (connection, req) => {
+      connection.on('message', message => {
+        const { type, data: token } = JSON.parse(message.toString());
+        if (type === 'signon') {
+          const ipAddress = req.socket.remoteAddress;
+          const user = jwt.verify(token, 'pizzafriday');
+          if (!user) return;
+          
+          const player = new Player(user, connection, token, ipAddress);
+          this.addPlayer(player);
+        }
+      });
+    });

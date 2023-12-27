@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "esnext",
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "ts-node": {
+    "experimentalSpecifierResolution": "node"
+  },
+  "include": ["../**/*.ts", "../**/*.js"],
+  "exclude": ["build"]
+}

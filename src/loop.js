@@ -1,14 +1,14 @@
-const SERVER_TICK_RATE = 30;
-const BUFFER_SIZE = 1024;
+const SERVER_TICK_RATE = 60;
+const BUFFER_SIZE = 250;
 
-class World {
+export default class Game {
   constructor(server) {
     this.characters = [];
     this.currentTick = 0;
     this.currentTime = 0;
     this.deltaTime = 0;
     this.lastTime = new Date().getTime();
-    this.minTimeBetweenTicks = 1 / SERVER_TICK_RATE
+    this.minTimeBetweenTicks = SERVER_TICK_RATE
     this.server = server;
     this.timer = 0;
   }
@@ -31,7 +31,7 @@ class World {
   }
 
   tick() {
-    const bufferIndex = this.currentTick % BUFFER_SIZE;
+    const bufferIndex = this.currentTick % BUFFER_SIZE + 1;
     console.log('process tick', bufferIndex)
   }
 
@@ -40,5 +40,3 @@ class World {
     this.characters.push(character);
   }
 }
-
-export default World
