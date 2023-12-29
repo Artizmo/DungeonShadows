@@ -1,14 +1,16 @@
-export default class Player {
-  id = 0
-  email = ''
-  firstName = ''
-  lastName = ''
-  token = ''
-  ipAddress = ''
-  isAlive = false
-  connection = null
+import { WebSocket } from 'ws'
 
-  constructor(user: any, connection: any, token: string, ipAddress: string, isAlive: boolean) {
+export default class Player {
+  id: number
+  email: string
+  firstName: string
+  lastName: string
+  token: string
+  ipAddress: string
+  isAlive: boolean
+  connection: WebSocket
+
+  constructor(user: any, connection: WebSocket, token: string, ipAddress: string, isAlive: boolean) {
     this.id = user.id
     this.email = user.email
     this.firstName = user.firstName
