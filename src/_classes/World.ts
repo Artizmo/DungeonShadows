@@ -1,11 +1,11 @@
-import { GameServerType } from '../_types/game-server'
+import { ServerType } from '../_types/server'
 import { CharacterType } from '../_types/character'
 import ServerEntity from './ServerEntity'
 
 export default class World extends ServerEntity {
   characters: Map<number, CharacterType>
 
-  constructor(server: GameServerType) {
+  constructor(server: ServerType) {
     super(server)
     this.characters = new Map()
   }

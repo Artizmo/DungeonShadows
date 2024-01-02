@@ -1,4 +1,5 @@
 import { WebSocket } from 'ws'
+import { PlayerType } from '../_types/player'
 
 export default class Player {
   id: number
@@ -10,14 +11,13 @@ export default class Player {
   isAlive: boolean
   connection: WebSocket
 
-  constructor(user: any, connection: WebSocket, token: string, ipAddress: string, isAlive: boolean) {
-    this.id = user.id
-    this.email = user.email
-    this.firstName = user.firstName
-    this.lastName = user.lastName
-    this.ipAddress = ipAddress
-    this.isAlive = isAlive
-    this.connection = connection
-    this.token = token
+  constructor(player: PlayerType) {
+    this.id = player.id
+    this.email = player.email
+    this.firstName = player.firstName
+    this.lastName = player.lastName
+    this.isAlive = player.isAlive
+    this.token = player.token
+    this.connection = player.connection
   }
 }

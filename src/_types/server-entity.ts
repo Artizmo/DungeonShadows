@@ -1,7 +1,7 @@
-import { GameServerType } from '../_types/game-server'
+import { ServerType } from './server'
 
 export type ServerEntityType = {
-  server: GameServerType,
+  server: ServerType,
   update: (pulse?: boolean) => void,
   draw: () => void
 }

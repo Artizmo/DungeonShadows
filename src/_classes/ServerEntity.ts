@@ -1,9 +1,9 @@
-import { GameServerType } from "../_types/game-server"
+import { ServerType } from "../_types/server"
 
 export default class ServerEntity {
-  server: GameServerType
+  server: ServerType
 
-  constructor(server: GameServerType) {
+  constructor(server: ServerType) {
     this.server = server
   }
 

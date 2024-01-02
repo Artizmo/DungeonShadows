@@ -1,12 +1,13 @@
 import { WebSocketServer } from 'ws'
 import jwt from 'jsonwebtoken'
 import { ConfigType } from '../_types/config'
+import { PlayerType } from '../_types/player'
 import { MessageRequestType } from '../_types/message-request'
 import Player from '../_classes/Player'
 
 export default class GameServer {
   port: number
-  players: Map<number, Player>
+  players: Map<number, PlayerType>
   
   constructor(config: ConfigType) {
     this.port = config.port
@@ -40,16 +41,17 @@ export default class GameServer {
       // stop server
       server.on('close', () => clearInterval(checkConnectionsInterval))
     } catch(error) {
+      connection: WebSocket
       throw new Error(error)
     }
   }
 
-  addPlayer(player: Player) {
+  addPlayer(player: PlayerType) {
     console.log('adding player')
     this.players.set(player.id, player)
   }
 
-  removePlayer(player: Player) {
+  removePlayer(player: PlayerType) {
     console.log('removing player', player.id)
     player.connection.terminate()
     this.players.delete(player.id)
@@ -57,14 +59,14 @@ export default class GameServer {
 
   // EVENTS HANDLERS
 
-  handleSignOn(token: string, messageRequest: MessageRequestType) {
-    const user = jwt.verify(token, 'pizzafriday')
+  handleSignOn(token: string, messageRequest: MessageRequestType ) {
+    const user = <PlayerType>jwt.verify(token, 'pizzafriday')
     if (!user) return
 
     const { connection, request } = messageRequest
     const ipAddress = request.socket.remoteAddress
     const isAlive = true 
-    const player = new Player(user, connection, token, ipAddress, isAlive)
+    const player = new Player({ ...user, isAlive, ipAddress, connection })
     this.addPlayer(player)
   }
 
