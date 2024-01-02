@@ -1,15 +1,15 @@
 import * as fs from 'fs'
-import { EngineConfig } from './engine/_types/engine-config'
-import GameEngine from './engine/GameEngine'
+import GameEngine from './_classes/GameEngine'
+import { ConfigType } from './_types/config'
 const configPath = './config.json'
 
 fs.readFile(configPath, (err, data) => {
   if (err) console.log(`Could not read from path: ${configPath}. Error: ${err}`)
-  const config: EngineConfig = JSON.parse(data.toString())
+  const config: ConfigType = JSON.parse(data.toString())
   init(config)
 })
 
-function init(config: EngineConfig) {
+function init(config: ConfigType) {
   try {
     const game = new GameEngine(config)
     game.start()
