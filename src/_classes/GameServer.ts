@@ -1,5 +1,4 @@
 import { WebSocketServer } from 'ws'
-import jwt from 'jsonwebtoken'
 import { ConfigType } from '../_types/config'
 import { PlayerType } from '../_types/player'
 import { MessageRequestType } from '../_types/message-request'
@@ -59,14 +58,16 @@ export default class GameServer {
 
   // EVENTS HANDLERS
 
-  handleSignOn(token: string, messageRequest: MessageRequestType ) {
-    const user = <PlayerType>jwt.verify(token, 'pizzafriday')
-    if (!user) return
+  handleSignOn(user: PlayerType, messageRequest: MessageRequestType ) {
+    this.players.forEach(player => {
+      if (player.email === user.email) return
+    })
 
     const { connection, request } = messageRequest
     const ipAddress = request.socket.remoteAddress
     const isAlive = true 
-    const player = new Player({ ...user, isAlive, ipAddress, connection })
+    const id = Math.ceil(Math.random() * 1000000)
+    const player = new Player({ ...user, id, isAlive, ipAddress, connection })
     this.addPlayer(player)
   }
 
