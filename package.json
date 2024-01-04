@@ -10,7 +10,6 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "chalk": "^5.0.1",
     "jsonwebtoken": "^9.0.2",
     "uuid": "^8.3.2",
     "ws": "^8.7.0"
