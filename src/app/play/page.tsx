@@ -1,10 +1,13 @@
-import GameCanvas from '@/app/play/_components/game-canvas'
+import GameClient from './_components/game-client'
 
-export default function PlayPage() {
-  console.log('bingo render')
+export default function PlayPage({ searchParams }) {
+  
+  // fetch pid from token here
+  // pass pid to gameclient
+
+  const { pid } = searchParams
+
   return (
-    <div className="flex">
-      <GameCanvas />
-    </div>
+    <GameClient pid={JSON.parse(pid)} />
   )
 }

@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer components {
+  .text-shadow {
+    color: yellow;
+    font-size: 1.5rem;
+    -webkit-text-stroke: 1px #525253;
+    font-family: fantasy;
+  }
+}
+
 html {
   height: 100%;
 }
