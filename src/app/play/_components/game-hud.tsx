@@ -5,6 +5,7 @@ import HealthBar from './health-bar'
 import ManaBar from './mana-bar'
 import { useEffect } from 'react'
 import FPSNumber from './fps'
+import PingNumber from './ping'
 
 export default function GameHUD() {
   const { character, game } = useGame()
@@ -43,10 +44,10 @@ export default function GameHUD() {
       </div>
       <div className="w-[5rem] h-[5rem] bg-[#dcc51a]">filler</div>
       <div className="w-[6rem] h-[6rem] bg-[#23d0d3]">
-        <div>menu</div>
         <button className="text-[#ffff00]" onClick={() => handleLogoutClick()}>logout</button>
         <Cycle />
         <FPSNumber />
+        <PingNumber />
       </div>
     </div>
   )

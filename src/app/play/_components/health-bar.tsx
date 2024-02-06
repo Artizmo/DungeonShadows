@@ -8,7 +8,7 @@ export default function HealthBar() {
   const [health, setHealth] = useState(character.hp)
   const { maxHp } = character
   const percent = Math.floor((health / maxHp) * 100)
-
+  
   useEffect(() => {
     if (!game) return
 
@@ -29,7 +29,7 @@ export default function HealthBar() {
     <div className="relative m-1 border border-solid border-[#222] bg-[#3e3e3e]">
       <div className="w-[100%] h-[100%] absolute z-[1] bg-[radial-gradient(circle,rgba(63,94,251,0)_67%,rgba(0,0,0,.45)_100%)]" />
       <div className="text-shadow absolute flex items-center justify-center inset-0">{health}/{maxHp}</div>
-      <div style={{ 'width': `${percent}%` }} className={`h-[1rem] bg-[#14ad30] transition-[width] duration-[3s] ease-[ease]`} />
+      <div style={{ 'width': `${percent}%`, 'backgroundColor': `hsl(${percent}, 100%, 50%)` }} className={`h-[1rem] transition-[all] duration-[3s] ease-[ease]`} />
     </div>
   )
 }

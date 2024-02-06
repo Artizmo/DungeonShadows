@@ -6,7 +6,7 @@ export default function GameScreen() {
   if (!character) return null
 
   return (
-    <main className="bg-[#09111ddb] flex-1">
+    <main className="bg-[#130e0cdb] flex-1">
       <div className="w-full p-4 absolute z-[1]">
         <canvas className="w-full h-[75vh] bg-[#22222276] relative" />
       </div>

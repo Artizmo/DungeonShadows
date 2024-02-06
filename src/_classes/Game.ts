@@ -88,7 +88,7 @@ export default class Game {
     // img.onload = () => {
     //   ctx.drawImage(img, 0, 0, rect.width, rect.height)
     // }
-    // img.src = 'https://as1.ftcdn.net/v2/jpg/05/11/33/34/1000_F_511333460_kcfcHUreVhRgHYhdolXNzjuCKsSY0r1S.jpg'
+    // img.src = 'https://preview.redd.it/i-made-a-new-background-for-my-game-this-time-for-an-intro-v0-o17eipie3ijb1.png?auto=webp&s=bd42aade65ca45a341a8b0f7129b1187e9b0e6cb'
     // this.test = true
   }
 
@@ -97,6 +97,7 @@ export default class Game {
     if (type === 'join') this.addCharacter(<Character>payload)
     if (type === 'character') this.updateCharacter(<Character>payload)
     if (type === 'available-characters') this.showAvailableCharacters(<Character[]>payload)
+    if (type === 'ping') this.setPing(<number>payload)
   }
 
   join(cid: number) {
@@ -113,6 +114,10 @@ export default class Game {
 
   isReady() {
     return this.connection.readyState === 1
+  }
+
+  private setPing(ping: number) {
+    this.connection.dispatchEvent(new CustomEvent('ping', { detail: ping }))
   }
 
   private showAvailableCharacters(characters: Character[]) {
