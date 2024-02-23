@@ -1,21 +1,26 @@
 import * as fs from 'fs'
-import GameEngine from './_classes/GameEngine'
-import { ConfigType } from './_types/config'
+import { Config } from './_types/Config'
+import Game from './_classes/Game'
+import { SavedWorld } from './_types/SavedWorld'
+import GameEvents from './_classes/GameEvents'
+
 const configPath = './config.json'
 
 fs.readFile(configPath, (err, data) => {
   if (err) console.log(`Could not read from path: ${configPath}. Error: ${err}`)
-  const config: ConfigType = JSON.parse(data.toString())
+  const config: Config = JSON.parse(data.toString())
   init(config)
 })
 
-function init(config: ConfigType) {
-  try {
-    const game = new GameEngine(config)
-    game.start()
+const savedWorld = { name: 'Dungeon Shadows' } as SavedWorld
 
-    console.log(`Game server is running on port ${config.port}.`)
+function init(config: Config) {
+  try {
+    const gameEvents = new GameEvents()
+    const game = new Game(config, gameEvents)
+    game.start(savedWorld)
+
   } catch (error) {
-    console.log(`Game server failed to run: ${error}`)
+    console.log(`Game failed to run: ${error}`)
   }
 }

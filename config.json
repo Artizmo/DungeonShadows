@@ -1,8 +1,7 @@
 {
   "port": 8000,
   "fps": 60,
-  "tickSize": 1054,
-  "tickRate": 0.033333333,
-  "updateTicks": 60,
-  "updateWiggle": 0.2
+  "cycleSize": 1054,
+  "cycleRate": 0.033333333,
+  "tickRate": 5
 }

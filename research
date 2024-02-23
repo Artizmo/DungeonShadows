@@ -42,6 +42,37 @@ WORLD
 -NPCS
 -ZONES
 
+worldState = {
+  global: {
+    main: {},
+    npcs: [],
+    objects: [],
+    weather: {}
+  },
+  zones: [
+    {
+      main: {},
+      npcs: [],
+      objects: [],
+      weather: {}
+    }
+  ]
+}
+
+New areas with the Builder tool:
+-register area (generic)
+-build out terrain (elevation and water)
+-place foliage, scenery lighting,
+-choose from existing collection of models (trees, npcs, monsters)
+-alter models' attributes respectively (rotation, size, color)
+-add npcs (respawn, acts, look, type)
+-add objects
+
+References:
+Unity networking: https://www.youtube.com/watch?v=c3AHJm8Ni9k&list=PLsMV160Duh4x2y6Q-FCzRp6g5bGD-o4VU&index=2
+Inspiration
+graphics: https://www.youtube.com/watch?v=yh64VM4ha0g
+
 COMBAT STYLES
 -------------
 1) PHYSICAL
@@ -117,3 +148,6 @@ Client IP Address
         }
       });
     });
+
+GAMEPAD
+  https://github.com/CodingWith-Adam/gamepad-api-simple-game/blob/main/index.js

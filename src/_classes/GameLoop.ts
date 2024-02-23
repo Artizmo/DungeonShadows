@@ -1,77 +1,66 @@
-import { ServerEntityType } from '../_types/server-entity'
-import { ConfigType } from '../_types/config'
+import { Config } from '../_types/Config'
+
+type Callback = () => void
 
 export default class GameLoop {
-  private baseEntity: ServerEntityType
-  private config: ConfigType
+  private config: Config
+  private frameTime: number
   private lastTime: number
-  private updateTimer: number
-  private tickTimer: number
-  currentTick: number
-
-  constructor(config: ConfigType) {
+  private tickTime: number
+  private update: Callback
+  private tick: Callback
+  cycle: number
+  
+  constructor(config: Config, update: Callback, tick: Callback) {
     this.config = config
-    this.currentTick = 0
+    this.update = update
+    this.tick = tick
+    this.config = config
+    this.cycle = 0
     this.lastTime = new Date().getTime()
-    this.tickTimer = 0
-    this.updateTimer = 0
+    this.frameTime = 0
+    this.tickTime = 0
   }
 
-  start(baseEntity: ServerEntityType) {
-    // game loop update
-    this.baseEntity = baseEntity
+  start() {
+    this.loop()
+  }
 
+  private loop() {
     setInterval(() => {
-      // frame tick
-    
-      while (this.tickTimer >= this.config.tickRate) {
-        // game tick
+      // game frame
+
+      while (this.frameTime >= this.config.cycleRate) {
+        // game cycle
         
-        if (this.updateTimer >= this.config.updateTicks) {
-          // game pulse
-          this.update(true)
+        this.update()
+        
+        // output()
+
+        if (this.tickTime >= this.config.tickRate) {
+          // game tick
+          
+          this.tick()
+          this.tickTime = 0
         }
 
-        this.tick()
+        this.updateCycle()
       }
-      
-      // input state
-      this.input()
 
-      // update state
-      this.update()
-
-      // draw state
-      this.draw()
-
-      this.updateClock()
+      this.updateFrame()
     }, 1000/this.config.fps)
   }
-
-  input() {
-    // update state
+  
+  private updateCycle() {
+    this.tickTime += this.frameTime
+    this.frameTime -= this.config.cycleRate
+    this.cycle = this.cycle % this.config.cycleSize + 1
   }
 
-  update(pulse: boolean = false) {
-    if (pulse) this.updateTimer = 0
-
-    this.baseEntity.update(pulse)
-  }
-
-  draw() {
-    this.baseEntity.draw()
-  }
-
-  tick() {
-    this.updateTimer += this.tickTimer
-    this.tickTimer -= this.config.tickRate
-    this.currentTick = this.currentTick % this.config.tickSize + 1
-  }
-
-  updateClock() {
+  private updateFrame() {
     const currentTime = new Date().getTime()
     const deltaTime = (currentTime - this.lastTime) / 1000
-    this.tickTimer += deltaTime
+    this.frameTime += deltaTime
     this.lastTime = currentTime
   }
 }
