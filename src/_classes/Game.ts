@@ -1,158 +1,142 @@
+import { SavedCharacter } from '@/_types/SavedCharacter'
+import { PingTimes } from '@/_types/PingTimes'
+import { LoopDetails } from '@/_types/LoopDetails'
+import { REQUEST_TYPES, RESPONSE_TYPES } from '@/_lib/constants'
 import Character from './Character'
+import Renderer from './Renderer'
+import GameLoop from './GameLoop'
+import ClientObject from './ClientObject'
+import { ServerResponse } from '@/_types/ServerResponse'
 
-const PORT = JSON.parse(process.env.NEXT_PUBLIC_PORT)
-const CYCLE_RATE = JSON.parse(process.env.NEXT_PUBLIC_CYCLERATE)
-const CYCLE_SIZE = JSON.parse(process.env.NEXT_PUBLIC_CYCLESIZE)
-
-
-let times = []
+const HOST = process.env.NEXT_PUBLIC_HOST
+const PORT = process.env.NEXT_PUBLIC_PORT
 
 export default class Game {
-  private cycleTime: number
-  private lastTime: number
-  character: Character
-  connection: WebSocket
-  currentCycle: number
   pid: number
-  fps: number
-  test: boolean
+  character: Character
+  characters: Character[]
+  connection: WebSocket
+  gameLoop: GameLoop
+  renderer: Renderer
+  serverResponse = ClientObject.serverResponse
+  responseHandlers: Map<string, (arg: any) => void>
   
   constructor() {
-    this.currentCycle = 0
-    this.lastTime = new Date().getTime()
-    this.cycleTime = 0
     this.connection = null
-    this.character = null
+    this.characters = []
     this.pid = null
-    this.fps = null
+    this.gameLoop = new GameLoop()
+    this.renderer = new Renderer()
   }
 
   start(pid: number) {
-    try {
-      this.pid = pid
-      this.connection = new WebSocket(`ws://localhost:${PORT}`)
-      this.connection.onopen = () => {
-        this.connection.send(JSON.stringify({ type: 'connect', data: pid }))
-      }
-      this.connection.onmessage = ({ data }) => this.message(JSON.parse(data))
-      this.loop()
-    } catch(error) {
-      console.log(error)
+    this.pid = pid
+
+    this.responseHandlers = new Map([
+      [RESPONSE_TYPES.AVAILABLE_CHARACTERS, data => this.showAvailableCharacters(data)],
+      [RESPONSE_TYPES.JOIN, data => this.addCharacter(data)],
+      [RESPONSE_TYPES.SERVER_PING_TIME, data => this.checkPing(data)],
+      [RESPONSE_TYPES.SERVER_ACK_PING_TIME, data => this.acknowledgePing(data)],
+      [RESPONSE_TYPES.CHAT, data => this.chat(data)]
+    ])
+
+    this.connection = new WebSocket(`ws://${HOST}:${PORT}`)
+    this.connection.onopen = () => {
+      this.connection.send(JSON.stringify({ type: REQUEST_TYPES.CONNECT, data: pid }))
     }
+    this.connection.onmessage = ({ data }) => {
+      const message = JSON.parse(data.toString())
+      const { responseHandlers } = this
+
+      this.serverResponse({ message, responseHandlers })
+    }
+
+    this.gameLoop.start(
+      () => this.input(),
+      data => this.update(data),
+      () => this.draw()
+    )
   }
 
-  loop() {
-    window.requestAnimationFrame(() => {
-      // game frame
-      
-      while (this.cycleTime >= CYCLE_RATE) {
-        // game cycle
-        
-        this.update()
-
-        this.draw()
-
-        this.updateCycle()
-      }
-
-      this.updateFrame()
-      this.updateFPS()
-
-      this.loop()
-    })
+  input() {
+    
   }
 
-  update() {
-    const { currentCycle, fps } = this
+  update({ cycle, fps }: LoopDetails) {
     this.connection.dispatchEvent(new CustomEvent('update', { 
       detail: { 
-        currentCycle,
+        cycle,
         fps
       }
     }))
+    
+    if (this.character) this.character.setCycle(cycle)
   }
 
   draw() {
-    // if (this.test) return
-
-    // const canvas = <HTMLCanvasElement>document.getElementById('bgMap')
-    // if (!canvas) return
-    // const ctx = canvas.getContext('2d')
-    // if (!ctx) return
-    // const dpr = window.devicePixelRatio ?? 1
-    // const rect = canvas.getBoundingClientRect()
-    // canvas.width = rect.width * dpr
-    // canvas.height = rect.height * dpr
-    // ctx.scale(dpr, dpr)
-    // const img = new Image()
-    // img.onload = () => {
-    //   ctx.drawImage(img, 0, 0, rect.width, rect.height)
-    // }
-    // img.src = 'https://preview.redd.it/i-made-a-new-background-for-my-game-this-time-for-an-intro-v0-o17eipie3ijb1.png?auto=webp&s=bd42aade65ca45a341a8b0f7129b1187e9b0e6cb'
-    // this.test = true
+    this.renderer.drawRoom()
   }
 
-  message<T>(data: { type: string, payload: T }) {
-    const { type, payload } = data
-    if (type === 'join') this.addCharacter(<Character>payload)
-    if (type === 'character') this.updateCharacter(<Character>payload)
-    if (type === 'available-characters') this.showAvailableCharacters(<Character[]>payload)
-    if (type === 'ping') this.setPing(<number>payload)
-  }
+  // message<T>(data: { type: string, payload: T }) {
+  //   const { type, payload } = data
+  //   if (type === 'join') this.addCharacter(<SavedCharacter>payload)
+  //   if (type === 'character') this.updateCharacter(<Character>payload)
+  //   if (type === 'available-characters') this.showAvailableCharacters(<Character[]>payload)
+  //   if (type === 'server-ping-time') this.checkPing(<PingTimes>payload)
+  //   if (type === 'server-ack-ping-time') this.acknowledgePing(<PingTimes>payload)
+  //   if (type === 'chat') this.chat(<{ sender: string, message: string }>payload)
+  // }
 
   join(cid: number) {
-    this.connection.send(JSON.stringify({ type: 'join', data: { cid, pid: this.pid } }))
+    this.connection.send(JSON.stringify({ type: REQUEST_TYPES.JOIN, data: { cid, pid: this.pid } }))
   }
 
   logout() {
-    this.connection.send(JSON.stringify({ type: 'disconnect', data: this.pid }))
+    const { pid } = this
+    const { id: cid } = this.character
+
+    this.connection.send(JSON.stringify({ type: REQUEST_TYPES.DISCONNECT, data: { pid, cid }}))
   }
 
-  close() {
-    this.connection.close()
+  chat({ message }: ServerResponse<{ sender: string, message: string}>) {
+    const { message: text, sender } = message.data
+    this.connection.dispatchEvent(new CustomEvent('chat', { 
+      detail: `[Chat]: ${sender}: ${text}`
+    }))
+  }
+
+  cmd(command: string) {
+    if (!command) return
+
+    const { pid } = this
+    const { name } = this.character
+    this.connection.send(JSON.stringify({ type: REQUEST_TYPES.COMMAND, data: { pid, name, command }}))
   }
 
   isReady() {
     return this.connection.readyState === 1
   }
 
-  private setPing(ping: number) {
-    this.connection.dispatchEvent(new CustomEvent('ping', { detail: ping }))
+  private checkPing({ message }: ServerResponse<PingTimes>) {
+    const pingTimes = message.data
+    pingTimes.clientTime = performance.now()
+    this.connection.send(JSON.stringify({ type: REQUEST_TYPES.PING, data: pingTimes }))
   }
 
-  private showAvailableCharacters(characters: Character[]) {
+  private acknowledgePing({ message }: ServerResponse<PingTimes>) {
+    const pingTimes = message.data
+    pingTimes.clientAckTime = performance.now()
+    this.connection.dispatchEvent(new CustomEvent('ping-label', { detail: pingTimes }))
+  }
+
+  private showAvailableCharacters({ message }: ServerResponse<Character[]>) {
+    const characters = message.data
     this.connection.dispatchEvent(new CustomEvent('available-characters', { detail: characters }))
   }
 
-  private addCharacter(character: Character) {
-    this.character = new Character(character)
-    this.connection.dispatchEvent(new CustomEvent('character', { detail: character }))
-  }
-
-  private updateCharacter(character: Character) {
-    this.character.update(character)
-    this.connection.dispatchEvent(new CustomEvent('character', { detail: character }))
-  }
-
-  private updateCycle() {
-    this.cycleTime -= CYCLE_RATE
-    this.currentCycle = this.currentCycle % CYCLE_SIZE + 1
-  }
-
-  private updateFrame() {
-    const currentTime = new Date().getTime()
-    const deltaTime = (currentTime - this.lastTime) / 1000
-    this.cycleTime += deltaTime
-    this.lastTime = currentTime
-  }
-
-  private updateFPS() {
-    const now = performance.now()
-    const frames = times.length
-    while (frames > 0 && times[0] <= now - 1000) {
-      times.shift()
-    }
-    times.push(now)
-    this.fps = frames > 60 ? 60 : frames
+  private addCharacter({ message }: ServerResponse<SavedCharacter>) {
+    const savedCharacter = message.data
+    this.character = new Character(savedCharacter)
+    this.connection.dispatchEvent(new CustomEvent('character', { detail: this.character }))
   }
 }

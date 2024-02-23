@@ -3,7 +3,7 @@ import { useGame } from '../_context/game-context'
 import Game from '@/_classes/Game'
 
 export default function FPSNumber() {
-  const [FPS, setFPS] = useState(0)
+  const [fps, setFps] = useState(0)
   const { game }: { game: Game } = useGame()
 
   useEffect(() => {
@@ -16,10 +16,10 @@ export default function FPSNumber() {
 
   const handleUpdateEvent = (event: CustomEvent) => {
     const { detail: { fps } } = event
-    setFPS(fps)
+    setFps(fps)
   }
 
   return (
-    <div>FPS: {FPS}</div>
+    <div className="text-[.75rem]">FPS: <span className="font-bold">{fps}</span></div>
   )
 }

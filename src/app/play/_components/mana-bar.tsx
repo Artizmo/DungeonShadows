@@ -4,7 +4,8 @@ import Game from '@/_classes/Game'
 import Character from '@/_classes/Character'
 
 export default function ManaBar() {
-  const { character, game }: { character: Character, game: Game } = useGame()
+  const { game }: { game: Game } = useGame()
+  const { character } = game
   const [health, setHealth] = useState(character.hp)
   const { maxHp } = character
   const percent = Math.floor((health / maxHp) * 100)
@@ -15,7 +16,7 @@ export default function ManaBar() {
     game.connection.addEventListener('update', handleUpdateEvent)
 
     return () => game.connection.removeEventListener('update', handleUpdateEvent)
-  }, [])
+  }, [game])
 
   const handleUpdateEvent = () => {
     const r = Math.floor(Math.random() * 150) + 1

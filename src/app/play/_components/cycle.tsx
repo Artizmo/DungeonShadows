@@ -15,11 +15,11 @@ export default function Cycle() {
   }, [])
 
   const handleUpdateEvent = (event: CustomEvent) => {
-    const { detail: { currentCycle } } = event
-    setCycle(currentCycle)
+    const { detail: { cycle } } = event
+    setCycle(cycle)
   }
 
   return (
-    <div>cycle: {cycle}</div>
+    <div className="text-[.75rem]">cycle: <span className="font-bold">{cycle}</span></div>
   )
 }
