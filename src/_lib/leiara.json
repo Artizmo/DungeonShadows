@@ -1,0 +1,15 @@
+{
+	"id": 333,
+	"pid": 111,
+	"name": "Leiara",
+	"level": 1,
+  "health": {
+    "hp": 2315,
+    "max": 2315
+  },
+  "area": {
+    "id": "ARENA",
+    "x": 2,
+    "y": 3
+  }
+}

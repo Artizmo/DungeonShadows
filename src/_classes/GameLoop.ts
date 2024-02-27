@@ -20,9 +20,7 @@ export default class GameLoop {
     this.lastTime = new Date().getTime()
     this.frameTime = 0
     this.tickTime = 0
-  }
 
-  start() {
     this.loop()
   }
 

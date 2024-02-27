@@ -7,7 +7,7 @@ import { PingTimes } from '../_types/PingTImes'
 import { CharacterSelection } from '../_types/CharacterSelection'
 import GameEvents from './GameEvents'
 import Player from './Player'
-import ServerObject from './ServerConnection'
+import ServerConnection from './ServerConnection'
 
 const mockFetchPlayer = (pid: number): SavedPlayer => players.find(player => player.id === pid)
 const mockFetchCharacter = (cid: number) => characters.find(character => character.id === cid)
@@ -20,7 +20,6 @@ export default class GameServer {
   server: WebSocketServer
   port: number
   players: Map<number, Player>
-  serverRequest = ServerObject.serverRequest
   
   constructor(port: number, gameEvents: GameEvents) {
     this.port = port
@@ -31,7 +30,7 @@ export default class GameServer {
         connection.on('message', data => {
           const message = JSON.parse(data.toString())
           
-          this.serverRequest({ message, connection, request, requestHandlers: new Map([
+          ServerConnection.serverRequest({ message, connection, request, requestHandlers: new Map([
             [REQUEST_TYPES.CONNECT, data => this.connect(data)],
             [REQUEST_TYPES.DISCONNECT, data => this.disconnect(data)],
             [REQUEST_TYPES.JOIN, data => this.fetchCharacter(data)],

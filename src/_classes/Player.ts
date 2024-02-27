@@ -16,10 +16,6 @@ export default class Player extends ServerConnection {
     this.firstName = savedPlayer.firstName
     this.lastName = savedPlayer.lastName
 
-    this.init()
-  }
-  
-  init() {
     this.connection.on('pong', () => {
       this.isAlive = true
     })

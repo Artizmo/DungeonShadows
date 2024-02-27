@@ -1,13 +1,11 @@
-import Area from '../_classes/Area'
+import Area, { AREA_KEYS } from '../_classes/Area'
 
 const arena = {
-  id: 'arena',
-  name: 'arena',
-  map: [
+  id: AREA_KEYS.ARENA,
+  name: 'Arena',
+  tileMap: [
     [1, 2, 3, 4],
-    [5, 6, 7, 8],
-    [9, 10, 11, 12],
-    [13, 14, 15, 16]
+    [5, 6, 7, 8]
   ]
 } as Area
 

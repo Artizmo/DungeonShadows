@@ -12,11 +12,14 @@ export default class Game extends GameServer {
   
   constructor(config: Config, gameEvents: GameEvents) {
     super(config.port, gameEvents)
-    this.gameLoop = new GameLoop(config, () => this.update(), () => this.tick())
+    this.gameLoop = new GameLoop(config,
+      () => this.update(),
+      () => this.tick()
+    )
+    
   }
 
   start(savedWorld: SavedWorld) {
-    this.gameLoop.start()
     this.world = new World(areas, savedWorld, this.server, this.gameEvents)
   }
 

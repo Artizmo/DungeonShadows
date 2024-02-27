@@ -1,3 +1,7 @@
+export const AREA_KEYS = {
+  ARENA: 'ARENA'
+}
+
 class Tile {
 
   constructor() {
@@ -8,19 +12,13 @@ class Tile {
 export default class Area {
   id: string
   name: string
-  map: number[][]
+  tileMap: number[][]
   tiles: Tile[]
 
   constructor(area: Area) {
     this.id = area.id
     this.name = area.name
-    this.map = area.map
+    this.tileMap = area.tileMap
     this.tiles = area.tiles
-
-    this.init()
-  }
-
-  init() {
-
   }
 }

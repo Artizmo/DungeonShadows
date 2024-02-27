@@ -1,4 +1,4 @@
-import { WebSocketServer } from 'ws'
+import { type WebSocketServer } from 'ws'
 import { SavedWorld } from '../_types/SavedWorld'
 import { SavedCharacter } from '../_types/SavedCharacter'
 import ServerConnection from './ServerConnection'
@@ -20,15 +20,15 @@ export default class World extends ServerConnection {
     this.characters = new Map()
     this.areas = areas
     this.eventListeners = new Map([
-      ['join', data => this.join(data)],
-      ['disconnect', data => this.disconnect(data)],
-      ['abort', () => this.abort()]
+      ['join', data => this.handleJoinEvent(data)],
+      ['disconnect', data => this.handleDisconnectEvent(data)],
+      ['abort', () => this.handleAbortEvent()]
     ])
     
     this.gameEvents.addEventListeners(this.eventListeners)
   }
 
-  join(savedCharacter: SavedCharacter) {
+  private handleJoinEvent(savedCharacter: SavedCharacter) {
     if (!savedCharacter) return
 
     const character = new Character(savedCharacter, this.server, this.connection, this.gameEvents)
@@ -37,8 +37,7 @@ export default class World extends ServerConnection {
     this.gameEvents.emit('character-join', character.id)
   }
 
-  disconnect(pid: number) {
-    console.log('bingo disconnect', pid)
+  private handleDisconnectEvent(pid: number) {
     if (!pid) return
 
     for (const character of this.characters.values()) {
@@ -49,8 +48,13 @@ export default class World extends ServerConnection {
     }
   }
 
-  abort() {
+  private handleAbortEvent() {
     this.shutdown()
+  }
+
+  private shutdown() {
+    this.save()
+    this.gameEvents.removeEventListeners(this.eventListeners)
   }
 
   addCharacter(character: Character) {
@@ -68,9 +72,5 @@ export default class World extends ServerConnection {
     this.characters.forEach(character => {
       console.log('saving player and character states...', character.name)
     })
-  }
-
-  shutdown() {
-    this.save()
   }
 }
