@@ -1,36 +1,22 @@
-class Room {
-  x: number
-  y: number
-  width: number
-
-  constructor(x: number, y: number, width: number) {
-    this.x = x
-    this.y = y
-    this.width = width
-  }
-
-  draw() {
-
-  }
-}
+import type Character from './Character'
 
 export default class Renderer {
-  private maps: Map<string, CanvasRenderingContext2D>
+  private canvases: Map<string, { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D }>
 
   constructor() {
-    this.maps = new Map()
+    this.canvases = new Map()
   }
 
-  setMap(type: string, canvas: HTMLCanvasElement) {
+  setCanvas(type: string, canvas: HTMLCanvasElement) {
     if (!canvas) return
 
-    const dpr = window.devicePixelRatio
-    const rect = canvas.getBoundingClientRect()
-    const tilesMap = canvas.getContext('2d')
-    canvas.width = rect.width * dpr
-    canvas.height = rect.height * dpr
-    tilesMap.scale(dpr, dpr)
-    this.maps.set(type, tilesMap)
+    // const dpr = window.devicePixelRatio
+    // const rect = canvas.getBoundingClientRect()
+    const ctx = canvas.getContext('2d')
+    // canvas.width = rect.width * dpr
+    // canvas.height = rect.height * dpr
+    // ctx.scale(dpr, dpr)
+    this.canvases.set(type, { canvas, ctx })
   }
  
   getColor() {
@@ -41,15 +27,24 @@ export default class Renderer {
     return `rgb(${255*Math.random()|0}, ${255*Math.random()|0}, ${255*Math.random()|0})`
   }
 
-  drawRoom() {
-    const tilesMap = this.maps.get('tiles')
-    if (!tilesMap) return
+  drawCharacter(c: Character) {
+    if (this.canvases.size === 0) return
 
-    tilesMap.beginPath()
-    tilesMap.rect(1, 1, 50, 50)
-    tilesMap.strokeStyle = '#d6d6d6'
-    tilesMap.lineWidth = 2
-    tilesMap.stroke()
+    const { canvas, ctx } = this.canvases.get('tiles')
+    this.clearCanvas(canvas)
+    ctx.fillStyle = 'green'
+    ctx.beginPath()
+    ctx.arc(c.area.x, c.area.y, 10, 0, Math.PI * 2)
+    ctx.fill()
+  }
+
+  clearCanvas(canvas: HTMLCanvasElement) {
+    const dpr = window.devicePixelRatio
+    const rect = canvas.getBoundingClientRect()
+    const ctx = canvas.getContext('2d')
+    canvas.width = rect.width * dpr
+    canvas.height = rect.height * dpr
+    ctx.scale(dpr, dpr)
   }
 }
 

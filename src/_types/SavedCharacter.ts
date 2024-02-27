@@ -3,10 +3,13 @@ export type SavedCharacter = {
   pid: number
   name: string
   level: number
-  maxHp: number
-  hp: number
-  x: number
-  y: number
-  roomId: number
-  areaId: string
+  health: {
+    hp: number
+    max: number
+  }
+  area: {
+    id: string
+    x: number
+    y: number
+  }
 }

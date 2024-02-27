@@ -3,17 +3,15 @@ export default class InputController {
 
   constructor(input: (type: string) => void) {
     this.input = input
-    this.init()
+
+    addEventListener('keydown', event => this.inputEventKeys(event, 'keydown'))
+    addEventListener('keyup', event => this.inputEventKeys(event, 'keyup'))
   }
 
-  init() {
-    window.addEventListener('keydown', event => {
-      if (event.key === 'a') {
-        this.input('move-left')
-      }
-      if (event.key === 'd') {
-        this.input('move-right')
-      }
-    })
+  inputEventKeys(event: KeyboardEvent, keyDir: string) {
+    if (event.key === 'w') this.input(`move-up-${keyDir}`)
+    if (event.key === 's') this.input(`move-down-${keyDir}`)
+    if (event.key === 'a') this.input(`move-left-${keyDir}`)
+    if (event.key === 'd') this.input(`move-right-${keyDir}`)
   }
 }

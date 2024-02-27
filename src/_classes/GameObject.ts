@@ -1,17 +1,31 @@
-export default class GameObject {
+import type Renderer from './Renderer'
+
+type AreaType = {
   x: number
   y: number
+  id: string
+}
 
-  constructor(x: number, y: number) {
-    this.x = x
-    this.y = y
+export default class GameObject {
+  renderer: Renderer
+  vx: number = 0
+  vy: number = 0
+  area: {
+    x: number
+    y: number
+    id: string
+  }
+
+  constructor(area: AreaType, renderer: Renderer) {
+    this.renderer = renderer
+    this.area = area
   }
 
   setX(x: number) {
-    this.x = x
+    this.area.x = x
   }
 
   setY(y: number) {
-    this.y = y
+    this.area.y = y
   }
 }

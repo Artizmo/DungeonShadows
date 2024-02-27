@@ -1,26 +1,30 @@
 import { SavedCharacter } from '@/_types/SavedCharacter'
 import GameObject from './GameObject'
 import InputController from './InputController'
+import type Renderer from './Renderer'
 
-
+const VELOCITY = 7.4
 
 export default class Character extends GameObject {
   id: number
   name: string
-  hp: number
-  maxHp: number
+  health = {
+    hp: 0,
+    max: 0
+  }
   level: number
   inputController: InputController
   queue: Map<number, string>
   cycle: number
+  isJoined: boolean = false
 
-  constructor(character: SavedCharacter = null) {
-    super(character.x, character.y)
-    this.id = character.id
-    this.name = character.name
-    this.level = character.level
-    this.hp = character.hp
-    this.maxHp = character.maxHp
+  constructor(savedCharacter: SavedCharacter, renderer?: Renderer) {
+    super(savedCharacter.area, renderer)
+    this.id = savedCharacter.id
+    this.name = savedCharacter.name
+    this.level = savedCharacter.level
+    this.health = savedCharacter.health
+    this.area = savedCharacter.area
     this.inputController = new InputController(type => this.input(type))
     this.queue = new Map()
     this.cycle = 0
@@ -28,32 +32,35 @@ export default class Character extends GameObject {
 
   input(type: string) {
     this.queue.set(this.cycle, type)
-    if (type === 'move-right') {
-      this.move('right')
-    }
-    if (type === 'move-left') {
-      this.move('left')
-    }
+    if (type === 'move-up-keydown') this.move('y', -VELOCITY)
+    if (type === 'move-down-keydown') this.move('y', VELOCITY)
+    if (type === 'move-left-keydown') this.move('x', -VELOCITY)
+    if (type === 'move-right-keydown') this.move('x', VELOCITY)
+
+    if (type === 'move-left-keyup' || type === 'move-right-keyup')  this.move('x', 0)
+    if (type === 'move-up-keyup' || type === 'move-down-keyup') this.move('y', 0)
   }
 
   setCycle(cycle: number) {
     this.cycle = cycle
   }
 
-  move(direction: string) {
-    if (direction === 'right') {
-      this.setX(this.x += 1)
-    }
-    if (direction === 'left') {
-      this.setX(this.x -= 1)
-    }
+  move(axis: string, velocity: number) {
+    if (axis === 'x') this.vx = velocity
+    if (axis === 'y') this.vy = velocity
   }
 
-  update(character: Character) {
+  set setHp(hp: number) {
+    this.health.hp = hp
+  }
 
+  update() {
+    this.area.x += this.vx
+    this.area.y += this.vy
   }
 
   draw() {
-    // console.log('queue', this.queue)
+    // console.log('draw', this.area.x, this.area.y)
+    this.renderer.drawCharacter(this)
   }
 }

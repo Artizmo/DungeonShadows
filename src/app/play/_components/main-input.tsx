@@ -28,7 +28,7 @@ export default function MainInput() {
     
     if (text === 'clear') return setInputs([])
 
-    game.cmd(text)
+    game.command(text)
   }
 
   const handleChatEvent = (chat: CustomEvent) => {

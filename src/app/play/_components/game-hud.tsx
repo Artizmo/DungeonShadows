@@ -11,32 +11,36 @@ import Game from '@/_classes/Game'
 import MainInput from './main-input'
 
 export default function GameHUD() {
-  const [character, setCharacter] = useState<Character>(null)
   const { game }: { game: Game } = useGame()
+  const [character, setCharacter] = useState<Character>(null)
   const router = useRouter()
 
   useEffect(() => {
     if (!game) return
 
-    game.connection.addEventListener('character', handleCharacterEvent)
+    game.connection.addEventListener('update', handleCharacterEvent)
 
     return () => {
-      game.connection.removeEventListener('character', handleCharacterEvent)
+      game.connection.removeEventListener('update', handleCharacterEvent)
     }
   }, [game])
 
-  const handleCharacterEvent = (event: CustomEvent) => setCharacter(event.detail)
-
-  if (!character) return null
+  const handleCharacterEvent = (event: CustomEvent) => {
+    const { character } = event.detail
+    if (!character) return
+    setCharacter({ ...character })
+  }
 
   const handleTestClick = () => {
     console.log('clicky')
   }
-
+  
   const handleLogoutClick = () => {
     game.logout()
     router.push('/login')
   }
+  
+  if (!character) return null
 
   return (
     <div className="flex items-end justify-between absolute z-[1] w-full bottom-0">
@@ -46,8 +50,7 @@ export default function GameHUD() {
       </div>
       <div className="w-[8rem] h-[8rem] bg-[#6bbd22]">
         {character.name}<br />
-        {character.hp}/{character.maxHp}<br />
-        {character.x}
+        {character.health?.hp}/{character.health?.max}<br />
       </div>
       <div className="bg-[#962587] flex-1 overflow-hidden">
         <MainInput /> 

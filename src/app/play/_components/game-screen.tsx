@@ -18,7 +18,7 @@ export default function GameScreen() {
   }, [game])
   
   const tileMapRef = useCallback((canvasEl: HTMLCanvasElement) => {
-    game.renderer.setMap('tiles', canvasEl)
+    game.renderer.setCanvas('tiles', canvasEl)
   }, [game])
 
   const handleCharacterEvent = (event: CustomEvent) => setCharacter(event.detail)

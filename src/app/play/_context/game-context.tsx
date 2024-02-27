@@ -4,14 +4,13 @@ import Game from '@/_classes/Game'
 const GameContext = createContext(null)
 
 export const GameProvider = ({ children, pid }: { children: any, pid: number }) => {
-  const [game, setGame] = useState<Game>(null)
+  const [game, setGame] = useState<Game>(new Game(pid))
 
   useEffect(() => {
-    const game = new Game()
+    const game = new Game(pid)
     setGame(game)
-
-    game.start(pid)
-  }, [pid])
+    game.start()
+  }, [])
 
   return (
     <GameContext.Provider value={{ game }}>
