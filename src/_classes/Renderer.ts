@@ -10,12 +10,12 @@ export default class Renderer {
   setCanvas(type: string, canvas: HTMLCanvasElement) {
     if (!canvas) return
 
-    // const dpr = window.devicePixelRatio
-    // const rect = canvas.getBoundingClientRect()
+    const dpr = window.devicePixelRatio
+    const rect = canvas.getBoundingClientRect()
     const ctx = canvas.getContext('2d')
-    // canvas.width = rect.width * dpr
-    // canvas.height = rect.height * dpr
-    // ctx.scale(dpr, dpr)
+    canvas.width = rect.width * dpr
+    canvas.height = rect.height * dpr
+    ctx.scale(dpr, dpr)
     this.canvases.set(type, { canvas, ctx })
   }
  

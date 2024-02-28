@@ -3,7 +3,7 @@ import GameObject from './GameObject'
 import InputController from './InputController'
 import type Renderer from './Renderer'
 
-const VELOCITY = 7.4
+const VELOCITY = 2.5
 
 export default class Character extends GameObject {
   id: number
@@ -37,7 +37,7 @@ export default class Character extends GameObject {
     if (type === 'move-left-keydown') this.move('x', -VELOCITY)
     if (type === 'move-right-keydown') this.move('x', VELOCITY)
 
-    if (type === 'move-left-keyup' || type === 'move-right-keyup')  this.move('x', 0)
+    if (type === 'move-left-keyup' || type === 'move-right-keyup') this.move('x', 0)
     if (type === 'move-up-keyup' || type === 'move-down-keyup') this.move('y', 0)
   }
 

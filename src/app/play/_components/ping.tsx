@@ -10,7 +10,7 @@ type PingTimes = {
 }
 
 export default function PingNumber() {
-  const [ping, setPing] = useState(0)
+  const [ping, setPing] = useState(null)
   const { game }: { game: Game } = useGame()
 
   useEffect(() => {
@@ -21,12 +21,25 @@ export default function PingNumber() {
     return () => game.connection.removeEventListener('ping-label', handleSetPing)
   }, [])
 
-  const handleSetPing = (event: CustomEvent) => {
-    const { detail: pingTimes }: { detail: PingTimes } = event
+  const calculatePing = (pingTimes: PingTimes) => {
+    const MAX_PING = 5000
+    const MIN_PING = 1
     const { serverTime, clientTime, serverAckTime, clientAckTime } = pingTimes
     const calculatedPing = Math.ceil((serverAckTime - serverTime) - ((clientAckTime - clientTime) * 0.5))
-    const ping = calculatedPing > 0 ? calculatedPing : 1
+
+    if (calculatedPing > MAX_PING) return false
+    if (calculatedPing <= 0) return MIN_PING
+
+    return calculatedPing
+  }
+
+  const handleSetPing = (event: CustomEvent) => {
+    const ping = calculatePing(event.detail)
+    if (!ping) return
+    
     setPing(ping)
+
+    // console.log('ping', event.detail)
   }
 
   return (
