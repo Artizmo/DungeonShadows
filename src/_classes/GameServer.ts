@@ -55,7 +55,9 @@ export default class GameServer {
   connect({ message, connection }: ServerRequest<number>) {
     const pid = message.data
     if (!pid) return
-
+    const currentPlayer = this.players.get(pid)
+    if (currentPlayer) currentPlayer.dispose()
+    
     const savedPlayer = mockFetchPlayer(pid)
     const player = new Player(savedPlayer, this.server, connection)
     player.isAlive = true
