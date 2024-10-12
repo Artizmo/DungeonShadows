@@ -1,20 +1,20 @@
-import { type WebSocket, type WebSocketServer } from 'ws'
+import { type WebSocket } from 'ws'
 import { SavedPlayer } from '../_types/SavedPlayer'
-import ServerConnection from './ServerConnection'
 
-export default class Player extends ServerConnection {
+export default class Player {
   id: number
   email: string
   firstName: string
   lastName: string
   isAlive: boolean
+  connection: WebSocket
 
-  constructor(savedPlayer: SavedPlayer, server: WebSocketServer, connection: WebSocket) {
-    super(server, connection)
+  constructor(savedPlayer: SavedPlayer, connection: WebSocket) {
     this.id = savedPlayer.id
     this.email = savedPlayer.email
     this.firstName = savedPlayer.firstName
     this.lastName = savedPlayer.lastName
+    this.connection = connection
 
     this.connection.on('pong', () => {
       this.isAlive = true

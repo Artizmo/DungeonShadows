@@ -6,11 +6,11 @@ type ServerMessage<T> = {
   data: T
 }
 
-export type ServerRequestHandlers = Map<string, (arg: any) => void>
+export type RequestHandlers = Map<string, (arg: any) => void>
 
-export type ServerRequest<T> = { 
+export type Request<T> = { 
   message: ServerMessage<T>
-  connection: WebSocket
-  request: IncomingMessage
-  requestHandlers: ServerRequestHandlers
+  connection?: WebSocket
+  request?: IncomingMessage
+  requestHandlers: RequestHandlers
 }

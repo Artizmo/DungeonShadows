@@ -1,33 +1,34 @@
 import { Config } from '../_types/Config'
 import { SavedWorld } from '../_types/SavedWorld'
+import type GameEvents from './GameEvents'
 import GameServer from './GameServer'
 import GameLoop from './GameLoop'
-import GameEvents from './GameEvents'
 import World from './World'
-import areas from '../areas/list'
 
-export default class Game extends GameServer {
-  private gameLoop: GameLoop
+export default class Game {
+  gameEvents: GameEvents
+  gameServer: GameServer
+  gameLoop: GameLoop
   world: World
   
   constructor(config: Config, gameEvents: GameEvents) {
-    super(config.port, gameEvents)
+    this.gameEvents = gameEvents
+    this.gameServer = new GameServer(config.port, gameEvents)
     this.gameLoop = new GameLoop(config,
       () => this.update(),
       () => this.tick()
     )
-    
   }
 
   start(savedWorld: SavedWorld) {
-    this.world = new World(areas, savedWorld, this.server, this.gameEvents)
+    this.world = new World(savedWorld, this.gameServer, this.gameEvents)
   }
 
   update() {
-    
+    this.world.update()
   }
 
   tick() {
-    console.log('bingo tick', this.world.characters.size, this.gameEvents.emitter.listenerCount('disconnect'))
+    // console.log('bingo tick', this.world.characters.size)
   }
 }

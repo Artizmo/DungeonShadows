@@ -1,8 +1,8 @@
 import * as fs from 'fs'
 import { Config } from './_types/Config'
 import Game from './_classes/Game'
-import { SavedWorld } from './_types/SavedWorld'
 import GameEvents from './_classes/GameEvents'
+import savedWorld from './savedWorld/world'
 
 const configPath = './config.json'
 
@@ -11,8 +11,6 @@ fs.readFile(configPath, (err, data) => {
   const config: Config = JSON.parse(data.toString())
   init(config)
 })
-
-const savedWorld = { name: 'Dungeon Shadows' } as SavedWorld
 
 function init(config: Config) {
   try {

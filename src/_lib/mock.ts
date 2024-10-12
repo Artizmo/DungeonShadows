@@ -7,6 +7,6 @@ export const players = [
 ] as SavedPlayer[]
 
 export const characters = [
-  { id: 333, pid: 111, name: 'Leiara', level: 1, health: { max: 2315, hp: 2315 }, area: { x: 2, y: 1, id: 'arena' }},
-  { id: 444, pid: 222, name: 'Hansor', level: 2, health: { max: 4122, hp: 4122 }, area: { x: 3, y: 1, id: 'arena' }},
+  { id: 333, pid: 111, name: 'Leiara', level: 1, health: { max: 2315, hp: 2315 }, x: 2, y: 1, area: { id: 1000 }},
+  { id: 444, pid: 222, name: 'Hansor', level: 2, health: { max: 4122, hp: 4122 }, x: 3, y: 1, area: { id: 1000 }},
 ] as SavedCharacter[]

@@ -1,45 +1,46 @@
-import { type WebSocket, type WebSocketServer } from 'ws'
+import type Player from './Player'
 import { SavedCharacter } from '../_types/SavedCharacter'
-import ServerConnection from './ServerConnection'
 import GameEvents, { GameEventListeners } from './GameEvents'
 
-export default class Character extends ServerConnection {
+export default class Character {
+  player: Player
   gameEvents: GameEvents
   eventListeners: GameEventListeners
   id: number
-  pid: number
   name: string
   level: number
   health: {
     hp: number
     max: number
   }
+  x: number
+  y: number
   area: {
-    id: string
-    x: number
-    y: number
+    id: number
   }
 
-  constructor(savedCharacter: SavedCharacter, server: WebSocketServer, connection: WebSocket, gameEvents: GameEvents) {
-    super(server, connection)
+  constructor(savedCharacter: SavedCharacter, player: Player, gameEvents: GameEvents) {
+    this.player = player
     this.gameEvents = gameEvents
     this.id = savedCharacter.id
-    this.pid = savedCharacter.pid
     this.name = savedCharacter.name
     this.level = savedCharacter.level
     this.health = savedCharacter.health
+    this.x = savedCharacter.x
+    this.y = savedCharacter.y
     this.area = savedCharacter.area
     
     this.eventListeners = new Map([
       ['character-join', data => this.join(data)],
-      ['disconnect', data => this.disconnect(data)]
+      ['disconnect', data => this.disconnect(data)],
+      ['ACT', data => console.log('bingo char act', data)]
     ])
     
     this.gameEvents.addEventListeners(this.eventListeners)
   }
 
   disconnect(pid: number) {
-    if (this.pid !== pid) return
+    if (this.player.id !== pid) return
 
     console.log('disconnecting!!!!!!!!!!!!', this.name)
   }
