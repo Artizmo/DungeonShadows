@@ -51,6 +51,7 @@ export default function GameHUD() {
       <div className="w-[8rem] h-[8rem] bg-[#6bbd22]">
         {character.name}<br />
         {character.health?.hp}/{character.health?.max}<br />
+        coords: {character.x}, {character.y}
       </div>
       <div className="bg-[#962587] flex-1 overflow-hidden">
         <MainInput /> 

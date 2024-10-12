@@ -7,9 +7,9 @@ export type SavedCharacter = {
     hp: number
     max: number
   }
+  x: number
+  y: number
   area: {
     id: string
-    x: number
-    y: number
   }
 }

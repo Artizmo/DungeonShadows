@@ -1,7 +1,7 @@
 import type Character from './Character'
 
 export default class Renderer {
-  private canvases: Map<string, { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D }>
+  canvases: Map<string, { canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D }>
 
   constructor() {
     this.canvases = new Map()
@@ -27,6 +27,17 @@ export default class Renderer {
     return `rgb(${255*Math.random()|0}, ${255*Math.random()|0}, ${255*Math.random()|0})`
   }
 
+  drawMap(mapChunks: Buffer[]) {
+    if (this.canvases.size === 0) return
+    
+    const { canvas, ctx } = this.canvases.get('map')
+    const img = new Image()
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, img.width/2, img.height/2)
+    }
+    img.src = 'data:image/jpeg;base64,' + btoa(mapChunks.join(''))
+  }
+
   drawCharacter(c: Character) {
     if (this.canvases.size === 0) return
 
@@ -34,7 +45,8 @@ export default class Renderer {
     this.clearCanvas(canvas)
     ctx.fillStyle = 'green'
     ctx.beginPath()
-    ctx.arc(c.area.x, c.area.y, 10, 0, Math.PI * 2)
+    ctx.arc(c.x, c.y, 10, 0, Math.PI * 2)
+    ctx.strokeStyle = 'red'
     ctx.fill()
   }
 
@@ -47,12 +59,3 @@ export default class Renderer {
     ctx.scale(dpr, dpr)
   }
 }
-
-/*
-
-load character
-load area character is in
-draw tiles if characters with camera
-
-
-*/

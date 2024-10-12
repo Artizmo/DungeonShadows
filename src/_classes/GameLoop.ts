@@ -31,18 +31,17 @@ export default class GameLoop {
   }
 
   private loop() {
-    window.requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
       // game frame
 
       const { cycle, fps } = this
-      this.update({ cycle, fps })
-      this.draw()
 
       while (this.cycleTime >= CYCLE_RATE) {
         // game cycle
-      
-        this.input()
 
+        this.input()
+        this.update({ cycle, fps })
+        this.draw()
         this.updateCycle()
       }
 

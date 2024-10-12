@@ -36,10 +36,8 @@ export default function PingNumber() {
   const handleSetPing = (event: CustomEvent) => {
     const ping = calculatePing(event.detail)
     if (!ping) return
-    
-    setPing(ping)
 
-    // console.log('ping', event.detail)
+    setPing(ping)
   }
 
   return (
