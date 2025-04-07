@@ -6,7 +6,7 @@ export default class Player {
   email: string
   firstName: string
   lastName: string
-  isAlive: boolean
+  isAlive: boolean = true
   connection: WebSocket
 
   constructor(savedPlayer: SavedPlayer, connection: WebSocket) {

@@ -2,17 +2,17 @@ import { WebSocketServer } from "ws";
 import Player from "./Player";
 import Character from "./Character";
 import { REQUEST_TYPES, RESPONSE_TYPES } from "../../utils/constants";
-import { mockFetchAvailableCharacters, mockFetchPlayer, mockFetchCharacter } from "../../utils/mock";
+import { mockFetchAvailableCharacters, mockFetchPlayerFile, mockFetchCharacter } from "../../utils/mock";
 import { GameEvents } from "../types/game";
 import { CharacterSelection, PingTimes } from "../types/server";
 import { Request, RequestHandlers } from "../types/ServerRequest";
 
 export default class GameServer {
-  private connectionPingInterval: NodeJS.Timeout;
-  private connectionPulseInterval: NodeJS.Timeout;
-  private server: WebSocketServer;
+  private connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
+  private connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);
   private gameEvents: GameEvents;
-  private players: Map<number, Player>;
+  private players: Map<number, Player> = new Map();
+  private server: WebSocketServer;
   requestHandlers: RequestHandlers = new Map([
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
@@ -21,7 +21,6 @@ export default class GameServer {
   ]);
 
   constructor(port: number, gameEvents: GameEvents) {
-    this.players = new Map();
     this.gameEvents = gameEvents;   
     this.server = new WebSocketServer({ port })
       .on('connection', (connection, request) => {
@@ -37,9 +36,6 @@ export default class GameServer {
       })
       .on('close', () => this.close());
     
-    this.connectionPulseInterval = setInterval(() => this.checkPulse(), 250);
-    this.connectionPingInterval = setInterval(() => this.checkPing(), 1000);
-    
     process.on('SIGINT', () => {
       this.close();
       process.exit();
@@ -52,16 +48,15 @@ export default class GameServer {
     const pid = message.data;
     if (!pid) return;
 
-    const currentPlayer = this.players.get(pid);
-    if (currentPlayer) return currentPlayer.dispose();
+    // const currentPlayer = this.players.get(pid);
+    // if (currentPlayer) return currentPlayer.dispose();
     
-    const savedPlayer = mockFetchPlayer(pid)
-    const player = new Player(savedPlayer, connection)
-    player.isAlive = true
-    this.addPlayer(player)
+    const playerFile = mockFetchPlayerFile(pid);
+    const player = new Player(playerFile, connection);
+    this.addPlayer(player);
     
-    const availableCharacters = mockFetchAvailableCharacters(pid)
-    player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.AVAILABLE_CHARACTERS, data: availableCharacters }))
+    // const availableCharacters = mockFetchAvailableCharacters(pid)
+    // player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.AVAILABLE_CHARACTERS, data: availableCharacters }))
   }
 
   handleDisconnect({ message }: Request<{ pid: number, cid: number }>) {
@@ -114,8 +109,7 @@ export default class GameServer {
   }
 
   addPlayer(player: Player) {
-    console.log('bingo add player', player.firstName)
-    this.players.set(player.id, player)
+    this.players.set(player.id, player);
   }
 
   removePlayer(pid: number) {

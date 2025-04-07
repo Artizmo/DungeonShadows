@@ -11,6 +11,6 @@ export const characters = [
   { id: 444, pid: 222, name: 'Hansor', level: 2, health: { max: 4122, hp: 4122 }, x: 3, y: 1, area: { id: 1000 }},
 ] as SavedCharacter[]
 
-export const mockFetchPlayer = (pid: number): SavedPlayer => players.find(player => player.id === pid);
+export const mockFetchPlayerFile = (pid: number): SavedPlayer => players.find(player => player.id === pid);
 export const mockFetchCharacter = (cid: number) => characters.find(character => character.id === cid);
 export const mockFetchAvailableCharacters = (pid: number) => characters.filter(character => character.pid === pid);
