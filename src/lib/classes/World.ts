@@ -1,10 +1,10 @@
 import { open } from 'node:fs/promises'
 import { WebSocket } from 'ws'
 import type GameServer from './GameServer'
-import { Request, RequestHandlers } from '../_types/ServerRequest'
-import { SavedWorld } from '../_types/SavedWorld'
+import { Request, RequestHandlers } from '../types/ServerRequest'
+// import { SavedWorld } from '../types/SavedWorld'
 import GameEvents, { GameEventListeners } from './GameEvents'
-import { REQUEST_TYPES, RESPONSE_TYPES } from '../_lib/constants'
+// import { REQUEST_TYPES, RESPONSE_TYPES } from '../lib/constants'
 import Character from './Character'
 import Area from './Area'
 
@@ -39,7 +39,7 @@ export default class World {
     ])
 
     this.gameEvents.addEventListeners(this.eventListeners)
-    this.gameServer.registerMessageHandlers(this.requestHandlers)
+    // this.gameServer.registerMessageHandlers(this.requestHandlers)
   }
 
   update() {

@@ -1,5 +1,5 @@
-import type GameEvents from '../_classes/GameEvents'
-import type GameServer from '../_classes/GameServer'
+import type GameEvents from './GameEvents'
+import type GameServer from './GameServer'
 import type Area from './Area'
 
 export default class Act {

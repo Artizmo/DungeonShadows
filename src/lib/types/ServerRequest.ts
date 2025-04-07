@@ -12,5 +12,4 @@ export type Request<T> = {
   message: ServerMessage<T>
   connection?: WebSocket
   request?: IncomingMessage
-  requestHandlers: RequestHandlers
 }

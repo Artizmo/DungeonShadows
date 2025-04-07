@@ -1,3 +1,10 @@
+import type Area from "../classes/Area";
+
+export type SavedWorld = {
+  name: string
+  areas: Map<number, Area>
+};
+
 export type SavedCharacter = {
   id: number
   pid: number
@@ -12,4 +19,4 @@ export type SavedCharacter = {
   area: {
     id: number
   }
-}
+};

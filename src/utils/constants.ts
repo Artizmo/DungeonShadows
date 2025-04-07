@@ -1,3 +1,5 @@
+export const CONFIG_PATH = "./config.json";
+
 export const SERVER_EVENT_TYPES = {
   ABORT: 'ABORT',
   CLOSE: 'CLOSE',

@@ -1,24 +1,30 @@
-import * as fs from 'fs'
-import { Config } from './_types/Config'
-import Game from './_classes/Game'
-import GameEvents from './_classes/GameEvents'
-import savedWorld from './savedWorld/world'
+import fs from "fs";
+import Game from "./lib/classes/Game";
+import { Config } from "./lib/types/system";
+import { CONFIG_PATH } from "./utils/constants";
 
-const configPath = './config.json'
+/**
+ * LOAD GAME RESOURCES
+ * -config.JSON
+ */
 
-fs.readFile(configPath, (err, data) => {
-  if (err) console.log(`Could not read from path: ${configPath}. Error: ${err}`)
-  const config: Config = JSON.parse(data.toString())
-  init(config)
-})
+fs.readFile(CONFIG_PATH, (err, data) => {
+  if (err) console.log(`Could not read from path: ${CONFIG_PATH}. Error: ${err}`);
+    
+  try {
+    const config: Config = JSON.parse(data.toString());
+    init(config);
+  } catch (error) {
+    console.log(`Game failed to fetch config data: ${error}`);
+  }
+});
 
 function init(config: Config) {
   try {
-    const gameEvents = new GameEvents()
-    const game = new Game(config, gameEvents)
-    game.start(savedWorld)
+    const game = new Game(config);
+    game.start();
 
   } catch (error) {
-    console.log(`Game failed to run: ${error}`)
+    console.log(`Game failed to initialize: ${error}`);
   }
 }

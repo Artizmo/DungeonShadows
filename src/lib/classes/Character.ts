@@ -1,5 +1,5 @@
 import type Player from './Player'
-import { SavedCharacter } from '../_types/SavedCharacter'
+import { SavedCharacter } from '../types/SavedCharacter'
 import GameEvents, { GameEventListeners } from './GameEvents'
 
 export default class Character {

@@ -1,4 +1,4 @@
-import { Config } from '../_types/Config'
+import { Config } from '../types/Config'
 
 type Callback = () => void
 
