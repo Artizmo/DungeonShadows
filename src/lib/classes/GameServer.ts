@@ -17,6 +17,7 @@ export default class GameServer {
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
     [REQUEST_TYPES.JOIN, data => this.handleJoin(data)],
+    [REQUEST_TYPES.CHARACTER_LIST, data => this.handleCharacterList(data)],
     [REQUEST_TYPES.PING, data => this.handleAcknowledgePing(data)]
   ]);
 
@@ -49,14 +50,11 @@ export default class GameServer {
     if (!pid) return;
 
     // const currentPlayer = this.players.get(pid);
-    // if (currentPlayer) return currentPlayer.dispose();
+    // if (currentPlayer) return;
     
     const playerFile = mockFetchPlayerFile(pid);
     const player = new Player(playerFile, connection);
     this.addPlayer(player);
-    
-    // const availableCharacters = mockFetchAvailableCharacters(pid)
-    // player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.AVAILABLE_CHARACTERS, data: availableCharacters }))
   }
 
   handleDisconnect({ message }: Request<{ pid: number, cid: number }>) {
@@ -65,6 +63,11 @@ export default class GameServer {
     if (!pid) return
 
     this.disconnectPlayer(pid)
+  }
+
+  handleCharacterList({ message }: Request<number>) {
+    const pid = message.data;
+    if (!pid) return;
   }
 
   handleJoin({ message }: Request<CharacterSelection>) {
@@ -131,6 +134,7 @@ export default class GameServer {
   private checkPulse() {
     for (const player of this.players.values()) {
       const { id: pid } = player
+      console.log('bingo player isAlive', player.firstName, player.isAlive, this.players.size)
       if (!player.isAlive) this.disconnectPlayer(pid)
 
       player.isAlive = player.connection.readyState === 1

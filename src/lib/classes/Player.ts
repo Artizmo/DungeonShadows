@@ -1,5 +1,5 @@
 import { type WebSocket } from 'ws'
-import { SavedPlayer } from '../types/SavedPlayer'
+import { SavedPlayer } from '../types/server'
 
 export default class Player {
   id: number
