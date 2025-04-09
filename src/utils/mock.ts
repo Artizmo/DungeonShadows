@@ -13,4 +13,3 @@ export const characters = [
 
 export const mockFetchPlayerFile = (pid: number): SavedPlayer => players.find(player => player.id === pid);
 export const mockFetchCharacter = (cid: number) => characters.find(character => character.id === cid);
-export const mockFetchPlayerCharacters = (pid: number) => characters.filter(character => character.pid === pid);

@@ -2,7 +2,7 @@ import { WebSocketServer } from "ws";
 import Player from "./Player";
 import Character from "./Character";
 import { REQUEST_TYPES, RESPONSE_TYPES } from "../../utils/constants";
-import { mockFetchAvailableCharacters, mockFetchPlayerFile, mockFetchCharacter } from "../../utils/mock";
+import { mockFetchPlayerFile, mockFetchCharacter } from "../../utils/mock";
 import { GameEvents } from "../types/game";
 import { CharacterSelection, PingTimes } from "../types/server";
 import { Request, RequestHandlers } from "../types/ServerRequest";
@@ -17,7 +17,6 @@ export default class GameServer {
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
     [REQUEST_TYPES.JOIN, data => this.handleJoin(data)],
-    [REQUEST_TYPES.CHARACTER_LIST, data => this.handleCharacterList(data)],
     [REQUEST_TYPES.PING, data => this.handleAcknowledgePing(data)]
   ]);
 
