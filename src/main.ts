@@ -1,7 +1,10 @@
 import fs from "fs";
-import Game from "./lib/classes/Game";
 import { Config } from "./lib/types/system";
 import { CONFIG_PATH } from "./utils/constants";
+import Game from "./lib/classes/Game";
+import GameServer from "./lib/classes/GameServer";
+import GameEvents from "./lib/classes/GameEvents";
+import GameLoop from "./lib/classes/GameLoop";
 
 /**
  * LOAD GAME RESOURCES
@@ -21,7 +24,10 @@ fs.readFile(CONFIG_PATH, (err, data) => {
 
 function init(config: Config) {
   try {
-    const game = new Game(config);
+    const gameEvents = new GameEvents();
+    const gameServer = new GameServer(config.port, gameEvents);
+    const gameLoop = new GameLoop(config, gameEvents);
+    const game = new Game(gameLoop, gameServer, gameEvents);
     game.start();
 
   } catch (error) {

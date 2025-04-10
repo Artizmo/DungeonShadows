@@ -1,5 +1,3 @@
-import type Area from "../classes/Area";
-
 export type SavedWorld = {
   name: string
   areas: Map<number, Area>
@@ -20,3 +18,31 @@ export type SavedCharacter = {
     id: number
   }
 };
+
+export type Character = {
+  id: number
+  pid: number
+  name: string
+  level: number
+  health: {
+    hp: number
+    max: number
+  }
+  x: number
+  y: number
+  area: {
+    id: number
+  }
+};
+
+export type Area = {
+  id: number
+  name: string
+  createDate: Date
+  modifiedDate: Date
+  author: string
+  // acts: Map<number, Act>
+  // zones: Map<number, Zone>
+  // npcs: Map<number, NPC>
+  // items: Map<number, Item>
+}

@@ -1,11 +1,11 @@
 import { WebSocketServer } from "ws";
-import Player from "./Player";
-import Character from "./Character";
+import { GameEvents } from "../types/game"; 
+import { Request, RequestHandlers } from "../types/ServerRequest";
+import { CharacterSelection, PingTimes } from "../types/server";
 import { REQUEST_TYPES, RESPONSE_TYPES } from "../../utils/constants";
 import { mockFetchPlayerFile, mockFetchCharacter } from "../../utils/mock";
-import { GameEvents } from "../types/game";
-import { CharacterSelection, PingTimes } from "../types/server";
-import { Request, RequestHandlers } from "../types/ServerRequest";
+import Player from "./Player";
+import Character from "./Character";
 
 export default class GameServer {
   private connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
@@ -24,10 +24,17 @@ export default class GameServer {
     this.gameEvents = gameEvents;   
     this.server = new WebSocketServer({ port })
       .on('connection', (connection, request) => {
+        const { origin } = request.headers;
+        if (origin !== undefined && origin !== "http://localhost:3000") {
+          console.log(`Server detected unknown origin: ${request.headers.origin}`);
+          connection.close();
+        }
         connection.on('message', data => {
           try {
             const message = JSON.parse(data.toString());            
             const handler = this.requestHandlers.get(message.type);
+            // if (typeof handler !== "function") return;
+
             handler({ message, connection, request });
           } catch(error) {
             console.log(`Server could not handle request: ${error}`);
@@ -133,7 +140,7 @@ export default class GameServer {
   private checkPulse() {
     for (const player of this.players.values()) {
       const { id: pid } = player
-      console.log('bingo player isAlive', player.firstName, player.isAlive, this.players.size)
+      console.log('bingo players', this.players.size, this.players.get(pid).isAlive)
       if (!player.isAlive) this.disconnectPlayer(pid)
 
       player.isAlive = player.connection.readyState === 1

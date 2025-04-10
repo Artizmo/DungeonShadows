@@ -1,6 +1,5 @@
 import { EventEmitter } from "node:events";
-
-export type GameEventListeners = Map<string, (arg: any) => void>;
+import { GameEventListeners } from "../types/game";
 
 export default class GameEvents {
   emitter: EventEmitter = new EventEmitter();
