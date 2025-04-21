@@ -1,39 +1,40 @@
 import { WebSocketServer } from "ws";
-import { GameEvents } from "../types/game"; 
-import { Request, RequestHandlers } from "../types/ServerRequest";
-import { CharacterSelection, PingTimes } from "../types/server";
+import type GameEvents from "./GameEvents";
+import { PingTimes, Request, RequestHandlers } from "../types/server";
 import { REQUEST_TYPES, RESPONSE_TYPES } from "../../utils/constants";
-import { mockFetchPlayerFile, mockFetchCharacter } from "../../utils/mock";
+import { mockFetchPlayerFile } from "../../utils/mock";
 import Player from "./Player";
-import Character from "./Character";
 
 export default class GameServer {
-  private connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
-  private connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);
-  private gameEvents: GameEvents;
-  private players: Map<number, Player> = new Map();
-  private server: WebSocketServer;
+  gameEvents: GameEvents;
+  server: WebSocketServer;
+  connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
+  connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);  
   requestHandlers: RequestHandlers = new Map([
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
-    [REQUEST_TYPES.JOIN, data => this.handleJoin(data)],
     [REQUEST_TYPES.PING, data => this.handleAcknowledgePing(data)]
   ]);
+  players: Map<number, Player> = new Map();
+  input: (args: any) => void;
+  connect: (args: any) => void;
 
   constructor(port: number, gameEvents: GameEvents) {
     this.gameEvents = gameEvents;   
     this.server = new WebSocketServer({ port })
-      .on('connection', (connection, request) => {
+      .on("connection", (connection, request) => {
         const { origin } = request.headers;
         if (origin !== undefined && origin !== "http://localhost:3000") {
           console.log(`Server detected unknown origin: ${request.headers.origin}`);
           connection.close();
         }
-        connection.on('message', data => {
+
+        // handle token auth here (token from web auth should match token here)
+        
+        connection.on("message", data => {
           try {
             const message = JSON.parse(data.toString());            
             const handler = this.requestHandlers.get(message.type);
-            // if (typeof handler !== "function") return;
 
             handler({ message, connection, request });
           } catch(error) {
@@ -41,9 +42,10 @@ export default class GameServer {
           }
         });
       })
-      .on('close', () => this.close());
+      .on("error", error => console.log(`Server has encountered error: ${error}`))
+      .on("close", () => this.close());
     
-    process.on('SIGINT', () => {
+    process.on("SIGINT", () => {
       this.close();
       process.exit();
     });
@@ -51,111 +53,82 @@ export default class GameServer {
     console.log(`Game server is running ${port}.`);
   }
 
-  handleConnect({ message, connection }: Request<number>) {
-    const pid = message.data;
-    if (!pid) return;
-
-    // const currentPlayer = this.players.get(pid);
-    // if (currentPlayer) return;
+  handleConnect({ message, connection }: Request<{ pid: number, cid: number }>) {
+    const { cid, pid } = message.data;
+    if (!pid || !cid) return;
     
     const playerFile = mockFetchPlayerFile(pid);
     const player = new Player(playerFile, connection);
+    console.log('bingo connect', player)
     this.addPlayer(player);
+    this.connect(player);
   }
 
-  handleDisconnect({ message }: Request<{ pid: number, cid: number }>) {
-    console.log('bingo disconnect?')
-    const { pid } = message.data
-    if (!pid) return
-
-    this.disconnectPlayer(pid)
-  }
-
-  handleCharacterList({ message }: Request<number>) {
+  handleDisconnect({ message }: Request<number>) {
     const pid = message.data;
     if (!pid) return;
+
+    this.removePlayer(pid);
   }
 
-  handleJoin({ message }: Request<CharacterSelection>) {
-    const { cid, pid } = message.data
-    if (!pid || !cid) return
-    
-    const savedCharacter = mockFetchCharacter(cid)
-    const player = this.players.get(savedCharacter.pid)
-    const character = new Character(savedCharacter, player, this.gameEvents)
-    this.gameEvents.emit('join', character)
+  handleInput({ data }: any) {
+    this.input(data);
   }
+ 
+  handleAcknowledgePing({ message }: Request<PingTimes>) {
+    const pingTimes = message.data;
 
-  // command({ message }: Request<{ pid: number, name: string, command: string }>) {
-  //   const { name, command } = message.data
-  //   const words = command.split(' ')
-  //   const [_, ...text] = words
+    this.players.forEach(player => {
+      if (!player.isAlive) return;
 
-  //   this.players.forEach(player => {
-  //     player.connection.send(JSON.stringify({ 
-  //       type: RESPONSE_TYPES.CHAT, 
-  //       data: { sender: name, message: text.join(' ') }
-  //     }))
-  //   })
-  // }
-  
-  close() {
-    clearInterval(this.connectionPulseInterval)
-    clearInterval(this.connectionPingInterval)
-
-    this.gameEvents.emit('abort')
-  }
-
-  disconnectPlayer(pid: number) {
-    if (!pid) return 
-
-    const player = this.players.get(pid)
-    if (!player) return
-
-    player.dispose()
-    this.removePlayer(player.id)
-    this.gameEvents.emit('disconnect', pid)
+      pingTimes.serverAckTime = performance.now();
+      player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.SERVER_ACK_PING_TIME, data: pingTimes }));
+    })
   }
 
   addPlayer(player: Player) {
-    this.players.set(player.id, player);
+    if (!player) return;
+
+    this.players.set(player.pid, player);
   }
 
   removePlayer(pid: number) {
-    console.log('bingo remove player', this.players.get(pid).firstName)
-    this.players.delete(pid)
+    const player = this.players.get(pid);
+    if (!player) return;
+
+    player.connection.terminate();
+    this.players.delete(pid);
   }
 
-  private handleAcknowledgePing({ message }: Request<PingTimes>) {
-    const pingTimes = message.data
-
-    this.players.forEach(player => {
-      if (!player.isAlive) return
-
-      pingTimes.serverAckTime = performance.now()
-      player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.SERVER_ACK_PING_TIME, data: pingTimes }))
-    })
-  }
-
-  private checkPulse() {
+  checkPulse() {
     for (const player of this.players.values()) {
-      const { id: pid } = player
-      console.log('bingo players', this.players.size, this.players.get(pid).isAlive)
-      if (!player.isAlive) this.disconnectPlayer(pid)
+      console.log('bingo players', this.players.size, this.players.get(player.pid).isAlive);
+      if (!player.isAlive) {
+        this.removePlayer(player.pid);
+        continue;
+      }
 
-      player.isAlive = player.connection.readyState === 1
-      player.ping()
+      player.isAlive = player.connection.readyState === 1;
+      player.connection.ping();
     }
   }
 
-  private checkPing() {
-    this.players.forEach(player => {
-      if (!player.isAlive) return
+  checkPing() {
+    for (const player of this.players.values()) {
+      if (!player.isAlive) {
+        this.removePlayer(player.pid);
+        continue;
+      }
 
       const pingTimes: PingTimes = { 
-        serverTime: performance.now() 
-      }
-      player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.SERVER_PING_TIME, data: pingTimes }))
-    })
+        serverTime: performance.now()
+      };
+      player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.SERVER_PING_TIME, data: pingTimes }));
+    }
+  }
+  
+  close() {
+    clearInterval(this.connectionPulseInterval);
+    clearInterval(this.connectionPingInterval);
   }
 }

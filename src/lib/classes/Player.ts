@@ -1,8 +1,8 @@
-import { type WebSocket } from 'ws'
+import type { WebSocket } from "ws";
 import { SavedPlayer } from '../types/server'
 
 export default class Player {
-  id: number
+  pid: number
   email: string
   firstName: string
   lastName: string
@@ -10,12 +10,11 @@ export default class Player {
   connection: WebSocket
 
   constructor(savedPlayer: SavedPlayer, connection: WebSocket) {
-    this.id = savedPlayer.id
+    this.pid = savedPlayer.pid
     this.email = savedPlayer.email
     this.firstName = savedPlayer.firstName
     this.lastName = savedPlayer.lastName
     this.connection = connection
-
     this.connection.on('pong', () => {
       this.isAlive = true
     })
@@ -23,13 +22,5 @@ export default class Player {
 
   set setIsAlive(isAlive: boolean) {
     this.isAlive = isAlive
-  }
-  
-  ping() {
-    this.connection.ping()
-  }
-
-  dispose() {
-    this.connection.terminate()
-  }
+  }  
 }

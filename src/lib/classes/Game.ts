@@ -1,5 +1,6 @@
 import { SavedWorld } from "../types/world";
-import { GameEvents } from "../types/game";
+import { Config } from "../types/system";
+import GameEvents from "./GameEvents";
 import GameServer from "./GameServer";
 import GameLoop from "./GameLoop";
 import World from "./World";
@@ -10,11 +11,12 @@ export default class Game {
   gameLoop: GameLoop;
   world: World;
   
-  constructor(gameLoop: GameLoop, gameServer: GameServer, gameEvents: GameEvents) {
-    this.gameEvents = gameEvents;
-    this.gameServer = gameServer;
-    this.gameLoop = gameLoop;
-    this.gameLoop.tick = data => this.tick(data);
+  constructor(config: Config) {    
+    this.gameEvents = new GameEvents();
+    this.gameServer = new GameServer(config.port, this.gameEvents);
+    this.gameServer.input = data => this.input(data);
+    this.gameLoop = new GameLoop(config);
+    this.gameLoop.tick = () => this.tick();
     this.gameLoop.update = () => this.update();
   }
 
@@ -23,11 +25,14 @@ export default class Game {
     this.world = new World(savedWorld, this.gameServer, this.gameEvents);
   }
 
-  tick(cycle: any) {
-    console.log('bingo tick', cycle)
+  tick() {
   }
 
   update() {
     this.world.update();
+  }
+
+  input(data: any) {
+    this.world.input(data);
   }
 }

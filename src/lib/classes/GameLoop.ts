@@ -1,5 +1,4 @@
 import { Config } from "../types/system";
-import GameEvents from "./GameEvents";
 
 export default class GameLoop {
   private config: Config;
@@ -10,14 +9,12 @@ export default class GameLoop {
   update: () => void;
   cycle: number;
   
-  constructor(config: Config, gameEvents: GameEvents) {
-    this.config = config;
+  constructor(config: Config) {
     this.config = config;
     this.cycle = 0;
     this.lastTime = new Date().getTime();
     this.frameTime = 0;
     this.tickTime = 0;
-
     this.loop();
   }
 

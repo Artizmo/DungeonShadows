@@ -1,5 +1,5 @@
 import { Area, Character, SavedWorld } from "../types/world";
-import { GameEvents } from "../types/game";
+import type GameEvents from "./GameEvents";
 import GameServer from "./GameServer";
 
 export default class World {
@@ -17,7 +17,11 @@ export default class World {
   }
 
   update() {
-    console.log('bingo world update')
+    // console.log('bingo world update')
+  }
+  
+  input(data: any) {
+    console.log('bingo world input', data)
   }
 }
 

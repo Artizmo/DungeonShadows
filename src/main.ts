@@ -24,10 +24,7 @@ fs.readFile(CONFIG_PATH, (err, data) => {
 
 function init(config: Config) {
   try {
-    const gameEvents = new GameEvents();
-    const gameServer = new GameServer(config.port, gameEvents);
-    const gameLoop = new GameLoop(config, gameEvents);
-    const game = new Game(gameLoop, gameServer, gameEvents);
+    const game = new Game(config);
     game.start();
 
   } catch (error) {
