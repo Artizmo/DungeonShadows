@@ -9,7 +9,7 @@ export default class GameServer {
   gameEvents: GameEvents;
   server: WebSocketServer;
   connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
-  connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);  
+  connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);
   requestHandlers: RequestHandlers = new Map([
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
@@ -20,8 +20,25 @@ export default class GameServer {
   connect: (args: any) => void;
 
   constructor(port: number, gameEvents: GameEvents) {
-    this.gameEvents = gameEvents;   
-    this.server = new WebSocketServer({ port })
+    this.gameEvents = gameEvents;
+    this.server = new WebSocketServer({
+      port,
+      perMessageDeflate: {
+        zlibDeflateOptions: {
+          chunkSize: 1024,
+          memLevel: 7,
+          level: 3
+        },
+        zlibInflateOptions: {
+          chunkSize: 1024
+        },
+        clientNoContextTakeover: true,
+        serverNoContextTakeover: true,
+        serverMaxWindowBits: 10,
+        concurrencyLimit: 10,
+        threshold: 1024,
+      }
+    })
       .on("connection", (connection, request) => {
         const { origin } = request.headers;
         if (origin !== undefined && origin !== "http://localhost:3000") {
@@ -30,10 +47,11 @@ export default class GameServer {
         }
 
         // handle token auth here (token from web auth should match token here)
-        
+
         connection.on("message", data => {
           try {
-            const message = JSON.parse(data.toString());            
+            const message = JSON.parse(data.toString());
+            console.log('bingo server message', message);
             const handler = this.requestHandlers.get(message.type);
 
             handler({ message, connection, request });
@@ -44,7 +62,7 @@ export default class GameServer {
       })
       .on("error", error => console.log(`Server has encountered error: ${error}`))
       .on("close", () => this.close());
-    
+
     process.on("SIGINT", () => {
       this.close();
       process.exit();
@@ -54,9 +72,10 @@ export default class GameServer {
   }
 
   handleConnect({ message, connection }: Request<{ pid: number, cid: number }>) {
+    console.log('bingo connect', message)
     const { cid, pid } = message.data;
     if (!pid || !cid) return;
-    
+
     const playerFile = mockFetchPlayerFile(pid);
     const player = new Player(playerFile, connection);
     console.log('bingo connect', player)
@@ -74,7 +93,7 @@ export default class GameServer {
   handleInput({ data }: any) {
     this.input(data);
   }
- 
+
   handleAcknowledgePing({ message }: Request<PingTimes>) {
     const pingTimes = message.data;
 
@@ -102,7 +121,7 @@ export default class GameServer {
 
   checkPulse() {
     for (const player of this.players.values()) {
-      console.log('bingo players', this.players.size, this.players.get(player.pid).isAlive);
+      console.log('bingo players', this.players.size, new Date());
       if (!player.isAlive) {
         this.removePlayer(player.pid);
         continue;
@@ -120,13 +139,13 @@ export default class GameServer {
         continue;
       }
 
-      const pingTimes: PingTimes = { 
+      const pingTimes: PingTimes = {
         serverTime: performance.now()
       };
       player.connection.send(JSON.stringify({ type: RESPONSE_TYPES.SERVER_PING_TIME, data: pingTimes }));
     }
   }
-  
+
   close() {
     clearInterval(this.connectionPulseInterval);
     clearInterval(this.connectionPingInterval);
