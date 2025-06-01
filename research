@@ -207,4 +207,45 @@ Font effects
 https://www.textstudio.com/logo/314
 
 
+Adventure Types
+---------------
+-Collect items
+-Defeat NPC
+-Discover place/NPC/item
+-Speak to NPC
+-Solve puzzle
+-Order combo
+
+Story Hierarchy
+---------------
+Legend - background on NPCs and kingdoms
+Myth - fables about the history around NPCs and kingdoms
+Epic
+  Conflict
+    Failure
+      Event
+    Resolution
+      Event
+
+NPC Drivers
+  Mental State (-1 to 1)
+    Pathos: sociopath, normal, psychopath
+    Logos: irrational, normal, arrogant
+    Ethos: liar, normal, judgemental
+  Contentfulness (-1 to 1) unfulfilled, normal, contentful
+  Impressionable (-1 to 1) naive, normal, jaded
+
+Goals (-1 to 1)
+  rule: universe, normal, dominion
+  power: diety, normal, dictator
+  legacy: successor, normal, kin
+  wealth: resources, normal, finances
+  land: territory, normal, dominion
+
+Actions
+  mate: offspring, normal, kin
+  attack: destruction, normal, conquest
+  invade: territory, normal, dominion
+  execute: threat, normal, opposition
+  pledge: strength, normal, unity
 
