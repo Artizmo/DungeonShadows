@@ -1,38 +1,42 @@
 import { SavedWorld } from "../types/world";
 import { Config } from "../types/system";
-import GameEvents from "./GameEvents";
-import GameServer from "./GameServer";
 import GameLoop from "./GameLoop";
+import GameServer from "./GameServer";
+import GameEngine from "./GameEngine";
 import World from "./World";
 
 export default class Game {
-  gameEvents: GameEvents;
-  gameServer: GameServer;
   gameLoop: GameLoop;
+  gameServer: GameServer;
+  gameEngine: GameEngine;
   world: World;
-  
-  constructor(config: Config) {    
-    this.gameEvents = new GameEvents();
-    this.gameServer = new GameServer(config.port, this.gameEvents);
-    this.gameServer.input = data => this.input(data);
-    this.gameLoop = new GameLoop(config);
-    this.gameLoop.tick = () => this.tick();
-    this.gameLoop.update = () => this.update();
+
+  constructor(config: Config) {
+    this.gameServer = new GameServer(config, data => this.input(data));
+    this.gameLoop = new GameLoop(config, cycle => this.tick(cycle), () => this.update());
+    this.gameEngine = new GameEngine(this.gameLoop, this.gameServer);
   }
 
-  start() {
-    const savedWorld: SavedWorld = { name: "Dragon Shadows", areas: new Map() };
-    this.world = new World(savedWorld, this.gameServer, this.gameEvents);
+  start(savedWorld: SavedWorld) {
+    this.world = new World(savedWorld, this.gameEngine);
+    console.log(`Game is started! :)`);
   }
 
-  tick() {
+  tick(cycle: number) {
+    if (this.world) {
+      this.world.tick(cycle);
+    }
   }
 
   update() {
-    this.world.update();
+    if (this.world) {
+      this.world.update();
+    }
   }
 
   input(data: any) {
-    this.world.input(data);
+    if (this.world) {
+      this.world.input(data);
+    }
   }
 }

@@ -1,25 +1,27 @@
+import type GameEngine from "./GameEngine";
 import { Area, Character, SavedWorld } from "../types/world";
-import type GameEvents from "./GameEvents";
-import GameServer from "./GameServer";
 
 export default class World {
-  gameEvents: GameEvents;
-  gameServer: GameServer;
+  game: GameEngine;
   name: string;
   characters: Map<number, Character>;
   areas: Map<number, Area>;
 
-  constructor(savedWorld: SavedWorld, gameServer: GameServer, gameEvents: GameEvents) {
-    this.gameEvents = gameEvents;
-    this.gameServer = gameServer;
+  constructor(savedWorld: SavedWorld, gameEngine: GameEngine) {
+    this.game = gameEngine;
     this.name = savedWorld.name;
+    this.areas = savedWorld.areas;
     this.characters = new Map();
+
+    console.log('World data is loaded.');
   }
 
   update() {
-    // console.log('bingo world update')
   }
-  
+
+  tick(cycle: number) {
+  }
+
   input(data: any) {
     console.log('bingo world input', data)
   }
@@ -105,7 +107,7 @@ export default class World {
 //       console.log('saving player and character states...', character.name)
 //     })
 //   }
-  
+
 //   private handleInputRequest({ message }: Request<InputType>) {
 //     const { key, input } = message.data
 //     console.log('bingo input', key, input)

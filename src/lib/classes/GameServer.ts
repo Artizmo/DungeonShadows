@@ -1,28 +1,29 @@
 import { WebSocketServer } from "ws";
-import type GameEvents from "./GameEvents";
 import { PingTimes, Request, RequestHandlers } from "../types/server";
+import type { Config } from "../types/system";
 import { REQUEST_TYPES, RESPONSE_TYPES } from "../../utils/constants";
 import { mockFetchPlayerFile } from "../../utils/mock";
 import Player from "./Player";
 
 export default class GameServer {
-  gameEvents: GameEvents;
   server: WebSocketServer;
   connectionPingInterval: NodeJS.Timeout = setInterval(() => this.checkPulse(), 250);
   connectionPulseInterval: NodeJS.Timeout = setInterval(() => this.checkPing(), 1000);
   requestHandlers: RequestHandlers = new Map([
     [REQUEST_TYPES.CONNECT, data => this.handleConnect(data)],
     [REQUEST_TYPES.DISCONNECT, data => this.handleDisconnect(data)],
+    // [REQUEST_TYPES.FETCH_CHARACTER, data => this.handleFetchCharacter(data)],
+    [REQUEST_TYPES.INVENTORY, data => this.handleInventory(data)],
     [REQUEST_TYPES.PING, data => this.handleAcknowledgePing(data)]
   ]);
   players: Map<number, Player> = new Map();
-  input: (args: any) => void;
   connect: (args: any) => void;
+  inputCallback: (data: any) => void;
 
-  constructor(port: number, gameEvents: GameEvents) {
-    this.gameEvents = gameEvents;
+  constructor(config: Config, inputCallback: (data: any) => void) {
+    this.inputCallback = inputCallback;
     this.server = new WebSocketServer({
-      port,
+      port: config.port,
       perMessageDeflate: {
         zlibDeflateOptions: {
           chunkSize: 1024,
@@ -46,12 +47,9 @@ export default class GameServer {
           connection.close();
         }
 
-        // handle token auth here (token from web auth should match token here)
-
         connection.on("message", data => {
           try {
             const message = JSON.parse(data.toString());
-            console.log('bingo server message', message);
             const handler = this.requestHandlers.get(message.type);
 
             handler({ message, connection, request });
@@ -68,19 +66,18 @@ export default class GameServer {
       process.exit();
     });
 
-    console.log(`Game server is running ${port}.`);
+    console.log(`Server is up and running on port ${config.port}.`);
   }
 
   handleConnect({ message, connection }: Request<{ pid: number, cid: number }>) {
-    console.log('bingo connect', message)
     const { cid, pid } = message.data;
+    console.log('bingo server cid pid', cid, pid)
     if (!pid || !cid) return;
 
     const playerFile = mockFetchPlayerFile(pid);
     const player = new Player(playerFile, connection);
-    console.log('bingo connect', player)
+    console.log('bingo connect', `${player.lastName}, ${player.firstName}`)
     this.addPlayer(player);
-    this.connect(player);
   }
 
   handleDisconnect({ message }: Request<number>) {
@@ -90,8 +87,13 @@ export default class GameServer {
     this.removePlayer(pid);
   }
 
-  handleInput({ data }: any) {
-    this.input(data);
+  handleInventory({ message }: Request<{ pid: number, cid: number }>) {
+    const { cid, pid } = message.data;
+    if (!pid || !cid) return;
+
+    const player = this.players.get(pid);
+    console.log('bingo fetching inventory for player', player.firstName, cid);
+    player.connection.send(JSON.stringify({ type: "INVENTORY", data: [101, 102, 103, 104, 105] }));
   }
 
   handleAcknowledgePing({ message }: Request<PingTimes>) {
@@ -121,7 +123,6 @@ export default class GameServer {
 
   checkPulse() {
     for (const player of this.players.values()) {
-      console.log('bingo players', this.players.size, new Date());
       if (!player.isAlive) {
         this.removePlayer(player.pid);
         continue;

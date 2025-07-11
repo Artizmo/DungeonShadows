@@ -5,34 +5,28 @@ export default class GameLoop {
   private frameTime: number;
   private lastTime: number;
   private tickTime: number;
-  tick: (cycle: any) => void;
-  update: () => void;
   cycle: number;
-  
-  constructor(config: Config) {
+  tickCallback: (cycle: number) => void;
+  updateCallback: () => void;
+
+  constructor(config: Config, tickCallback: (cycle: number) => void, updateCallback: () => void) {
     this.config = config;
     this.cycle = 0;
     this.lastTime = new Date().getTime();
     this.frameTime = 0;
     this.tickTime = 0;
     this.loop();
+    this.tickCallback = tickCallback;
+    this.updateCallback = updateCallback;
   }
 
   private loop() {
     setInterval(() => {
-      // game frame
-
       while (this.frameTime >= this.config.cycleRate) {
-        // game cycle
-        
-        this.update();
-        
-        // output()
+        this.updateCallback();
 
         if (this.tickTime >= this.config.tickRate) {
-          // game tick
-          
-          this.tick(this.cycle);
+          this.tickCallback(this.cycle)
           this.tickTime = 0;
         }
 
@@ -42,7 +36,7 @@ export default class GameLoop {
       this.updateFrame();
     }, 1000/this.config.fps);
   }
-  
+
   private updateCycle() {
     this.tickTime += this.frameTime;
     this.frameTime -= this.config.cycleRate;

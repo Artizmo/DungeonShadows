@@ -1,5 +1,8 @@
 {
+  "name": "DungeonShadows",
+  "version": "0.0.1-beta",
   "port": 8000,
+  "savedWorldPath": "./src/data/saved/world.json",
   "fps": 60,
   "cycleSize": 1054,
   "cycleRate": 0.033333333,
