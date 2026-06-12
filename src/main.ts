@@ -1,24 +1,23 @@
-import * as fs from 'fs'
-import { Config } from './_types/Config'
-import Game from './_classes/Game'
-import GameEvents from './_classes/GameEvents'
-import savedWorld from './savedWorld/world'
+import { Config } from "~/types/system";
+import type { SavedWorld } from "~/types/world";
+import { CONFIG_PATH } from "~/lib/utils/constants";
+import getLocalFile from "~/lib/utils/functions/getLocalFile";
+import Game from "~/core/Game";
+import Logger from "~/core/Logger";
 
-const configPath = './config.json'
+const logger = new Logger("SYSTEM");
 
-fs.readFile(configPath, (err, data) => {
-  if (err) console.log(`Could not read from path: ${configPath}. Error: ${err}`)
-  const config: Config = JSON.parse(data.toString())
-  init(config)
-})
-
-function init(config: Config) {
+async function init() {
+  const config = await getLocalFile<Config>(CONFIG_PATH);
+  logger.info(`${config.name} is starting up...`);
   try {
-    const gameEvents = new GameEvents()
-    const game = new Game(config, gameEvents)
-    game.start(savedWorld)
-
+    const game = new Game(config);
+    const savedWorld = await getLocalFile<SavedWorld>(config.savedWorldPath);
+    game.start(savedWorld);
+    logger.info(`${config.name} is online!`);
   } catch (error) {
-    console.log(`Game failed to run: ${error}`)
+    logger.error(`Game failed to initialize: ${error}`);
   }
 }
+
+init();
