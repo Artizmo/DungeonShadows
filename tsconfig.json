@@ -5,7 +5,12 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
     "noEmit": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": "./",
+    "paths": {
+      "~/*": ["src/*"],
+      "~/types/*": ["src/@types/*"]
+    }
   },
   "ts-node": {
     "experimentalSpecifierResolution": "node"

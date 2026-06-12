@@ -1,6 +1,3 @@
-import NPC from './Npc'
-import Item from './Item'
-
 export default class Zone {
   id: number
   name: string

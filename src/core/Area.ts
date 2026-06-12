@@ -1,8 +1,8 @@
-import type GameEvents from './GameEvents'
-import type GameServer from './GameServer'
-import Act from './Act'
-import Item from './Item'
-import NPC from './Npc'
+import type GameEvents from '../../lib/classes/GameEvents'
+import type GameServer from '../../../server/GameServer'
+import Act from '../../../lib/classes/Act'
+import Item from '../../lib/classes/Item'
+import NPC from '../game/world/classes/Npc'
 import Zone from './Zone'
 
 export default class Area {
@@ -27,7 +27,7 @@ export default class Area {
     this.npcs = area.npcs
     this.items = area.items
   }
-  
+
   update(areas: Map<number, Area>, gameServer: GameServer, gameEvents: GameEvents) {
     for (const act of this.acts.values()) {
       act.update(areas, gameServer, gameEvents)

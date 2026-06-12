@@ -1,0 +1,14 @@
+{
+  "id": 456,
+  "name": "Brytagg, the Grim",
+  "isDead": false,
+  "stats": {
+    "hp": 100,
+    "maxHp": 100,
+    "mana": 20,
+    "maxMana": 50,
+    "speed": 4
+  },
+  "inventory": [],
+  "updatedAt": "2026-06-11T23:48:59.679Z"
+}

@@ -1,0 +1,14 @@
+{
+  "id": 457,
+  "name": "Eldrin Sunstrider",
+  "isDead": false,
+  "stats": {
+    "hp": 80,
+    "maxHp": 80,
+    "mana": 150,
+    "maxMana": 150,
+    "speed": 5
+  },
+  "inventory": [],
+  "updatedAt": "2026-06-11T23:18:14.324Z"
+}

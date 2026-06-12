@@ -1,17 +1,23 @@
-import { Config } from "./lib/types/system";
-import type { SavedWorld } from "./lib/types/world";
-import { CONFIG_PATH } from "./utils/constants";
-import Game from "./lib/classes/Game";
-import getLocalFile from "./utils/functions/getLocalFile";
+import { Config } from "~/types/system";
+import type { SavedWorld } from "~/types/world";
+import { CONFIG_PATH } from "~/lib/utils/constants";
+import getLocalFile from "~/lib/utils/functions/getLocalFile";
+import Game from "~/core/Game";
+import Logger from "~/core/Logger";
 
-function init(config: Config) {
-  console.log(`${config.name} is initializing...`);
+const logger = new Logger("SYSTEM");
+
+async function init() {
+  const config = await getLocalFile<Config>(CONFIG_PATH);
+  logger.info(`${config.name} is starting up...`);
   try {
     const game = new Game(config);
-    getLocalFile(config.savedWorldPath, (savedWorld: SavedWorld) => game.start(savedWorld));
+    const savedWorld = await getLocalFile<SavedWorld>(config.savedWorldPath);
+    game.start(savedWorld);
+    logger.info(`${config.name} is online!`);
   } catch (error) {
-    console.log(`Game failed to initialize: ${error}`);
+    logger.error(`Game failed to initialize: ${error}`);
   }
 }
 
-getLocalFile(CONFIG_PATH, init);
+init();

@@ -4,7 +4,7 @@
   "port": 8000,
   "savedWorldPath": "./src/data/saved/world.json",
   "fps": 60,
-  "cycleSize": 1054,
-  "cycleRate": 0.033333333,
-  "tickRate": 5
+  "cycleRate": 0.016666667,
+  "tickRate": 0.050,
+  "cycleSize": 600
 }
