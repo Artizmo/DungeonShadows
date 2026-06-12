@@ -54,7 +54,11 @@ function connect(url: string = SERVER_URL): Promise<void> {
         }
 
         TestLog.info(`Response: ${packet.type}`);
-        DataLog.info(JSON.stringify(packet.data, null, 2));
+        if (typeof packet.data === "object") {
+          DataLog.info(JSON.stringify(packet.data, null, 2));
+        } else {
+          DataLog.info(packet.data);
+        }
 
         rl.prompt(true);
       } catch (error) {
@@ -104,6 +108,10 @@ function startTerminalLoop(): void {
     const command = args[0].toLowerCase();
 
     switch (command) {
+      case "fight":
+        sendCommand("TEST_COMBAT");
+        break;
+
       case "join":
         sendCommand("JOIN_WORLD", { cid: parseInt(process.env.CID) });
         break;

@@ -10,6 +10,7 @@ import CheckInventoryCommand from "~/lib/commands/checkInventory";
 import JoinWorldCommand from '~/lib/commands/joinWorld';
 import SaveCommand from '~/lib/commands/save';
 import LeaveWorldCommand from '~/lib/commands/leaveWorld';
+import TestCombatCommand from '~/lib/commands/testCombat';
 
 export default class Game {
   private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
@@ -32,6 +33,7 @@ export default class Game {
     this.commandHandlers.set("LEAVE_WORLD", new LeaveWorldCommand());
     this.commandHandlers.set("CHECK_INVENTORY", new CheckInventoryCommand());
     this.commandHandlers.set("SAVE", new SaveCommand());
+    this.commandHandlers.set("TEST_COMBAT", new TestCombatCommand());
   }
 
   public start(savedWorld: SavedWorld): void {

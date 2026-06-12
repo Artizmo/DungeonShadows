@@ -32,6 +32,7 @@ export interface PlayerRecord {
 }
 
 export interface CharacterRecord {
+  position?: { x: number; y: number; };
   playerId: number;
   id: number;
   name: string;

@@ -88,6 +88,12 @@ export default class Server {
     this.logger.info(`${player.fullName} has disconnected.`);
   }
 
+  public broadcast(type: string, data: any): void {
+    for (const player of this.players.values()) {
+      player.send({ type, data });
+    }
+  }
+
   public close(): void {
     this.socketServer.close();
   }

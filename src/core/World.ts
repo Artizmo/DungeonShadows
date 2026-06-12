@@ -3,6 +3,8 @@ import type Character from '~/core/Character';
 import type Game from './Game';
 import Logger from "~/core/Logger";
 import Save from './Save';
+import Effect from './Effects';
+import EffectsManager, { type ActiveEffect, type EffectType } from './EffectsManager';
 
 export default class World {
   public name: string;
@@ -10,6 +12,7 @@ export default class World {
   private saveManager = new Save();
   public characters: Map<number, Character> = new Map();
   public areas: Map<number, Area>;
+  public charactersWithEvents: Set<number> = new Set();
   public logger = new Logger("WORLD");
 
   constructor(savedWorld: SavedWorld, game: Game) {
@@ -24,10 +27,30 @@ export default class World {
       character.update(tick);
     }
   }
-
   public tick(tick: number): void {
-    for (const character of this.characters.values()) {
+    const charactersState: any[] = [];
+
+    for (const charId of this.charactersWithEvents) {
+      const character = this.characters.get(charId);
+
+      if (!character || character.hasPendingEvents) {
+        this.removeCharacterWithEvents(charId);
+        continue;
+      }
+
+      EffectsManager.tick(character, tick, this);
+
+      const snapshot = character.getCharacterSnapshot();
+      if (snapshot) charactersState.push(snapshot);
+
       character.tick(tick);
+    }
+
+    if (charactersState.length > 0) {
+      this.game.server.broadcast("WORLD_SYNC", {
+        tick,
+        entities: charactersState
+      });
     }
   }
 
@@ -70,5 +93,20 @@ export default class World {
 
   public removeCharacter(character: Character): void {
     this.characters.delete(character.id);
+  }
+
+  public applyCharacterEffect(character: Character, effect: ActiveEffect): void {
+    if (!character) return;
+
+    EffectsManager.apply(character, effect);
+    this.queueCharacterWithEvents(character.id);
+  }
+
+  public queueCharacterWithEvents(charId: number): void {
+    this.charactersWithEvents.add(charId);
+  }
+
+  public removeCharacterWithEvents(charId: number): void {
+    this.charactersWithEvents.delete(charId);
   }
 }
