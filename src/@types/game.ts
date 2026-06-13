@@ -23,9 +23,10 @@ export interface Command {
 export interface CommandContext {
   player: Player;
   game: Game;
-  data?: any;
+  data: any;       // For structured data (like a UI button click payload)
+  args?: string[]; // For tokenized text (like typing "drink waterskin")
 }
 
 export interface ICommandHandler {
-  execute(ctx: CommandContext): void | Promise<void>;
+  execute(context: CommandContext): void;
 }

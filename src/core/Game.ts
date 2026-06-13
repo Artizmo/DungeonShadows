@@ -51,6 +51,28 @@ export default class Game {
   public routeCommands(command: Command, player: Player): void {
     if (!this.isReady) return;
 
+    if (command.type === "TEXT_INPUT") {
+      const rawText = typeof command.data === "string" ? command.data : command.data?.text;
+      if (!rawText) return;
+
+      const tokens = rawText.trim().split(/\s+/);
+      if (tokens.length === 0 || tokens[0] === "") return;
+
+      const trigger = tokens[0].toUpperCase(); // "drink" -> "DRINK"
+      const args = tokens.slice(1);            // ["waterskin"]
+
+      const textHandler = this.commandHandlers.get(trigger);
+      if (!textHandler) {
+        // You could also send this back to the player: player.socket.send(...)
+        Log.SYSTEM.WARN(`Player ${player.character?.name} sent unknown command: ${trigger}`);
+        return;
+      }
+
+      // Execute with the parsed arguments
+      textHandler.execute({ player, game: this, data: command.data, args });
+      return;
+    }
+
     const handler = this.commandHandlers.get(command.type);
     if (!handler) {
       Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
