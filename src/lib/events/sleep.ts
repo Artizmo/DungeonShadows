@@ -1,5 +1,6 @@
 import type { GameEvent } from '~/@types/events';
 import { EffectType } from '~/@types/effects';
+import Log from '~/core/Logger';
 
 export const sleepEvent: GameEvent = {
   name: "SLEEP",
@@ -14,7 +15,7 @@ export const sleepEvent: GameEvent = {
 
     character.applyEffect({ type: EffectType.POISON, duration: 200, density: 3 });
 
-    character.logger.info(
+    Log.CHAR.INFO(
       `${character.name} slept and recovered ${actualHealed} HP. State: (${character.stats.hp}/${character.stats.maxHp} HP)`
     );
   }

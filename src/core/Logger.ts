@@ -1,23 +1,23 @@
-type LogLevel = "INFO" | "WARN" | "ERR" | "DEBUG";
-type LogSystem = "SYSTEM" | "SERVER" | "DATA" | "TEST" | "WORLD" | "CHAR";
+type LogLevel = "INFO" | "WARN" | "ERR " | "DBUG";
+type LogSystem = "SYST" | "SRVR" | "DATA" | "TEST" | "WRLD" | "CHAR";
 
 class Logger {
   private readonly system: LogSystem;
 
   public static readonly hexConfig = {
     levels: {
-      INFO: "#F5D77F",
-      WARN: "#F39C12",
-      ERR:  "#E74C3C",
-      DEBUG: "#2ECC71"
+      INFO:  "#F5D77F",
+      WARN:  "#F39C12",
+      "ERR ": "#E74C3C", // Exactly 4 characters
+      DBUG:  "#2ECC71"  // Industry standard 4-char debug
     },
     systems: {
-      SYSTEM: "#BBBBBB",
-      SERVER: "#2BC2FC",
-      DATA:   "#E91E63",
-      TEST:   "#b2d128",
-      WORLD:  "#7AE6B5",
-      CHAR:   "#d6ac11"
+      SYST: "#BBBBBB",
+      SRVR: "#2BC2FC",
+      DATA: "#E91E63",
+      TEST: "#b2d128",
+      WRLD: "#7AE6B5",
+      CHAR: "#d6ac11"
     }
   };
 
@@ -91,8 +91,8 @@ class Logger {
 
   public info(message: string): void { console.log(this.format("INFO", message)); }
   public warn(message: string): void { console.log(this.format("WARN", message)); }
-  public error(message: string): void { console.log(this.format("ERR", message)); }
-  public debug(message: string): void { console.log(this.format("DEBUG", message)); }
+  public error(message: string): void { console.log(this.format("ERR ", message)); }
+  public debug(message: string): void { console.log(this.format("DBUG", message)); }
 }
 
 type LogMethods = {
@@ -102,12 +102,22 @@ type LogMethods = {
   DEBUG: (msg: string) => void;
 };
 
-const Log = {} as { [K in LogSystem]: LogMethods };
+// Map clean system names to the 4-char types on the exported container
+const Log = {} as { [K in "SYSTEM" | "SERVER" | "DATA" | "TEST" | "WORLD" | "CHAR"]: LogMethods };
 
-for (const system of Object.keys(Logger.hexConfig.systems) as LogSystem[]) {
-  const loggerInstance = new Logger(system);
+const systemMapping: Record<keyof typeof Log, LogSystem> = {
+  SYSTEM: "SYST",
+  SERVER: "SRVR",
+  DATA:   "DATA",
+  TEST:   "TEST",
+  WORLD:  "WRLD",
+  CHAR:   "CHAR"
+};
 
-  Log[system] = {
+for (const [cleanName, configName] of Object.entries(systemMapping) as [keyof typeof Log, LogSystem][]) {
+  const loggerInstance = new Logger(configName);
+
+  Log[cleanName] = {
     INFO:  (msg: string) => loggerInstance.info(msg),
     WARN:  (msg: string) => loggerInstance.warn(msg),
     ERROR: (msg: string) => loggerInstance.error(msg),

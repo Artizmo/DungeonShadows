@@ -1,4 +1,5 @@
 import type { Effect } from '~/@types/effects';
+import Log from '~/core/Logger';
 
 export const poisonEffect: Effect = {
   name: "POISON",
@@ -8,15 +9,15 @@ export const poisonEffect: Effect = {
 
     if (activeEffect.duration % activeEffect.interval === 0) {
       character.damage(5);
-      character.logger.info(`${character.name} takes 5 poison damage. Current HP: ${character.stats.hp} (Ticks Remaining: ${activeEffect.duration})`);
+      Log.CHAR.INFO(`${character.name} takes 5 poison damage.`);
     }
   },
 
   apply({ activeEffect, character }) {
-    character.logger.info(`Applied ${activeEffect.type} to ${character.name} for ${activeEffect.duration} ticks.`);
+    Log.CHAR.INFO(`Applied ${activeEffect.type} to ${character.name} for ${activeEffect.duration} ticks.`);
   },
 
   remove({ character }) {
-    character.logger.info(`The poison naturally ran its course on ${character.name}.`);
+    Log.CHAR.INFO(`The poison naturally ran its course on ${character.name}.`);
   }
 };

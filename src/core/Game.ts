@@ -13,6 +13,7 @@ import LeaveWorldCommand from '~/lib/commands/leaveWorld';
 import TestCombatCommand from '~/lib/commands/testCombat';
 import SleepCommand from '~/lib/commands/sleep';
 import ScoreCommand from '~/lib/commands/score';
+import DrinkCommand from '~/lib/commands/drink';
 
 export default class Game {
   private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
@@ -37,6 +38,7 @@ export default class Game {
     this.commandHandlers.set("TEST_COMBAT", new TestCombatCommand());
     this.commandHandlers.set("SLEEP", new SleepCommand());
     this.commandHandlers.set("SCORE", new ScoreCommand());
+    this.commandHandlers.set("DRINK", new DrinkCommand());
   }
 
   public start(savedWorld: SavedWorld): void {
@@ -75,7 +77,7 @@ export default class Game {
 
     try {
       this.world.leave(character);
-      this.world.logger.info(`${character.name} has left the world.`);
+      Log.WORLD.INFO(`${character.name} has left the world.`);
     } catch (e) {
       Log.SYSTEM.ERROR(e);
     }

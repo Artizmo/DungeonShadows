@@ -1,4 +1,5 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
+import Log from '~/core/Logger';
 
 export default class LeaveWorldCommand implements ICommandHandler {
   public async execute({ player, game }: CommandContext): Promise<void> {
@@ -10,13 +11,13 @@ export default class LeaveWorldCommand implements ICommandHandler {
     }
 
     try {
-      game.world.activeTickers.delete(character.id);
+      game.world.charactersWithEvents.delete(character.id);
       game.world.leave(character);
       player.character = null;
       player.send({ type: "LEAVE_SUCCESS", data: true });
-      game.world.logger.info(`${character.name} has left the world!`);
+      Log.WORLD.INFO(`${character.name} has left the world!`);
     } catch (e) {
-      game.world.logger.error(`${character.name} failed to enter the world: ${e}.`);
+      Log.WORLD.ERROR(`${character.name} failed to enter the world: ${e}.`);
     }
   }
 }

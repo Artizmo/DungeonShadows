@@ -1,27 +1,8 @@
 import { EffectType, type ActiveEffect, type Effect } from '~/@types/effects';
 import type World from "~/core/World";
 import type Character from "~/core/Character";
-
-let poisonEffect: Effect = {
-  name: "POISON",
-
-  tick({ activeEffect, character }) {
-    if (character.isDead) return;
-
-    if (activeEffect.duration % activeEffect.interval === 0) {
-      character.damage(5);
-      character.logger.info(`${character.name} takes 5 poison damage. Current HP: ${character.stats.hp} (Ticks Remaining: ${activeEffect.duration})`);
-    }
-  },
-
-  apply({ activeEffect, character }) {
-    character.logger.info(`Applied ${activeEffect.type} to ${character.name} for ${activeEffect.duration} ticks.`);
-  },
-
-  remove({ character }) {
-    character.logger.info(`The poison naturally ran its course on ${character.name}.`);
-  }
-};
+import Log from './Logger';
+import { poisonEffect } from '~/lib/effects/poison';
 
 export default class EffectsManager {
   private static registry: Map<string, Effect> = new Map([
@@ -40,7 +21,7 @@ export default class EffectsManager {
       const effect = this.registry.get(effectName);
 
       if (!effect) {
-        character.logger.error(`Unknown effect script: ${effectName}`);
+        Log.CHAR.ERROR(`Unknown effect script: ${effectName}`);
         expiredEffects.push(effectName);
         continue;
       }
@@ -67,7 +48,7 @@ export default class EffectsManager {
     const effect = this.registry.get(activeEffect.type);
 
     if (!effect) {
-      character.logger.error(`Unknown effect script: ${activeEffect.type}`);
+      Log.CHAR.ERROR(`Unknown effect script: ${activeEffect.type}`);
       return;
     }
 

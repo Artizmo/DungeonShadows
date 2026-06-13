@@ -106,6 +106,10 @@ function startTerminalLoop(): void {
     const command = args[0].toLowerCase();
 
     switch (command) {
+      case "drink":
+        sendCommand("SCORE");
+        break;
+
       case "score":
         sendCommand("SCORE");
         break;
