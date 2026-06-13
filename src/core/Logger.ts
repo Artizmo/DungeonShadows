@@ -32,14 +32,26 @@ class Logger {
       maxSysLen = Math.max(maxSysLen, `[${sys}]`.length);
     }
 
-    // 2. Pre-compile levels
+    // 2. Calculate maximum visual width for the level tag column
+    let maxLevelLen = 0;
+    for (const level of Object.keys(Logger.hexConfig.levels) as LogLevel[]) {
+      maxLevelLen = Math.max(maxLevelLen, `[${level}]`.length);
+    }
+
+    // 3. Pre-compile levels with external trailing spaces
     for (const level of Object.keys(Logger.hexConfig.levels) as LogLevel[]) {
       const hex = Logger.hexConfig.levels[level];
       const color = Logger.hexToAnsi(hex);
-      Logger.formattedLevels.set(level, `[${color}${level}${Logger.resetColor}]`);
+
+      const rawTag = `[${color}${level}${Logger.resetColor}]`;
+      const visibleLength = `[${level}]`.length;
+      const paddingSpaces = " ".repeat(maxLevelLen - visibleLength);
+
+      // Pad externally so the bracket stays flush around the word
+      Logger.formattedLevels.set(level, rawTag + paddingSpaces);
     }
 
-    // 3. Pre-compile systems with leading external spaces for right-alignment
+    // 4. Pre-compile systems with leading external spaces for right-alignment
     for (const sys of Object.keys(Logger.hexConfig.systems) as LogSystem[]) {
       const hex = Logger.hexConfig.systems[sys];
       const color = Logger.hexToAnsi(hex);
@@ -48,7 +60,6 @@ class Logger {
       const visibleLength = `[${sys}]`.length;
       const paddingSpaces = " ".repeat(maxSysLen - visibleLength);
 
-      // Prepend the spaces to push shorter tags rightward
       Logger.formattedSystems.set(sys, paddingSpaces + rawTag);
     }
   }

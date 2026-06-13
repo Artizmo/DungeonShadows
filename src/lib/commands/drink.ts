@@ -1,7 +1,7 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
 import Log from '~/core/Logger';
 
-export default class SaveCommand implements ICommandHandler {
+export default class DrinkCommand implements ICommandHandler {
   public async execute({ player, game }: CommandContext): Promise<void> {
     const { character } = player;
 
