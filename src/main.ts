@@ -1,7 +1,7 @@
 import { Config } from "~/types/system";
 import type { SavedWorld } from "~/types/world";
-import { CONFIG_PATH } from "~/lib/utils/constants";
-import getLocalFile from "~/lib/utils/functions/getLocalFile";
+import { CONFIG_PATH } from "~/utils/constants";
+import getLocalFile from "~/utils/functions/getLocalFile";
 import Game from "~/core/Game";
 import Logger from "~/core/Logger";
 

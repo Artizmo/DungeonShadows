@@ -1,5 +1,5 @@
-import { EffectType } from '~/core/EffectsManager';
 import type { ICommandHandler, CommandContext } from "~/types/game";
+import { EffectType } from '~/@types/effects';
 
 export default class TestCombatCommand implements ICommandHandler {
   public execute({ player, game }: CommandContext): void {
@@ -9,7 +9,8 @@ export default class TestCombatCommand implements ICommandHandler {
       return;
     }
 
-    game.world.applyCharacterEffect(character, { type: EffectType.POISON, duration: 200, density: 3 });
+    character.applyEffect({ type: EffectType.POISON, duration: 200, density: 3 });
+
     player.send({ type: "FIGHT", data: `${character.name} was struck by a test toxic dart!` });
   }
 }

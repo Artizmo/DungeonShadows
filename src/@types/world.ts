@@ -1,4 +1,4 @@
-import type GameWorld from '../core/World';
+import type World from '../core/World';
 import type Player from '../core/Player';
 
 export type SavedWorld = {
@@ -28,10 +28,6 @@ export type Area = {
   createDate: Date
   modifiedDate: Date
   author: string
-  // acts: Map<number, Act>
-  // zones: Map<number, Zone>
-  // npcs: Map<number, NPC>
-  // items: Map<number, Item>
 }
 
 export interface ClientInputPayload {
@@ -41,7 +37,7 @@ export interface ClientInputPayload {
 }
 
 export interface CommandContext {
-  world: GameWorld;
+  world: World;
   player: Player;
   characterId: number;
 }

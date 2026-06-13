@@ -1,19 +1,12 @@
+import { EffectType, type ActiveEffect, type Effect } from '~/@types/effects';
 import type World from "~/core/World";
 import type Character from "~/core/Character";
-
-export enum EffectType {
-  POISON = "POISON"
-}
 
 let poisonEffect: Effect = {
   name: "POISON",
 
-  onTick({ character, activeEffect }) {
-    if (character.isDead) {
-      character.activeEffects.delete("poison");
-      character.logger.info(`${character.name} is dead!`);
-      return;
-    };
+  tick({ activeEffect, character }) {
+    if (character.isDead) return;
 
     if (activeEffect.duration % activeEffect.interval === 0) {
       character.damage(5);
@@ -21,8 +14,11 @@ let poisonEffect: Effect = {
     }
   },
 
-  onRemove({ character }) {
-    character.pendingEvents.push({ type: "POISON_FADED" });
+  apply({ activeEffect, character }) {
+    character.logger.info(`Applied ${activeEffect.type} to ${character.name} for ${activeEffect.duration} ticks.`);
+  },
+
+  remove({ character }) {
     character.logger.info(`The poison naturally ran its course on ${character.name}.`);
   }
 };
@@ -35,25 +31,31 @@ export default class EffectsManager {
   public static tick(character: Character, _tick: number, _world: World): void {
     const expiredEffects: string[] = [];
 
-    for (const [effectName, activeEffect] of character.activeEffects) {
-      const script = this.registry.get(effectName);
+    if (character.isDead) {
+      character.activeEffects.clear();
+      return;
+    }
 
-      if (!script) {
+    for (const [effectName, activeEffect] of character.activeEffects) {
+      const effect = this.registry.get(effectName);
+
+      if (!effect) {
         character.logger.error(`Unknown effect script: ${effectName}`);
-        activeEffect.duration = 0;
+        expiredEffects.push(effectName);
         continue;
       }
-
-      script.onTick({ character, activeEffect });
 
       if (activeEffect.duration > 0) {
         activeEffect.duration--;
       }
 
+      effect.tick({ character, activeEffect });
+
       if (activeEffect.duration <= 0) {
         expiredEffects.push(effectName);
-        if (script.onRemove) script.onRemove({ character });
+        if (effect.remove) effect.remove({ activeEffect, character });
       }
+
     }
 
     for (const effectName of expiredEffects) {
@@ -61,36 +63,32 @@ export default class EffectsManager {
     }
   }
 
-  public static apply(character: Character, effect: ActiveEffect): void {
-    const clampedDensity = Math.max(1, Math.min(10, effect.density));
+  public static apply(character: Character, activeEffect: ActiveEffect): void {
+    const effect = this.registry.get(activeEffect.type);
 
-    effect.interval = clampedDensity === 10
-        ? 1
-        : Math.round(Math.pow(11 - clampedDensity, 1.0 + Math.random()) * 6);
+    if (!effect) {
+      character.logger.error(`Unknown effect script: ${activeEffect.type}`);
+      return;
+    }
 
-    character.activeEffects.set(effect.type, effect);
+    const clampedDensity = Math.max(1, Math.min(10, activeEffect.density));
+    activeEffect.interval = clampedDensity === 10
+      ? 1
+      : Math.round(Math.pow(11 - clampedDensity, 1.0 + Math.random()) * 6);
+    character.activeEffects.set(activeEffect.type, activeEffect);
 
-    character.logger.info(`Applied ${effect.type} to ${character.name} for ${effect.duration} ticks.`);
+    // const clampedDensity = Math.max(1, Math.min(10, activeEffect.density));
+
+    // // 🟢 Predictable mathematical bounds:
+    // // Density 10 = ticks every 1 frame
+    // // Density 3  = ticks every 24 frames
+    // // Density 1  = ticks every 30 frames
+    // activeEffect.interval = clampedDensity === 10
+    //   ? 1
+    //   : (11 - clampedDensity) * 3;
+
+    character.activeEffects.set(activeEffect.type, activeEffect);
+    effect.apply({ activeEffect, character });
+    // effect.tick({ character, activeEffect });
   }
-}
-
-export type ActiveEffect = {
-  duration: number;
-  density: number;
-  interval?: number;
-  type: EffectType;
-};
-
-export interface ActiveEffectContext {
-  character: Character;
-  world?: World;
-  tick?: number;
-  activeEffect?: ActiveEffect;
-}
-
-export interface Effect {
-  name: string;
-  onApply?: (ctx: ActiveEffectContext) => void;
-  onTick: (ctx: ActiveEffectContext) => void;
-  onRemove?: (ctx: ActiveEffectContext) => void;
 }

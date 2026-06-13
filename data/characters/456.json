@@ -3,7 +3,7 @@
   "name": "Brytagg, the Grim",
   "isDead": false,
   "stats": {
-    "hp": 481,
+    "hp": 1000,
     "maxHp": 1000,
     "mana": 20,
     "maxMana": 50,
@@ -13,5 +13,5 @@
     "rusty_dagger",
     "health_potion"
   ],
-  "updatedAt": "2026-06-12T15:34:51.116Z"
+  "updatedAt": "2026-06-13T06:46:10.817Z"
 }

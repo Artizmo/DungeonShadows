@@ -21,7 +21,7 @@ export default class JoinWorldCommand implements ICommandHandler {
 
     try {
       // Resolve the direct system path to your character file (e.g., data/characters/456.json)
-      const filePath = path.resolve(process.cwd(), `src/data/saved/characters/${cid}.json`);
+      const filePath = path.resolve(process.cwd(), `data/characters/${cid}.json`);
 
       // Read the file string raw from disk
       const fileContent = await fs.readFile(filePath, 'utf-8');
@@ -32,8 +32,6 @@ export default class JoinWorldCommand implements ICommandHandler {
       // Instantiate with the clean file structure
       const character = new Character(characterRecord);
       player.character = character;
-
-      console.log('bingo', character)
 
       game.world.join(character);
       player.send({ type: "JOIN_SUCCESS", data: true });

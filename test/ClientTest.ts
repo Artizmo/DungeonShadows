@@ -108,6 +108,14 @@ function startTerminalLoop(): void {
     const command = args[0].toLowerCase();
 
     switch (command) {
+      case "score":
+        sendCommand("SCORE");
+        break;
+
+      case "sleep":
+        sendCommand("SLEEP");
+        break;
+
       case "fight":
         sendCommand("TEST_COMBAT");
         break;

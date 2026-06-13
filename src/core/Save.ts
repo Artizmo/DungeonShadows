@@ -3,7 +3,7 @@ import * as path from 'path';
 import type Character from './Character';
 
 export default class Save {
-  private readonly baseDir = path.join(process.cwd(), 'src', 'data', 'saved', 'characters');
+  private readonly baseDir = path.join(process.cwd(), 'data', 'characters');
 
   public async saveCharacter(character: Character): Promise<void> {
     const id = character.id;

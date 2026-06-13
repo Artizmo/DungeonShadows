@@ -4,7 +4,7 @@ import type { NetworkMessage} from '~/@types/server';
 import type Game from "~/core/Game";
 import Player from "~/core/Player";
 import Logger from "~/core/Logger";
-import { playersData } from '~/data/mock/mock';
+import { playersData } from 'data/mock/mock';
 
 export default class Server {
   public readonly logger = new Logger("SERVER");

@@ -1,6 +1,6 @@
 import { WebSocket } from "ws";
 import type Character from './Character';
-import type { PlayerRecord } from '~/data/mock/mock';
+import type { PlayerRecord } from 'data/mock/mock';
 
 export default class Player {
   public readonly socket: WebSocket;

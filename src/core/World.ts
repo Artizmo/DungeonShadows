@@ -3,8 +3,8 @@ import type Character from '~/core/Character';
 import type Game from './Game';
 import Logger from "~/core/Logger";
 import Save from './Save';
-import Effect from './Effects';
-import EffectsManager, { type ActiveEffect, type EffectType } from './EffectsManager';
+import EffectsManager from './EffectsManager';
+import EventsManager from './EventsManager';
 
 export default class World {
   public name: string;
@@ -27,23 +27,32 @@ export default class World {
       character.update(tick);
     }
   }
+
   public tick(tick: number): void {
     const charactersState: any[] = [];
 
     for (const charId of this.charactersWithEvents) {
       const character = this.characters.get(charId);
 
-      if (!character || character.hasPendingEvents) {
+      if (!character || (!character.hasPendingEvents && !character.hasActiveEffects)) {
         this.removeCharacterWithEvents(charId);
         continue;
       }
 
-      EffectsManager.tick(character, tick, this);
+      if (character.hasPendingEvents) {
+        EventsManager.tick(character, tick, this);
+      }
 
-      const snapshot = character.getCharacterSnapshot();
-      if (snapshot) charactersState.push(snapshot);
+      if (character.hasActiveEffects) {
+        EffectsManager.tick(character, tick, this);
+      }
 
       character.tick(tick);
+
+      const snapshot = character.getCharacterSnapshot();
+      if (snapshot) {
+        charactersState.push(snapshot);
+      }
     }
 
     if (charactersState.length > 0) {
@@ -74,6 +83,7 @@ export default class World {
       throw new Error("Character is already in the world.");
     }
 
+    character.onAppliedEffect = (charId) => this.queueCharacterWithEvents(charId);
     this.addCharacter(character);
   }
 
@@ -93,13 +103,6 @@ export default class World {
 
   public removeCharacter(character: Character): void {
     this.characters.delete(character.id);
-  }
-
-  public applyCharacterEffect(character: Character, effect: ActiveEffect): void {
-    if (!character) return;
-
-    EffectsManager.apply(character, effect);
-    this.queueCharacterWithEvents(character.id);
   }
 
   public queueCharacterWithEvents(charId: number): void {

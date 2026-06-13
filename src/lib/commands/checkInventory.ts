@@ -9,7 +9,7 @@ export default class CheckInventoryCommand implements ICommandHandler {
       return;
     }
 
-    const inventory = character.getInventory();
+    const inventory = character.inventory;
     player.send({ type: "INVENTORY_DATA", data: inventory });
   }
 }
