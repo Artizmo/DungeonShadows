@@ -1,4 +1,4 @@
-type LogLevel = "INFO" | "WARN" | "ERR " | "DBUG";
+type LogLevel = "INFO" | "WARN" | "FAIL" | "DBUG";
 type LogSystem = "SYST" | "SRVR" | "DATA" | "TEST" | "WRLD" | "CHAR";
 
 class Logger {
@@ -8,7 +8,7 @@ class Logger {
     levels: {
       INFO:  "#F5D77F",
       WARN:  "#F39C12",
-      "ERR ": "#E74C3C", // Exactly 4 characters
+      FAIL: "#E74C3C", // Exactly 4 characters
       DBUG:  "#2ECC71"  // Industry standard 4-char debug
     },
     systems: {
@@ -91,7 +91,7 @@ class Logger {
 
   public info(message: string): void { console.log(this.format("INFO", message)); }
   public warn(message: string): void { console.log(this.format("WARN", message)); }
-  public error(message: string): void { console.log(this.format("ERR ", message)); }
+  public error(message: string): void { console.log(this.format("FAIL", message)); }
   public debug(message: string): void { console.log(this.format("DBUG", message)); }
 }
 
