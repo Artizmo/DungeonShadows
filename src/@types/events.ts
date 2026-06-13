@@ -20,7 +20,7 @@ export interface GameEventContext {
   character: Character;
   world?: World;
   tick?: number;
-  event?: PendingEvent;
+  pendingEvent?: PendingEvent;
 }
 
 export interface GameEvent {

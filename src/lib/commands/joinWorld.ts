@@ -1,11 +1,10 @@
 import path from 'path';
 import fs from 'fs/promises'
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import Logger from '~/core/Logger';
+import Log from '~/core/Logger';
 import Character from "~/core/Character";
 
 export default class JoinWorldCommand implements ICommandHandler {
-  logger = new Logger("WORLD");
   public async execute({ player, game, data }: CommandContext): Promise<void> {
     const { cid } = data;
 
@@ -35,7 +34,7 @@ export default class JoinWorldCommand implements ICommandHandler {
 
       game.world.join(character);
       player.send({ type: "JOIN_SUCCESS", data: true });
-      this.logger.info(`${character.name} loaded from ${cid}.json and entered the world!`);
+      Log.WORLD.INFO(`${character.name} loaded from ${cid}.json and entered the world!`);
 
     } catch (error: any) {
       player.send({

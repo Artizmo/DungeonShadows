@@ -5,7 +5,7 @@ import type Player from './Player';
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
-import Logger from "~/core/Logger";
+import Log from "~/core/Logger";
 import CheckInventoryCommand from "~/lib/commands/checkInventory";
 import JoinWorldCommand from '~/lib/commands/joinWorld';
 import SaveCommand from '~/lib/commands/save';
@@ -19,7 +19,6 @@ export default class Game {
 
   readonly config: Config;
   readonly loop: Loop;
-  logger = new Logger("SYSTEM");
   server!: Server;
   world!: World;
   isReady = false;
@@ -52,7 +51,7 @@ export default class Game {
 
     const handler = this.commandHandlers.get(command.type);
     if (!handler) {
-      this.logger.warn(`No message handler found for: ${command.type}`);
+      Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
       return;
     }
 
@@ -78,7 +77,7 @@ export default class Game {
       this.world.leave(character);
       this.world.logger.info(`${character.name} has left the world.`);
     } catch (e) {
-      this.logger.error(e);
+      Log.SYSTEM.ERROR(e);
     }
   }
 
@@ -86,6 +85,6 @@ export default class Game {
     this.isReady = false;
     this.loop.stop();
     this.server.close();
-    this.logger.info("Game instance successfully shutdown.");
+    Log.SYSTEM.INFO("Game instance successfully shutdown.");
   }
 }

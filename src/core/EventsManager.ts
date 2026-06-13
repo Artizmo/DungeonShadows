@@ -3,6 +3,7 @@ import type World from "~/core/World";
 import type Character from "~/core/Character";
 import { sleepEvent } from '~/lib/events/sleep';
 import { drinkEvent } from '~/lib/events/drink';
+import Log from './Logger';
 
 export default class EventsManager {
   private static registry: Map<string, GameEvent> = new Map([
@@ -23,16 +24,20 @@ export default class EventsManager {
       const event = this.registry.get(pendingEvent.type);
 
       if (!event) {
-        character.logger.error(`Unknown event script: ${pendingEvent.type}`);
+        Log.CHAR.INFO(`Unknown event script: ${pendingEvent.type}`);
         continue;
       }
 
-      event.tick({
-        character,
-        world,
-        tick,
-        event: pendingEvent
-      });
+      try {
+        event.tick({
+          character,
+          world,
+          tick,
+          pendingEvent
+        });
+      } catch (e) {
+        Log.CHAR.ERROR(`Unknown event script: ${pendingEvent.type}`);
+      }
     }
   }
 
@@ -40,11 +45,11 @@ export default class EventsManager {
     const event = this.registry.get(pendingEvent.type);
 
     if (!event) {
-      character.logger.error(`Unknown event script: ${pendingEvent.type}`);
+      Log.CHAR.ERROR(`Unknown event script: ${pendingEvent.type}`);
       return;
     }
 
     character.pendingEvents.push(pendingEvent);
-    character.logger.info(`Queued ${pendingEvent.type} event for ${character.name}.`);
+    Log.CHAR.INFO(`Queued ${pendingEvent.type} event for ${character.name}.`);
   }
 }

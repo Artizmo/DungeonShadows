@@ -1,9 +1,7 @@
 import WebSocket from "ws";
 import readline from "readline";
-import Logger from "~/core/Logger";
+import Log from "~/core/Logger";
 
-const TestLog = new Logger("TEST");
-const DataLog = new Logger("DATA");
 const SERVER_URL = "ws://127.0.0.1:8000";
 
 let ws: WebSocket | null = null;
@@ -21,7 +19,7 @@ function clearPromptLine(): void {
 
 function connect(url: string = SERVER_URL): Promise<void> {
   return new Promise((resolve, reject) => {
-    TestLog.info(`Connecting to ${url}...`);
+    Log.TEST.INFO(`Connecting to ${url}...`);
     isClosingCleanly = false;
 
     ws = new WebSocket(url, {
@@ -30,7 +28,7 @@ function connect(url: string = SERVER_URL): Promise<void> {
 
     ws.on("open", () => {
       clearPromptLine();
-      TestLog.info("Connected!");
+      Log.TEST.INFO("Connected!");
 
       sendCommand("CONNECT", {
         pid: 3,
@@ -48,29 +46,29 @@ function connect(url: string = SERVER_URL): Promise<void> {
         clearPromptLine();
 
         if (packet.type === "ERROR") {
-          TestLog.error(packet.data);
+          Log.TEST.ERROR(packet.data);
           rl.prompt(true);
           return;
         }
 
-        TestLog.info(`Response: ${packet.type}`);
+        Log.TEST.INFO(`Response: ${packet.type}`);
         if (typeof packet.data === "object") {
-          DataLog.info(JSON.stringify(packet.data, null, 2));
+          Log.DATA.INFO(JSON.stringify(packet.data, null, 2));
         } else {
-          DataLog.info(packet.data);
+          Log.DATA.INFO(packet.data);
         }
 
         rl.prompt(true);
       } catch (error) {
         clearPromptLine();
-        TestLog.error(`Failed to parse response: ${error}`);
+        Log.TEST.ERROR(`Failed to parse response: ${error}`);
         rl.prompt(true);
       }
     });
 
     ws.on("error", (error) => {
       clearPromptLine();
-      TestLog.error(`Socket error: ${error.message}`);
+      Log.TEST.ERROR(`Socket error: ${error.message}`);
       rl.prompt(true);
       reject(error);
     });
@@ -79,9 +77,9 @@ function connect(url: string = SERVER_URL): Promise<void> {
       sendCommand("LEAVE_WORLD");
       clearPromptLine();
       if (isClosingCleanly) {
-        TestLog.info("Connection closed cleanly.");
+        Log.TEST.INFO("Connection closed cleanly.");
       } else {
-        TestLog.error("Connection closed unexpectedly.");
+        Log.TEST.ERROR("Connection closed unexpectedly.");
       }
       rl.close();
     });
@@ -140,7 +138,7 @@ function startTerminalLoop(): void {
         const itemId = args[1];
         if (!itemId) {
           clearPromptLine();
-          TestLog.warn("Usage: drop <item_id>");
+          Log.TEST.WARN("Usage: drop <item_id>");
           rl.prompt(true);
           break;
         }
@@ -156,7 +154,7 @@ function startTerminalLoop(): void {
 
       default:
         clearPromptLine();
-        TestLog.warn(`Unknown local command: "${command}". (Available: inventory, drop [id], quit)`);
+        Log.TEST.WARN(`Unknown local command: "${command}". (Available: inventory, drop [id], quit)`);
         rl.prompt(true);
         break;
     }
@@ -169,7 +167,7 @@ async function runInteractiveClient() {
     startTerminalLoop();
   } catch (error) {
     clearPromptLine();
-    TestLog.error("Failed to initialize test client.");
+    Log.TEST.ERROR("Failed to initialize test client.");
   }
 }
 

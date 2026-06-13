@@ -1,7 +1,7 @@
 import { Area, SavedWorld } from "~/@types/world";
 import type Character from '~/core/Character';
 import type Game from './Game';
-import Logger from "~/core/Logger";
+import Log from "~/core/Logger";
 import Save from './Save';
 import EffectsManager from './EffectsManager';
 import EventsManager from './EventsManager';
@@ -13,13 +13,12 @@ export default class World {
   public characters: Map<number, Character> = new Map();
   public areas: Map<number, Area>;
   public charactersWithEvents: Set<number> = new Set();
-  public logger = new Logger("WORLD");
 
   constructor(savedWorld: SavedWorld, game: Game) {
     this.name = savedWorld.name;
     this.areas = savedWorld.areas;
     this.game = game;
-    this.logger.info("Loading world!");
+    Log.WORLD.INFO("Loading world!");
   }
 
   public update(tick: number): void {

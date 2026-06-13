@@ -3,7 +3,7 @@ import type { Position, Stats } from '~/@types/game';
 import type { CharacterRecord } from 'data/mock/mock';
 import type Player from './Player';
 import type { ActiveEffect } from '~/@types/effects';
-import Logger from './Logger';
+import Log from './Logger';
 import EffectsManager from '~/core/EffectsManager';
 
 export default class Character {
@@ -17,7 +17,6 @@ export default class Character {
   public pendingEvents: Array<PendingEvent> = [];;
   public lastProcessedInput: number = 0;
   public onAppliedEffect?: (charId: number) => void;
-  logger: Logger = new Logger("CHAR");
 
   constructor(characterRecord: CharacterRecord) {
     this.id = characterRecord.id;
