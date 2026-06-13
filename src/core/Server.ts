@@ -56,6 +56,26 @@ export default class Server {
     }
 
     const player = this.players.get(socket);
+    if (!player) return;
+
+    if (message.type === "TEXT_INPUT") {
+      const rawText = typeof message.data === "string" ? message.data : message.data?.text;
+      if (!rawText) return;
+
+      const tokens = rawText.trim().split(/\s+/);
+      if (tokens.length === 0 || tokens[0] === "") return;
+
+      const trigger = tokens[0].toUpperCase();
+      const args = tokens.slice(1);
+
+      this.game.routeCommands({
+        type: trigger,
+        data: { ...message.data, args }
+      }, player);
+
+      return;
+    }
+
     this.game.routeCommands(message, player);
   }
 

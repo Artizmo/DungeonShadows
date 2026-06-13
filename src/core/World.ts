@@ -82,7 +82,8 @@ export default class World {
       throw new Error("Character is already in the world.");
     }
 
-    character.onAppliedEffect = (charId) => this.queueCharacterWithEvents(charId);
+    character.onAppliedEffect = charId => this.queueCharacterWithEvents(charId);
+    character.onAppliedEvent = charId => this.queueCharacterWithEvents(charId);
     this.addCharacter(character);
   }
 

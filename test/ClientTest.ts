@@ -52,7 +52,7 @@ function connect(url: string = SERVER_URL): Promise<void> {
           return;
         }
 
-        Log.TEST.INFO(`Response: ${packet.type}`);
+        // Log.TEST.INFO(`Response: ${packet.type}`);
         if (packet.data && typeof packet.data === "object") {
           Log.DATA.INFO(JSON.stringify(packet.data, null, 2));
         } else {
@@ -113,6 +113,11 @@ function startTerminalLoop(): void {
 
       case "leave":
         sendCommand("LEAVE_WORLD");
+        break;
+
+      case "clear":
+        process.stdout.write("\u001b[2J\u001b[0;0H");
+        rl.prompt();
         break;
 
       case "quit":

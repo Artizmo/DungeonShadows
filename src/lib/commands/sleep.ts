@@ -13,7 +13,10 @@ export default class SleepCommand implements ICommandHandler {
   execute({ player, game }: CommandContext): void {
     const { character } = player;
 
-    if (!character) return;
+    if (!character) {
+      player.send({ type: "SLEEP_FAIL", data: "You're not in the world!" });
+      return;
+    };
 
     if (character.isDead) {
       player.send({ type: "SLEEP_FAIL", data: "You cannot sleep when you're dead!" });
@@ -22,12 +25,8 @@ export default class SleepCommand implements ICommandHandler {
 
     // character.applyEffect({ type: EffectType.POISON, duration: 200, density: 3 });
 
-    // if (character.activeEffects.has("POISON")) {
-    //   player.send({ type: "SLEEP_FAIL", data: "You find it hard to sleep when you're poisoned." });
-    //   return;
-    // }
-    character.pendingEvents.push({ type: GameEventType.SLEEP });
-    game.world.queueCharacterWithEvents(character.id);
+    character.applyEvent({ type: GameEventType.SLEEP })
+    // game.world.queueCharacterWithEvents(character.id);
 
     player.send({
       type: "SLEEP_SUCCESS",

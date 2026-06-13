@@ -6,14 +6,14 @@ import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
 import Log from "~/core/Logger";
-import CheckInventoryCommand from "~/lib/commands/checkInventory";
+import CheckInventoryCommand from "~/lib/commands/inventory";
 import JoinWorldCommand from '~/lib/commands/joinWorld';
 import SaveCommand from '~/lib/commands/save';
 import LeaveWorldCommand from '~/lib/commands/leaveWorld';
 import TestCombatCommand from '~/lib/commands/testCombat';
 import SleepCommand from '~/lib/commands/sleep';
 import ScoreCommand from '~/lib/commands/score';
-import DrinkCommand from '~/lib/commands/drink';
+import { Drink as DrinkCommand } from '~/lib/commands/consumable';
 
 export default class Game {
   private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
@@ -51,35 +51,18 @@ export default class Game {
   public routeCommands(command: Command, player: Player): void {
     if (!this.isReady) return;
 
-    if (command.type === "TEXT_INPUT") {
-      const rawText = typeof command.data === "string" ? command.data : command.data?.text;
-      if (!rawText) return;
-
-      const tokens = rawText.trim().split(/\s+/);
-      if (tokens.length === 0 || tokens[0] === "") return;
-
-      const trigger = tokens[0].toUpperCase(); // "drink" -> "DRINK"
-      const args = tokens.slice(1);            // ["waterskin"]
-
-      const textHandler = this.commandHandlers.get(trigger);
-      if (!textHandler) {
-        // You could also send this back to the player: player.socket.send(...)
-        Log.SYSTEM.WARN(`Player ${player.character?.name} sent unknown command: ${trigger}`);
-        return;
-      }
-
-      // Execute with the parsed arguments
-      textHandler.execute({ player, game: this, data: command.data, args });
-      return;
-    }
-
     const handler = this.commandHandlers.get(command.type);
     if (!handler) {
       Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
       return;
     }
 
-    handler.execute({ player, game: this, data: command.data });
+    handler.execute({
+      player,
+      game: this,
+      data: command.data,
+      args: command.data?.args || []
+    });
   }
 
   public update(tick: number): void {

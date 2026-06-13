@@ -44,7 +44,7 @@ export default class EffectsManager {
     }
   }
 
-  public static apply(character: Character, activeEffect: ActiveEffect): void {
+  public static addEffect(character: Character, activeEffect: ActiveEffect): void {
     const effect = this.registry.get(activeEffect.type);
 
     if (!effect) {

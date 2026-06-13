@@ -5,6 +5,7 @@ import type Player from './Player';
 import type { ActiveEffect } from '~/@types/effects';
 import Log from './Logger';
 import EffectsManager from '~/core/EffectsManager';
+import EventsManager from './EventsManager';
 
 export default class Character {
   public id: number;
@@ -17,6 +18,7 @@ export default class Character {
   public pendingEvents: Array<PendingEvent> = [];;
   public lastProcessedInput: number = 0;
   public onAppliedEffect?: (charId: number) => void;
+  public onAppliedEvent?: (charId: number) => void;
 
   constructor(characterRecord: CharacterRecord) {
     this.id = characterRecord.id;
@@ -59,10 +61,18 @@ export default class Character {
   }
 
   public applyEffect(effect: ActiveEffect): void {
-    EffectsManager.apply(this, effect);
+    EffectsManager.addEffect(this, effect);
 
     if (this.onAppliedEffect) {
       this.onAppliedEffect(this.id);
+    }
+  }
+
+  public applyEvent(event: PendingEvent): void {
+    EventsManager.addEvent(this, event);
+
+    if (this.onAppliedEvent) {
+      this.onAppliedEvent(this.id);
     }
   }
 

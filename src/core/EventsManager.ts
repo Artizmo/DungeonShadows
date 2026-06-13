@@ -41,7 +41,7 @@ export default class EventsManager {
     }
   }
 
-  public static add(character: Character, pendingEvent: PendingEvent): void {
+  public static addEvent(character: Character, pendingEvent: PendingEvent): void {
     const event = this.registry.get(pendingEvent.type);
 
     if (!event) {
