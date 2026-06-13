@@ -91,12 +91,12 @@ type LogMethods = {
   DEBUG: (msg: string) => void;
 };
 
-const LogContainer = {} as { [K in LogSystem]: LogMethods };
+const Log = {} as { [K in LogSystem]: LogMethods };
 
 for (const system of Object.keys(Logger.hexConfig.systems) as LogSystem[]) {
   const loggerInstance = new Logger(system);
 
-  LogContainer[system] = {
+  Log[system] = {
     INFO:  (msg: string) => loggerInstance.info(msg),
     WARN:  (msg: string) => loggerInstance.warn(msg),
     ERROR: (msg: string) => loggerInstance.error(msg),
@@ -104,4 +104,4 @@ for (const system of Object.keys(Logger.hexConfig.systems) as LogSystem[]) {
   };
 }
 
-export default LogContainer;
+export default Log;
