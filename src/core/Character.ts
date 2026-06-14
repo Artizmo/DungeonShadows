@@ -1,22 +1,19 @@
 import { GameEventType, type PendingEvent } from '~/@types/events';
 import type { Position, Stats } from '~/@types/game';
 import type { CharacterRecord } from 'data/mock/mock';
-import type Player from './Player';
-import type { ActiveEffect } from '~/@types/effects';
-import Log from './Logger';
-import EffectsManager from '~/core/EffectsManager';
+import type { Effect } from '~/lib/effects/types';
 
 export default class Character {
   public id: number;
-  public player: Player;
+  public playerId: number;
   public name: string;
   public position: Position;
   public stats: Stats;
   public inventory: string[] = [];
-  public activeEffects: Map<string, ActiveEffect > = new Map();
-  public pendingEvents: Array<PendingEvent> = [];;
+  public effects: Map<string, Effect> = new Map();
+  public pendingEvents: Array<PendingEvent> = [];
   public lastProcessedInput: number = 0;
-  public onAppliedEffect?: (charId: number) => void;
+  public onPendingEvent?: (charId: number) => void;
 
   constructor(characterRecord: CharacterRecord) {
     this.id = characterRecord.id;
@@ -24,10 +21,6 @@ export default class Character {
     this.stats = { ...characterRecord.stats };
     this.position = characterRecord.position || { x: 0, y: 0 };
     this.inventory = [...characterRecord.inventory];
-  }
-
-  public set setPlayer(player: Player) {
-    this.player = player;
   }
 
   public get isDead(): boolean {
@@ -43,26 +36,38 @@ export default class Character {
   }
 
   public get hasActiveEffects(): boolean {
-    return this.activeEffects.size > 0;
+    return this.effects.size > 0;
   }
 
   public damage(amount: number): void {
     if (this.isDead) return;
 
     this.stats.hp = Math.max(0, this.stats.hp - amount);
-    this.pendingEvents.push({ type: GameEventType.DAMAGE, amount });
+    this.addPendingEvent({ type: GameEventType.DAMAGE, amount });
 
     if (this.stats.hp === 0) {
-      this.pendingEvents.push({ type: GameEventType.DEATH });
-      this.activeEffects.clear();
+      this.addPendingEvent({ type: GameEventType.DEATH });
+      this.effects.clear();
     }
   }
 
-  public applyEffect(effect: ActiveEffect): void {
-    EffectsManager.apply(this, effect);
+  public addEffect(effect: Effect): void {
+    this.effects.set(effect.type, effect);
+    this.addPendingEvent({ type: GameEventType.ADD_EFFECT });
+  }
 
-    if (this.onAppliedEffect) {
-      this.onAppliedEffect(this.id);
+  public removeEffect(effect: Effect): void {
+    this.effects.delete(effect.type);
+    this.addPendingEvent({ type: GameEventType.REMOVE_EFFECT });
+  }
+
+  public addPendingEvent(event: PendingEvent): void {
+    if (!event) return;
+
+    this.pendingEvents.push(event);
+
+    if (this.onPendingEvent) {
+      this.onPendingEvent(this.id);
     }
   }
 
@@ -75,22 +80,17 @@ export default class Character {
       id: this.id,
       ack: this.lastProcessedInput,
       events: [...this.pendingEvents],
-      effects: Array.from(this.activeEffects.values()).map(effect => ({
+      effects: Array.from(this.effects.values()).map(effect => ({
         type: effect.type,
         duration: effect.duration,
         density: effect.density
       }))
     };
-
     this.pendingEvents = [];
+
     return snapshot;
   }
 
-  public tick(tick: number): void {
-
-  }
-
-  public update(tick: number): void {
-  }
-
+  public tick(_tick: number): void {}
+  public update(_tick: number): void {}
 }

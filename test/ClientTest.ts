@@ -19,21 +19,22 @@ function clearPromptLine(): void {
 
 function connect(url: string = SERVER_URL): Promise<void> {
   return new Promise((resolve, reject) => {
-    Log.TEST.INFO(`Connecting to ${url}...`);
+    Log.TEST.INFO(`Connecting to DungeonShadows...`);
     isClosingCleanly = false;
 
     ws = new WebSocket(url, {
-      headers: { origin: "http://localhost:3000" }
+      headers: {
+        origin: "http://localhost:3000",
+        pid: 3,
+        token: "mock_jwt_session_token_12345"
+      }
     });
 
     ws.on("open", () => {
       clearPromptLine();
-      Log.TEST.INFO("Connected!");
 
-      sendCommand("CONNECT", {
-        pid: 3,
-        token: "mock_jwt_session_token_12345"
-      });
+      sendCommand("CONNECT");
+      Log.TEST.INFO("Connected!");
 
       rl.prompt(true);
       resolve();
@@ -45,17 +46,17 @@ function connect(url: string = SERVER_URL): Promise<void> {
 
         clearPromptLine();
 
-        if (packet.type === "ERROR") {
-          Log.TEST.ERROR(packet.data);
+        if (packet.type === "ERROR" || packet.type === "WARN") {
+          Log.TEST[packet.type](packet.data.message || packet.data);
           rl.prompt(true);
           return;
         }
 
-        Log.TEST.INFO(`Response: ${packet.type}`);
         if (typeof packet.data === "object") {
           Log.DATA.INFO(JSON.stringify(packet.data, null, 2));
         } else {
-          Log.DATA.INFO(packet.data);
+          // console.log(packet.data);
+          Log.TEST.INFO(packet.data);
         }
 
         rl.prompt(true);
@@ -74,19 +75,18 @@ function connect(url: string = SERVER_URL): Promise<void> {
     });
 
     ws.on("close", () => {
-      sendCommand("LEAVE_WORLD");
       clearPromptLine();
       if (isClosingCleanly) {
         Log.TEST.INFO("Connection closed cleanly.");
       } else {
-        Log.TEST.ERROR("Connection closed unexpectedly.");
+        Log.TEST.WARN("Connection closed unexpectedly.");
       }
       rl.close();
     });
   });
 }
 
-function sendCommand(type: string, data: Record<string, any> = {}): void {
+function sendCommand(type: string, data: any = {}): void {
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
   ws.send(JSON.stringify({ type, data }));
 }
@@ -102,64 +102,41 @@ function startTerminalLoop(): void {
       return;
     }
 
-    const args = input.split(" ");
+    const args = input.split(/\s+/);
     const command = args[0].toLowerCase();
 
     switch (command) {
-      case "drink":
-        sendCommand("SCORE");
-        break;
-
-      case "score":
-        sendCommand("SCORE");
-        break;
-
-      case "sleep":
-        sendCommand("SLEEP");
-        break;
-
-      case "fight":
-        sendCommand("TEST_COMBAT");
-        break;
-
+      // 1. Keep infrastructure and lifecycle commands local to the client state configuration
       case "join":
-        sendCommand("JOIN_WORLD", { cid: parseInt(process.env.CID) });
+        sendCommand("JOIN_WORLD", { cid: parseInt(process.env.CID || "1", 10) });
         break;
 
       case "leave":
         sendCommand("LEAVE_WORLD");
         break;
 
-      case "save":
-        sendCommand("SAVE");
-        break;
-
-      case "inventory":
-        sendCommand("CHECK_INVENTORY");
-        break;
-
-      case "drop":
-        const itemId = args[1];
-        if (!itemId) {
-          clearPromptLine();
-          Log.TEST.WARN("Usage: drop <item_id>");
-          rl.prompt(true);
-          break;
-        }
-        sendCommand("DROP_ITEM", { itemId, quantity: 1 });
+      case "clear":
+        process.stdout.write("\u001b[2J\u001b[0;0H");
+        rl.prompt();
         break;
 
       case "quit":
       case "exit":
         isClosingCleanly = true;
-        ws?.close();
-        rl.close();
-        process.exit(0);
+        // Clean cleanup notification to server
+        sendCommand("LEAVE_WORLD");
+        setTimeout(() => {
+          ws?.close();
+          rl.close();
+          process.exit(0);
+        }, 100);
+        break;
 
+      // 2. Fallback: Any custom, multi-word or dynamic string gets dropped down here
       default:
-        clearPromptLine();
-        Log.TEST.WARN(`Unknown local command: "${command}". (Available: inventory, drop [id], quit)`);
-        rl.prompt(true);
+        // Captures inputs like: "drink waterskin", "put item container", "score", "sleep"
+        // Server will receive: { type: "TEXT_INPUT", data: "drink waterskin" }
+        sendCommand("TEXT_INPUT", input);
         break;
     }
   });
