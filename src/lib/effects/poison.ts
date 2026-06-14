@@ -1,5 +1,4 @@
 import type { Effect } from '~/@types/effects';
-import { GameEventType } from '~/@types/events';
 import Log from '~/core/Logger';
 
 export const poisonEffect: Effect = {
