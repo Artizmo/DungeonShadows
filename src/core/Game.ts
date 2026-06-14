@@ -6,14 +6,7 @@ import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
 import Log from "~/core/Logger";
-import CheckInventoryCommand from "~/lib/commands/inventory";
-import JoinWorldCommand from '~/lib/commands/joinWorld';
-import SaveCommand from '~/lib/commands/save';
-import LeaveWorldCommand from '~/lib/commands/leaveWorld';
-import TestCombatCommand from '~/lib/commands/testCombat';
-import SleepCommand from '~/lib/commands/sleep';
-import ScoreCommand from '~/lib/commands/score';
-import { Drink as DrinkCommand } from '~/lib/commands/consumable';
+import { COMMAND_REGISTRY } from '~/lib/commands';
 
 export default class Game {
   private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
@@ -31,14 +24,9 @@ export default class Game {
   }
 
   private registerHandlers(): void {
-    this.commandHandlers.set("JOIN_WORLD", new JoinWorldCommand());
-    this.commandHandlers.set("LEAVE_WORLD", new LeaveWorldCommand());
-    this.commandHandlers.set("CHECK_INVENTORY", new CheckInventoryCommand());
-    this.commandHandlers.set("SAVE", new SaveCommand());
-    this.commandHandlers.set("TEST_COMBAT", new TestCombatCommand());
-    this.commandHandlers.set("SLEEP", new SleepCommand());
-    this.commandHandlers.set("SCORE", new ScoreCommand());
-    this.commandHandlers.set("DRINK", new DrinkCommand());
+    for (const [trigger, CommandClass] of Object.entries(COMMAND_REGISTRY)) {
+      this.commandHandlers.set(trigger, new CommandClass());
+    }
   }
 
   public start(savedWorld: SavedWorld): void {

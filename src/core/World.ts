@@ -28,6 +28,8 @@ export default class World {
   }
 
   public tick(tick: number): void {
+    if (this.charactersWithEvents.size === 0) return;
+
     const charactersState: any[] = [];
 
     for (const charId of this.charactersWithEvents) {

@@ -79,7 +79,7 @@ function connect(url: string = SERVER_URL): Promise<void> {
       if (isClosingCleanly) {
         Log.TEST.INFO("Connection closed cleanly.");
       } else {
-        Log.TEST.ERROR("Connection closed unexpectedly.");
+        Log.TEST.WARN("Connection closed unexpectedly.");
       }
       rl.close();
     });
