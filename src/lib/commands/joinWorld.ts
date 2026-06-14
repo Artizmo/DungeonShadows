@@ -1,6 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import type { ICommandHandler, CommandContext } from "~/types/game";
+import { send } from "~/utils/messageBroker";
 import Log from '~/core/Logger';
 import Character from "~/core/Character";
 
@@ -23,6 +24,7 @@ export default class JoinWorldCommand implements ICommandHandler {
       const fileContent = await fs.readFile(filePath, 'utf-8');
       const characterRecord = JSON.parse(fileContent);
       character = new Character(characterRecord);
+      character.playerId = player.id;
       player.character = character;
 
       game.world.join(character);

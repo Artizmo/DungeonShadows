@@ -3,13 +3,16 @@ import type Character from '~/core/Character';
 
 export enum GameEventType {
   DAMAGE = "DAMAGE",
-  EFFECT = "EFFECT",
+  ADD_EFFECT = "ADD_EFFECT",
+  REMOVE_EFFECT = "REMOVE_EFFECT",
   DEATH = "DEATH"
 }
 
 export type DamageEvent = { type: GameEventType.DAMAGE; amount: number };
 export type DeathEvent = { type: GameEventType.DEATH };
-export type EffectsEvent = { type: GameEventType.EFFECT, name: string }
+export type EffectsEvent = {
+  type: GameEventType.ADD_EFFECT | GameEventType.REMOVE_EFFECT
+}
 export type PendingEvent = DamageEvent | DeathEvent | EffectsEvent;
 
 export interface GameEventContext {

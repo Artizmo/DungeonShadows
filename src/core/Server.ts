@@ -5,10 +5,15 @@ import type Game from "~/core/Game";
 import Player from "~/core/Player";
 import Log from "~/core/Logger";
 import { playersData } from 'data/mock/mock';
+import { registerConnections } from '~/utils/messageBroker';
+
+type PlayerId = number;
+type PlayerToken = string;
 
 export default class Server {
   public readonly socketServer: WebSocketServer;
-  public readonly players: Map<WebSocket, Player> = new Map();
+  public readonly connections: Map<PlayerId, WebSocket> = new Map();
+  public readonly players: Map<PlayerId, Player> = new Map();
   public readonly game: Game;
 
   constructor(config: Config, game: Game) {
@@ -16,12 +21,22 @@ export default class Server {
     this.socketServer = new WebSocketServer({ port: config.port });
 
     this.socketServer.on("connection", (socket: WebSocket, request) => {
-      const { origin } = request.headers;
-
+      const { origin, pid, token } = request.headers;
       if (origin !== undefined && origin !== "http://localhost:3000") {
         Log.SERVER.WARN(`Blocked unauthorized connection from: ${origin}`);
         socket.close();
         return;
+      }
+
+      if (!pid || !token) {
+        socket.close();
+        return;
+      }
+
+      const playerId: number = Number(pid);
+      const playerToken: string = String(token);
+      if (Number.isNaN(playerId)) {
+        socket.close();
       }
 
       socket.on("message", (rawData: Buffer) => {
@@ -32,7 +47,7 @@ export default class Server {
           };
 
           const message = JSON.parse(rawData.toString("utf-8"));
-          this.handleSocketMessage(message, socket);
+          this.handleSocketMessage(message, socket, playerId, playerToken);
           return;
         } catch (err) {
           Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
@@ -40,7 +55,9 @@ export default class Server {
       });
 
       socket.on("close", () => {
-        this.handleSocketClose(socket);
+        this.handleSocketClose(playerId);
+        console.log('bingo this.connections', this.connections.size)
+        registerConnections(this.connections);
       });
 
       socket.on("error", (error) => Log.SERVER.ERROR(`Socket error: ${error.message}`));
@@ -49,13 +66,18 @@ export default class Server {
     Log.SERVER.INFO(`Server listening on port ${config.port}`);
   }
 
-  private handleSocketMessage(message: NetworkMessage, socket: WebSocket): void {
+  private handleSocketMessage(
+    message: NetworkMessage,
+    socket: WebSocket,
+    playerId: PlayerId,
+    token: PlayerToken
+  ): void {
     if (message.type === "CONNECT") {
-      this.connect(message.data, socket);
+      this.connect(socket, playerId, token);
       return;
     }
 
-    const player = this.players.get(socket);
+    const player = this.players.get(playerId);
     if (!player) return;
 
     if (message.type === "TEXT_INPUT") {
@@ -79,23 +101,28 @@ export default class Server {
     this.game.routeCommands(message, player);
   }
 
-  private handleSocketClose(socket: WebSocket): void {
-    const player = this.players.get(socket);
+  private handleSocketClose(playerId: PlayerId): void {
+    const player = this.players.get(playerId);
     if (!player) return;
 
     this.game.shutdownPlayer(player);
     this.disconnect(player);
   }
 
-  private connect({ pid, token }, socket: WebSocket): void {
-    if (!token || !pid) {
+  private connect( socket: WebSocket, playerId: PlayerId, token: PlayerToken): void {
+    if (!token || !playerId) {
       Log.SERVER.ERROR("Connection failed. Invalid player references.");
       return;
     }
 
-    const player = new Player(playersData.get(pid), socket);
+    const player = new Player(playersData.get(playerId));
+
     try {
-      this.players.set(socket, player);
+      this.connections.set(player.id, socket);
+      this.players.set(player.id, player);
+      registerConnections(this.connections);
+      console.log('bingo this.connections', this.connections.size)
+
       Log.SERVER.INFO(`${player.fullName} has connected!`);
     } catch (e) {
       Log.SERVER.ERROR(`${player.fullName} failed to connect: ${e}.`);
@@ -103,14 +130,12 @@ export default class Server {
   }
 
   private disconnect(player: Player): void {
-    this.players.delete(player.socket);
-    Log.SERVER.INFO(`${player.fullName} has disconnected.`);
-  }
+    this.connections.delete(player.id);
+    this.players.delete(player.id);
+    registerConnections(this.connections);
+    console.log('bingo this.connections', this.connections.size)
 
-  public broadcast(type: string, data: any): void {
-    for (const player of this.players.values()) {
-      player.send({ type, data });
-    }
+    Log.SERVER.INFO(`${player.fullName} has disconnected.`);
   }
 
   public close(): void {

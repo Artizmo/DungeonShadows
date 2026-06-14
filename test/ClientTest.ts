@@ -23,18 +23,18 @@ function connect(url: string = SERVER_URL): Promise<void> {
     isClosingCleanly = false;
 
     ws = new WebSocket(url, {
-      headers: { origin: "http://localhost:3000" }
+      headers: {
+        origin: "http://localhost:3000",
+        pid: 3,
+        token: "mock_jwt_session_token_12345"
+      }
     });
 
     ws.on("open", () => {
       clearPromptLine();
-      Log.TEST.INFO("Connected!");
 
-      // Handshake packet establishing player state
-      sendCommand("CONNECT", {
-        pid: 3,
-        token: "mock_jwt_session_token_12345"
-      });
+      sendCommand("CONNECT");
+      Log.TEST.INFO("Connected!");
 
       rl.prompt(true);
       resolve();
@@ -46,17 +46,17 @@ function connect(url: string = SERVER_URL): Promise<void> {
 
         clearPromptLine();
 
-        if (packet.type === "ERROR") {
-          Log.TEST.ERROR(packet.data.message || packet.data);
+        if (packet.type === "ERROR" || packet.type === "WARN") {
+          Log.TEST[packet.type](packet.data.message || packet.data);
           rl.prompt(true);
           return;
         }
 
-        // Log.TEST.INFO(`Response: ${packet.type}`);
-        if (packet.data && typeof packet.data === "object") {
+        if (typeof packet.data === "object") {
           Log.DATA.INFO(JSON.stringify(packet.data, null, 2));
         } else {
-          Log.DATA.INFO(packet.data || "No data payload attached.");
+          // console.log(packet.data);
+          Log.TEST.INFO(packet.data);
         }
 
         rl.prompt(true);

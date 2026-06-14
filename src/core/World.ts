@@ -3,6 +3,7 @@ import type Character from '~/core/Character';
 import type Game from './Game';
 import Log from "~/core/Logger";
 import EffectsManager from './EffectsManager';
+import { broadcast } from '~/utils/messageBroker';
 
 export default class World {
   public name: string;
@@ -13,7 +14,6 @@ export default class World {
 
   constructor(savedWorld: SavedWorld, game: Game) {
     this.name = savedWorld.name;
-    this.areas = savedWorld.areas;
     this.game = game;
     Log.WORLD.INFO("Loading world!");
   }
@@ -54,9 +54,12 @@ export default class World {
     }
 
     if (charactersState.length > 0) {
-      this.game.server.broadcast("WORLD_SYNC", {
-        tick,
-        entities: charactersState
+      broadcast({
+        type: "WORLD_SYNC",
+        data: {
+          tick,
+          entities: charactersState
+        }
       });
     }
   }

@@ -41,6 +41,7 @@ export default class Game {
 
     const handler = this.commandHandlers.get(command.type);
     if (!handler) {
+      player.send({ type: "WARN", data: `No message handler found for: ${command.type}` });
       Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
       return;
     }
@@ -53,8 +54,8 @@ export default class Game {
         args: command.data?.args || []
       });
     } catch (e) {
-      Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
       player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
+      Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
     }
   }
 

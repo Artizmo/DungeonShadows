@@ -1,5 +1,6 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import { EffectType } from '~/@types/effects';
+import EffectsManager from '~/core/EffectsManager';
+import { poison } from '../effects/poison';
 
 export default class SleepCommand implements ICommandHandler {
   execute({ player }: CommandContext): void {
@@ -15,11 +16,11 @@ export default class SleepCommand implements ICommandHandler {
       return;
     }
 
-    character.applyEffect({ type: EffectType.POISON, duration: 200, density: 4 });
-
     player.send({
       type: "SLEEP_SUCCESS",
       data: "You close your eyes and begin to rest..."
     });
+
+    EffectsManager.addEffect(poison, character);
   }
 }

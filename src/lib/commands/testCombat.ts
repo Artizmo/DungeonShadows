@@ -1,5 +1,5 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import { EffectType } from '~/@types/effects';
+import { EffectType } from '~/lib/effects/types';
 
 export default class TestCombatCommand implements ICommandHandler {
   public execute({ player, game }: CommandContext): void {

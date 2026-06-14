@@ -9,9 +9,9 @@ export default class ScoreCommand implements ICommandHandler {
       return;
     }
 
-    const effectList = character.activeEffects.size > 0
-      ? Array.from(character.activeEffects.values())
-          .map(e => `${e.type} (Charges: ${e.duration}, Dens: ${e.density})`)
+    const effectList = character.effects.size > 0
+      ? Array.from(character.effects.values())
+          .map(effect => `${effect.type} (Dur: ${effect.duration}, Dens: ${effect.density})`)
           .join(", ")
       : "None";
 

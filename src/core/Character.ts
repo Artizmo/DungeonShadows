@@ -1,18 +1,16 @@
 import { GameEventType, type PendingEvent } from '~/@types/events';
 import type { Position, Stats } from '~/@types/game';
 import type { CharacterRecord } from 'data/mock/mock';
-import type Player from './Player';
-import type { ActiveEffect } from '~/@types/effects';
-import EffectsManager from '~/core/EffectsManager';
+import type { Effect } from '~/lib/effects/types';
 
 export default class Character {
   public id: number;
-  public player: Player;
+  public playerId: number;
   public name: string;
   public position: Position;
   public stats: Stats;
   public inventory: string[] = [];
-  public activeEffects: Map<string, ActiveEffect> = new Map();
+  public effects: Map<string, Effect> = new Map();
   public pendingEvents: Array<PendingEvent> = [];
   public lastProcessedInput: number = 0;
   public onPendingEvent?: (charId: number) => void;
@@ -23,10 +21,6 @@ export default class Character {
     this.stats = { ...characterRecord.stats };
     this.position = characterRecord.position || { x: 0, y: 0 };
     this.inventory = [...characterRecord.inventory];
-  }
-
-  public set setPlayer(player: Player) {
-    this.player = player;
   }
 
   public get isDead(): boolean {
@@ -42,7 +36,7 @@ export default class Character {
   }
 
   public get hasActiveEffects(): boolean {
-    return this.activeEffects.size > 0;
+    return this.effects.size > 0;
   }
 
   public damage(amount: number): void {
@@ -53,13 +47,18 @@ export default class Character {
 
     if (this.stats.hp === 0) {
       this.addPendingEvent({ type: GameEventType.DEATH });
-      this.activeEffects.clear();
+      this.effects.clear();
     }
   }
 
-  public applyEffect(effect: ActiveEffect): void {
-    EffectsManager.addEffect(this, effect);
-    this.addPendingEvent({ type: GameEventType.EFFECT, name: effect.type });
+  public addEffect(effect: Effect): void {
+    this.effects.set(effect.type, effect);
+    this.addPendingEvent({ type: GameEventType.ADD_EFFECT });
+  }
+
+  public removeEffect(effect: Effect): void {
+    this.effects.delete(effect.type);
+    this.addPendingEvent({ type: GameEventType.REMOVE_EFFECT });
   }
 
   public addPendingEvent(event: PendingEvent): void {
@@ -81,7 +80,7 @@ export default class Character {
       id: this.id,
       ack: this.lastProcessedInput,
       events: [...this.pendingEvents],
-      effects: Array.from(this.activeEffects.values()).map(effect => ({
+      effects: Array.from(this.effects.values()).map(effect => ({
         type: effect.type,
         duration: effect.duration,
         density: effect.density
