@@ -28,5 +28,5 @@ export interface CommandContext {
 }
 
 export interface ICommandHandler {
-  execute(context: CommandContext): void;
+  execute(context: CommandContext): void | Promise<void>;
 }

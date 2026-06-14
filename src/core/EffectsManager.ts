@@ -58,18 +58,6 @@ export default class EffectsManager {
       : Math.round(Math.pow(11 - clampedDensity, 1.0 + Math.random()) * 6);
     character.activeEffects.set(activeEffect.type, activeEffect);
 
-    // const clampedDensity = Math.max(1, Math.min(10, activeEffect.density));
-
-    // // 🟢 Predictable mathematical bounds:
-    // // Density 10 = ticks every 1 frame
-    // // Density 3  = ticks every 24 frames
-    // // Density 1  = ticks every 30 frames
-    // activeEffect.interval = clampedDensity === 10
-    //   ? 1
-    //   : (11 - clampedDensity) * 3;
-
-    character.activeEffects.set(activeEffect.type, activeEffect);
     effect.apply({ activeEffect, character });
-    // effect.tick({ character, activeEffect });
   }
 }

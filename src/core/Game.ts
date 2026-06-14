@@ -36,7 +36,7 @@ export default class Game {
     this.loop.start();
   }
 
-  public routeCommands(command: Command, player: Player): void {
+  public async routeCommands(command: Command, player: Player): Promise<void> {
     if (!this.isReady) return;
 
     const handler = this.commandHandlers.get(command.type);
@@ -45,12 +45,17 @@ export default class Game {
       return;
     }
 
-    handler.execute({
-      player,
-      game: this,
-      data: command.data,
-      args: command.data?.args || []
-    });
+    try {
+      await handler.execute({
+        player,
+        game: this,
+        data: command.data,
+        args: command.data?.args || []
+      });
+    } catch (e) {
+      Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
+      player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
+    }
   }
 
   public update(tick: number): void {

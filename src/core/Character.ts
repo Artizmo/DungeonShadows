@@ -3,9 +3,7 @@ import type { Position, Stats } from '~/@types/game';
 import type { CharacterRecord } from 'data/mock/mock';
 import type Player from './Player';
 import type { ActiveEffect } from '~/@types/effects';
-import Log from './Logger';
 import EffectsManager from '~/core/EffectsManager';
-import EventsManager from './EventsManager';
 
 export default class Character {
   public id: number;
@@ -14,11 +12,10 @@ export default class Character {
   public position: Position;
   public stats: Stats;
   public inventory: string[] = [];
-  public activeEffects: Map<string, ActiveEffect > = new Map();
-  public pendingEvents: Array<PendingEvent> = [];;
+  public activeEffects: Map<string, ActiveEffect> = new Map();
+  public pendingEvents: Array<PendingEvent> = [];
   public lastProcessedInput: number = 0;
-  public onAppliedEffect?: (charId: number) => void;
-  public onAppliedEvent?: (charId: number) => void;
+  public onPendingEvent?: (charId: number) => void;
 
   constructor(characterRecord: CharacterRecord) {
     this.id = characterRecord.id;
@@ -52,27 +49,26 @@ export default class Character {
     if (this.isDead) return;
 
     this.stats.hp = Math.max(0, this.stats.hp - amount);
-    this.pendingEvents.push({ type: GameEventType.DAMAGE, amount });
+    this.addPendingEvent({ type: GameEventType.DAMAGE, amount });
 
     if (this.stats.hp === 0) {
-      this.pendingEvents.push({ type: GameEventType.DEATH });
+      this.addPendingEvent({ type: GameEventType.DEATH });
       this.activeEffects.clear();
     }
   }
 
   public applyEffect(effect: ActiveEffect): void {
     EffectsManager.addEffect(this, effect);
-
-    if (this.onAppliedEffect) {
-      this.onAppliedEffect(this.id);
-    }
+    this.addPendingEvent({ type: GameEventType.EFFECT, name: effect.type });
   }
 
-  public applyEvent(event: PendingEvent): void {
-    EventsManager.addEvent(this, event);
+  public addPendingEvent(event: PendingEvent): void {
+    if (!event) return;
 
-    if (this.onAppliedEvent) {
-      this.onAppliedEvent(this.id);
+    this.pendingEvents.push(event);
+
+    if (this.onPendingEvent) {
+      this.onPendingEvent(this.id);
     }
   }
 
@@ -91,16 +87,11 @@ export default class Character {
         density: effect.density
       }))
     };
-
     this.pendingEvents = [];
+
     return snapshot;
   }
 
-  public tick(tick: number): void {
-
-  }
-
-  public update(tick: number): void {
-  }
-
+  public tick(_tick: number): void {}
+  public update(_tick: number): void {}
 }

@@ -2,14 +2,11 @@ import { Area, SavedWorld } from "~/@types/world";
 import type Character from '~/core/Character';
 import type Game from './Game';
 import Log from "~/core/Logger";
-import Save from './Save';
 import EffectsManager from './EffectsManager';
-import EventsManager from './EventsManager';
 
 export default class World {
   public name: string;
   public game: Game;
-  private saveManager = new Save();
   public characters: Map<number, Character> = new Map();
   public areas: Map<number, Area>;
   public charactersWithEvents: Set<number> = new Set();
@@ -32,27 +29,27 @@ export default class World {
 
     const charactersState: any[] = [];
 
-    for (const charId of this.charactersWithEvents) {
+    for (const charId of [...this.charactersWithEvents]) {
       const character = this.characters.get(charId);
 
       if (!character || (!character.hasPendingEvents && !character.hasActiveEffects)) {
-        this.removeCharacterWithEvents(charId);
+        this.charactersWithEvents.delete(charId);
         continue;
       }
 
-      if (character.hasPendingEvents) {
-        EventsManager.tick(character, tick, this);
-      }
+      character.tick(tick);
 
       if (character.hasActiveEffects) {
         EffectsManager.tick(character, tick, this);
       }
 
-      character.tick(tick);
-
       const snapshot = character.getCharacterSnapshot();
       if (snapshot) {
         charactersState.push(snapshot);
+      }
+
+      if (!character.hasPendingEvents && !character.hasActiveEffects) {
+        this.charactersWithEvents.delete(charId);
       }
     }
 
@@ -64,19 +61,6 @@ export default class World {
     }
   }
 
-  public async save(character: Character): Promise<void> {
-    if (!character) throw "Character not valid.";
-    if (!this.characters.has(character.id)) {
-      throw "Character not found in world.";
-    }
-
-    try {
-      this.saveManager.saveCharacter(character);
-    } catch (e) {
-      throw e;
-    }
-  }
-
   public join(character: Character): void {
     if (!character) return;
 
@@ -84,9 +68,10 @@ export default class World {
       throw new Error("Character is already in the world.");
     }
 
-    character.onAppliedEffect = charId => this.queueCharacterWithEvents(charId);
-    character.onAppliedEvent = charId => this.queueCharacterWithEvents(charId);
-    this.addCharacter(character);
+    character.onPendingEvent = charId => {
+      this.charactersWithEvents.add(charId);
+    }
+    this.characters.set(character.id, character);
   }
 
   public leave(character: Character): void {
@@ -96,22 +81,7 @@ export default class World {
       throw "Character is not in the world.";
     }
 
-    this.removeCharacter(character);
-  }
-
-  public addCharacter(character: Character): void {
-    this.characters.set(character.id, character);
-  }
-
-  public removeCharacter(character: Character): void {
+    this.charactersWithEvents.delete(character.id);
     this.characters.delete(character.id);
-  }
-
-  public queueCharacterWithEvents(charId: number): void {
-    this.charactersWithEvents.add(charId);
-  }
-
-  public removeCharacterWithEvents(charId: number): void {
-    this.charactersWithEvents.delete(charId);
   }
 }

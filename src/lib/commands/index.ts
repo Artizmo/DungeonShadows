@@ -2,8 +2,9 @@ import type { ICommandHandler } from "~/types/game";
 import JoinWorld from "~/lib/commands/joinWorld";
 import LeaveWorld from "~/lib/commands/leaveWorld";
 import CheckInventory from "~/lib/commands/inventory";
-import { Drink } from './consumable';
-import SleepCommand from './sleep';
+import Sleep from "~/lib/commands/sleep";
+import Score from "~/lib/commands/score";
+import { Drink } from "~/lib/commands/consumable";
 
 export const COMMAND_REGISTRY: Record<string, new () => ICommandHandler> = {
   // Core
@@ -11,8 +12,9 @@ export const COMMAND_REGISTRY: Record<string, new () => ICommandHandler> = {
   "LEAVE_WORLD": LeaveWorld,
 
   // Character
+  "SCORE": Score,
   "CHECK_INVENTORY": CheckInventory,
-  "SLEEP": SleepCommand,
+  "SLEEP": Sleep,
 
   // Consumables
   "DRINK": Drink

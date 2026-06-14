@@ -2,19 +2,15 @@ import type World from '~/core/World';
 import type Character from '~/core/Character';
 
 export enum GameEventType {
-  SLEEP = "SLEEP",
-  DRINK = "DRINK",
   DAMAGE = "DAMAGE",
-  EFFECT_FADE = "EFFECT_FADE",
+  EFFECT = "EFFECT",
   DEATH = "DEATH"
 }
 
-export type SleepEvent = { type: GameEventType.SLEEP };
-export type DrinkEvent = { type: GameEventType.DRINK; amount: number };
 export type DamageEvent = { type: GameEventType.DAMAGE; amount: number };
 export type DeathEvent = { type: GameEventType.DEATH };
-export type EffectsFadeEvent = { type: GameEventType.EFFECT_FADE, name: string }
-export type PendingEvent = SleepEvent | DrinkEvent | DamageEvent | DeathEvent | EffectsFadeEvent;
+export type EffectsEvent = { type: GameEventType.EFFECT, name: string }
+export type PendingEvent = DamageEvent | DeathEvent | EffectsEvent;
 
 export interface GameEventContext {
   character: Character;
