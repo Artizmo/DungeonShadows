@@ -94,9 +94,7 @@ export default class Server {
 
       // 5. Bind Teardown Closures
       socket.on("close", (code) => {
-        Log.SERVER.INFO(
-          `Socket close event fired for PID ${playerId} (Code: ${code})`,
-        );
+        Log.SERVER.INFO(`Socket close PID ${playerId} (Code: ${code})`);
         this.handleSocketClose(playerId, socket);
       });
 
