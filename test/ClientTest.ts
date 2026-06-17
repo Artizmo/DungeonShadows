@@ -1,6 +1,6 @@
 import WebSocket from "ws";
 import readline from "readline";
-import Log from "~/core/Logger";
+import Log from "../src/core/Logger";
 
 const SERVER_URL = "ws://127.0.0.1:8000";
 
@@ -9,7 +9,7 @@ let isClosingCleanly = false;
 
 const rl = readline.createInterface({
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 function clearPromptLine(): void {
@@ -24,10 +24,8 @@ function connect(url: string = SERVER_URL): Promise<void> {
 
     ws = new WebSocket(url, {
       headers: {
-        origin: "http://localhost:3000",
-        pid: 3,
-        token: "mock_jwt_session_token_12345"
-      }
+        origin: "http://localhost:3000?pid=3&token=test_token",
+      },
     });
 
     ws.on("open", () => {
@@ -108,7 +106,9 @@ function startTerminalLoop(): void {
     switch (command) {
       // 1. Keep infrastructure and lifecycle commands local to the client state configuration
       case "join":
-        sendCommand("JOIN_WORLD", { cid: parseInt(process.env.CID || "1", 10) });
+        sendCommand("JOIN_WORLD", {
+          cid: parseInt(process.env.CID || "1", 10),
+        });
         break;
 
       case "leave":

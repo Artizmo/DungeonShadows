@@ -1,8 +1,9 @@
-import type Character from '~/core/Character';
-import type World from '~/core/World';
+import type Character from "~/core/Character";
+import type World from "~/core/World";
 
 export enum EffectType {
-  POISON = "POISON"
+  POISON = "POISON",
+  BURN = "BURN",
 }
 
 export interface Effect {

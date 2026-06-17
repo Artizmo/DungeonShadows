@@ -17,7 +17,10 @@ export default class GameLoop {
     this.lastTime = 0;
     this.frameTime = 0;
 
-    this.cyclesPerTick = Math.max(1, Math.round(this.config.tickRate / this.config.cycleRate));
+    this.cyclesPerTick = Math.max(
+      1,
+      Math.round(this.config.tickRate / this.config.cycleRate),
+    );
   }
 
   start() {

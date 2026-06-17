@@ -1,6 +1,6 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import EffectsManager from '~/core/EffectsManager';
-import { poison } from '../effects/poison';
+import EffectsManager from "~/core/EffectsManager";
+import { poison } from "../effects/poison";
 
 export default class SleepCommand implements ICommandHandler {
   execute({ player }: CommandContext): void {
@@ -9,16 +9,19 @@ export default class SleepCommand implements ICommandHandler {
     if (!character) {
       player.send({ type: "SLEEP_FAIL", data: "You're not in the world!" });
       return;
-    };
+    }
 
     if (character.isDead) {
-      player.send({ type: "SLEEP_FAIL", data: "You cannot sleep when you're dead!" });
+      player.send({
+        type: "SLEEP_FAIL",
+        data: "You cannot sleep when you're dead!",
+      });
       return;
     }
 
     player.send({
       type: "SLEEP_SUCCESS",
-      data: "You close your eyes and begin to rest..."
+      data: "You close your eyes and begin to rest...",
     });
 
     EffectsManager.addEffect(poison, character);

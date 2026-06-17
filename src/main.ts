@@ -1,5 +1,4 @@
 import { Config } from "~/types/system";
-import type { SavedWorld } from "~/types/world";
 import { CONFIG_PATH } from "~/utils/constants";
 import getLocalFile from "~/utils/functions/getLocalFile";
 import Game from "~/core/Game";
@@ -10,8 +9,7 @@ async function init() {
   Log.SYSTEM.INFO(`${config.name} is starting up...`);
   try {
     const game = new Game(config);
-    const savedWorld = await getLocalFile<SavedWorld>(config.savedWorldPath);
-    game.start(savedWorld);
+    game.start(config.worldPath);
     Log.SYSTEM.INFO(`${config.name} is online!`);
   } catch (error) {
     Log.SYSTEM.ERROR(`Game failed to initialize: ${error}`);

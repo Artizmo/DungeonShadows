@@ -1,6 +1,6 @@
-import type Character from './Character';
-import type { PlayerRecord } from 'data/mock/mock';
-import { send } from '~/utils/messageBroker';
+import type Character from "~/core/Character";
+import type { PlayerRecord } from "data/mock/mock";
+import { send } from "~/utils/messageBroker";
 
 export default class Player {
   public id: number;

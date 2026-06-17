@@ -1,0 +1,11 @@
+{
+  "id": "sephus",
+  "name": "Land of Sephus",
+  "description": "DungeonShadows playground.",
+  "zones": [
+    {
+      "id": "arena",
+      "dataPath": "./zones/arena.json"
+    }
+  ]
+}

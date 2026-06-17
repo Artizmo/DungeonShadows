@@ -1,36 +1,62 @@
-import type GameEvents from '../../lib/classes/GameEvents'
-import type GameServer from '../../../server/GameServer'
-import Act from '../../../lib/classes/Act'
-import Item from '../../lib/classes/Item'
-import NPC from '../game/world/classes/Npc'
-import Zone from './Zone'
+import * as fs from "fs";
+import * as path from "path";
+import Log from "~/core/Logger";
+import Zone from "~/core/Zone";
+
+interface RawAreaJson {
+  id: number;
+  name: string;
+  description: string;
+  zones: { id: string; dataPath: string }[];
+}
 
 export default class Area {
-  id: number
-  name: string
-  createDate: Date
-  modifiedDate: Date
-  author: string
-  acts: Map<number, Act>
-  zones: Map<number, Zone>
-  npcs: Map<number, NPC>
-  items: Map<number, Item>
+  public id: number;
+  public name: string;
+  public description: string;
+  public zones: Map<string, Zone> = new Map();
 
-  constructor(area: Area) {
-    this.id = area.id
-    this.name = area.name
-    this.createDate = area.createDate
-    this.modifiedDate = area.modifiedDate
-    this.author = area.author
-    this.acts = area.acts
-    this.zones = area.zones
-    this.npcs = area.npcs
-    this.items = area.items
+  constructor(areaFolderPath: string) {
+    this.loadAreaAndZones(areaFolderPath);
   }
 
-  update(areas: Map<number, Area>, gameServer: GameServer, gameEvents: GameEvents) {
-    for (const act of this.acts.values()) {
-      act.update(areas, gameServer, gameEvents)
+  private loadAreaAndZones(areaFolderPath: string): void {
+    try {
+      const areaJsonPath = path.join(areaFolderPath, "area.json");
+
+      if (!fs.existsSync(areaJsonPath)) {
+        throw new Error(
+          `Expected area configuration manifest at: ${areaJsonPath}`,
+        );
+      }
+
+      const raw = fs.readFileSync(areaJsonPath, "utf-8");
+      const data: RawAreaJson = JSON.parse(raw);
+
+      this.id = data.id;
+      this.name = data.name;
+      this.description = data.description || "";
+
+      Log.WORLD.INFO(`└─Area: ${this.name}`);
+
+      // Recursively stream internal zone layers from the child directory
+      if (data.zones) {
+        for (const zoneRef of data.zones) {
+          // Resolve relative internal schema paths safely to absolute filesystem targets
+          const normalizedZonePath = path.resolve(
+            path.dirname(areaJsonPath),
+            zoneRef.dataPath,
+          );
+
+          const zoneInstance = new Zone(normalizedZonePath);
+          this.zones.set(zoneInstance.id, zoneInstance);
+        }
+      }
+    } catch (error: any) {
+      Log.WORLD.ERROR(
+        `Failed loading area manifest from [${areaFolderPath}]: ${error.message}`,
+      );
+      throw error;
     }
   }
 }

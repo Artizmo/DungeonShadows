@@ -1,8 +1,8 @@
 import type World from "~/core/World";
 import type Character from "~/core/Character";
-import type { Effect } from '~/lib/effects/types';
-import Log from './Logger';
-import { send } from '~/utils/messageBroker';
+import type { Effect } from "~/lib/effects/types";
+import Log from "./Logger";
+import { send } from "~/utils/messageBroker";
 
 export default class EffectsManager {
   public static tick(character: Character, _tick: number, _world: World): void {
@@ -32,7 +32,7 @@ export default class EffectsManager {
     }
 
     for (const effect of expiredEffects) {
-      EffectsManager.removeEffect(effect, character)
+      EffectsManager.removeEffect(effect, character);
     }
   }
 
@@ -47,7 +47,7 @@ export default class EffectsManager {
     character.addEffect(effectInstance);
     send(character.playerId, {
       type: "ADD_EFFECT",
-      data: effectInstance.applyMessage
+      data: effectInstance.applyMessage,
     });
   }
 
@@ -60,7 +60,7 @@ export default class EffectsManager {
     character.removeEffect(activeEffect);
     send(character.playerId, {
       type: "REMOVE_EFFECT",
-      data: activeEffect.resolveMessage
+      data: activeEffect.resolveMessage,
     });
   }
 }

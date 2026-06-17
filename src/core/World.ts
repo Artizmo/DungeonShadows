@@ -1,21 +1,83 @@
-import { Area, SavedWorld } from "~/@types/world";
-import type Character from '~/core/Character';
-import type Game from './Game';
+import * as fs from "fs";
+import * as path from "path";
+import EffectsManager from "~/core/EffectsManager";
 import Log from "~/core/Logger";
-import EffectsManager from './EffectsManager';
-import { broadcast } from '~/utils/messageBroker';
+import Area from "~/core/Area";
+import { broadcast } from "~/utils/messageBroker";
+import type Character from "~/core/Character";
+import type Game from "~/core/Game";
 
+interface WorldConfig {
+  name: string;
+  areas: {
+    id: string;
+    manifestPath: string;
+  }[];
+}
 export default class World {
   public name: string;
   public game: Game;
   public characters: Map<number, Character> = new Map();
-  public areas: Map<number, Area>;
+  public areas: Map<number, Area> = new Map();
   public charactersWithEvents: Set<number> = new Set();
 
-  constructor(savedWorld: SavedWorld, game: Game) {
-    this.name = savedWorld.name;
+  constructor(worldPath: string, game: Game) {
+    Log.WORLD.INFO("Loading world...");
     this.game = game;
-    Log.WORLD.INFO("Loading world!");
+    try {
+      this.loadWorldAndAreas(worldPath);
+      Log.WORLD.INFO("Loaded world!");
+    } catch (e) {
+      Log.SYSTEM.ERROR(e);
+    }
+  }
+
+  /**
+   * Reads world.json and kicks off modular area streaming pass
+   */
+  private loadWorldAndAreas(worldPath: string): void {
+    try {
+      if (!fs.existsSync(worldPath)) {
+        throw new Error(
+          `Master configuration target ledger missing at: ${worldPath}`,
+        );
+      }
+
+      const raw = fs.readFileSync(worldPath, "utf-8");
+      const config: WorldConfig = JSON.parse(raw);
+      this.name = config.name;
+
+      if (config.areas) {
+        for (const areaRef of config.areas) {
+          // Calculate the folder path where area.json lives relative to world.json
+          const resolvedAreaFolder = path.dirname(
+            path.resolve(path.dirname(worldPath), areaRef.manifestPath),
+          );
+
+          this.loadAreas(resolvedAreaFolder);
+        }
+      }
+    } catch (error: any) {
+      Log.WORLD.ERROR(
+        `Failed parsing master world tree hierarchy: ${error.message}`,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Instantiates an individual Area node context and indexes it
+   */
+  public loadAreas(areaFolderPath: string): void {
+    const areaInstance = new Area(areaFolderPath);
+
+    if (this.areas.has(areaInstance.id)) {
+      throw new Error(
+        `Collision Exception! Area key matching id "${areaInstance.id}" has already been processed.`,
+      );
+    }
+
+    this.areas.set(areaInstance.id, areaInstance);
   }
 
   public update(tick: number): void {
@@ -32,7 +94,10 @@ export default class World {
     for (const charId of [...this.charactersWithEvents]) {
       const character = this.characters.get(charId);
 
-      if (!character || (!character.hasPendingEvents && !character.hasActiveEffects)) {
+      if (
+        !character ||
+        (!character.hasPendingEvents && !character.hasActiveEffects)
+      ) {
         this.charactersWithEvents.delete(charId);
         continue;
       }
@@ -58,8 +123,8 @@ export default class World {
         type: "WORLD_SYNC",
         data: {
           tick,
-          entities: charactersState
-        }
+          entities: charactersState,
+        },
       });
     }
   }
@@ -71,9 +136,9 @@ export default class World {
       throw new Error("Character is already in the world.");
     }
 
-    character.onPendingEvent = charId => {
+    character.onPendingEvent = (charId) => {
       this.charactersWithEvents.add(charId);
-    }
+    };
     this.characters.set(character.id, character);
   }
 

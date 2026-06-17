@@ -1,14 +1,11 @@
-
 export default class Npc {
-  id: number
-  name: string
+  id: number;
+  name: string;
 
   constructor(npc: Npc) {
-    this.id = npc.id
-    this.name = npc.name
+    this.id = npc.id;
+    this.name = npc.name;
   }
 
-  update() {
-
-  }
+  update() {}
 }

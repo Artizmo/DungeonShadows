@@ -1,14 +1,16 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
-import type Character from './Character';
+import * as fs from "fs/promises";
+import * as path from "path";
+import type Character from "~/core/Character";
 
 export default class Save {
-  private readonly baseDir = path.join(process.cwd(), 'data', 'characters');
+  private readonly baseDir = path.join(process.cwd(), "data", "characters");
 
   public async saveCharacter(character: Character): Promise<void> {
     const id = character.id;
     if (id === undefined || id === null) {
-      throw new Error(`The character instance "${character.name}" is missing a valid ID.`);
+      throw new Error(
+        `The character instance "${character.name}" is missing a valid ID.`,
+      );
     }
 
     try {
@@ -21,10 +23,10 @@ export default class Save {
         isDead: character.isDead,
         stats: character.stats,
         inventory: character.inventory,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       };
 
-      await fs.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf-8');
+      await fs.writeFile(filePath, JSON.stringify(payload, null, 2), "utf-8");
     } catch (e) {
       throw new Error(`File System operation failed: ${(e as Error).message}`);
     }

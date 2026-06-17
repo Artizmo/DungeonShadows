@@ -8,14 +8,14 @@ import { Drink } from "~/lib/commands/consumable";
 
 export const COMMAND_REGISTRY: Record<string, new () => ICommandHandler> = {
   // Core
-  "JOIN_WORLD": JoinWorld,
-  "LEAVE_WORLD": LeaveWorld,
+  JOIN_WORLD: JoinWorld,
+  LEAVE_WORLD: LeaveWorld,
 
   // Character
-  "SCORE": Score,
-  "CHECK_INVENTORY": CheckInventory,
-  "SLEEP": Sleep,
+  SCORE: Score,
+  CHECK_INVENTORY: CheckInventory,
+  SLEEP: Sleep,
 
   // Consumables
-  "DRINK": Drink
+  DRINK: Drink,
 };

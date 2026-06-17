@@ -8,7 +8,7 @@ export class Drink implements ICommandHandler {
 
       if (!character) {
         throw "You're not in the world!";
-      };
+      }
 
       const targetContainer = (args && args[0]) || data.containerId;
 
@@ -17,11 +17,13 @@ export class Drink implements ICommandHandler {
       }
 
       player.send({ type: "DRINK_SUCCESS", data: true });
-      Log.SYSTEM.INFO(`${character.name} is drinking from ${targetContainer}...`);
+      Log.SYSTEM.INFO(
+        `${character.name} is drinking from ${targetContainer}...`,
+      );
     } catch (error: any) {
       player.send({
         type: "DRINK_FAILURE",
-        data: error
+        data: error,
       });
     }
   }

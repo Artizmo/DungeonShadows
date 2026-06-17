@@ -6,7 +6,10 @@ export function registerConnections(connections: Map<number, WebSocket>): void {
   sockets = connections;
 }
 
-export function send(playerId: number, payload: { type: string; data: any }): void {
+export function send(
+  playerId: number,
+  payload: { type: string; data: any },
+): void {
   const socket = sockets.get(playerId);
   if (socket?.readyState !== 1) return;
 

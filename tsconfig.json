@@ -1,20 +1,20 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "es2022",
     "module": "esnext",
+    "moduleResolution": "bundler" /* 🟩 Changed from 'node' to support esnext configurations */,
     "esModuleInterop": true,
-    "moduleResolution": "node",
     "noEmit": true,
     "allowImportingTsExtensions": true,
     "baseUrl": "./",
     "paths": {
-      "~/*": ["src/*"],
-      "~/types/*": ["src/@types/*"]
+      "~/types/*": ["src/@types/*"] /* 🟩 Placed specific paths FIRST */,
+      "~/*": ["src/*"]
     }
   },
   "ts-node": {
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["../**/*.ts", "../**/*.js"],
-  "exclude": ["build"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "build", "src/data/saved"]
 }

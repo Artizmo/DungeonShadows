@@ -1,12 +1,11 @@
 import type { Config } from "~/types/system";
-import type { SavedWorld } from "~/types/world";
 import type { Command, ICommandHandler } from "~/types/game";
-import type Player from './Player';
+import type Player from "~/core/Player";
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
 import Log from "~/core/Logger";
-import { COMMAND_REGISTRY } from '~/lib/commands';
+import { COMMAND_REGISTRY } from "~/lib/commands";
 
 export default class Game {
   private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
@@ -29,8 +28,8 @@ export default class Game {
     }
   }
 
-  public start(savedWorld: SavedWorld): void {
-    this.world = new World(savedWorld, this);
+  public start(worldPath: string): void {
+    this.world = new World(worldPath, this);
     this.server = new Server(this.config, this);
     this.isReady = true;
     this.loop.start();
@@ -41,7 +40,10 @@ export default class Game {
 
     const handler = this.commandHandlers.get(command.type);
     if (!handler) {
-      player.send({ type: "WARN", data: `No message handler found for: ${command.type}` });
+      player.send({
+        type: "WARN",
+        data: `No message handler found for: ${command.type}`,
+      });
       Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
       return;
     }
@@ -51,7 +53,7 @@ export default class Game {
         player,
         game: this,
         data: command.data,
-        args: command.data?.args || []
+        args: command.data?.args || [],
       });
     } catch (e) {
       player.send({ type: "ERROR", data: `Error executing handler: ${e}` });

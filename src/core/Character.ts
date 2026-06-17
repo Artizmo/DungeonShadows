@@ -1,7 +1,7 @@
-import { GameEventType, type PendingEvent } from '~/@types/events';
-import type { Position, Stats } from '~/@types/game';
-import type { CharacterRecord } from 'data/mock/mock';
-import type { Effect } from '~/lib/effects/types';
+import { GameEventType, type PendingEvent } from "~/@types/events";
+import type { Position, Stats } from "~/@types/game";
+import type { CharacterRecord } from "data/mock/mock";
+import type { Effect } from "~/lib/effects/types";
 
 export default class Character {
   public id: number;
@@ -80,11 +80,11 @@ export default class Character {
       id: this.id,
       ack: this.lastProcessedInput,
       events: [...this.pendingEvents],
-      effects: Array.from(this.effects.values()).map(effect => ({
+      effects: Array.from(this.effects.values()).map((effect) => ({
         type: effect.type,
         duration: effect.duration,
-        density: effect.density
-      }))
+        density: effect.density,
+      })),
     };
     this.pendingEvents = [];
 

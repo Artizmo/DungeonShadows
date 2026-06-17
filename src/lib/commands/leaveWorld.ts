@@ -1,12 +1,15 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import Log from '~/core/Logger';
+import Log from "~/core/Logger";
 
 export default class LeaveWorldCommand implements ICommandHandler {
   public async execute({ player, game }: CommandContext): Promise<void> {
     const { character } = player;
 
     if (!character) {
-      player.send({ type: "LEAVE_FAILURE", data: "You have no character in the world." });
+      player.send({
+        type: "LEAVE_FAILURE",
+        data: "You have no character in the world.",
+      });
       return;
     }
 

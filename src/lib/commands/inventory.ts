@@ -5,7 +5,10 @@ export default class CheckInventoryCommand implements ICommandHandler {
     const { character } = player;
 
     if (!character) {
-      player.send({ type: "ERROR", data: { message: "Character not in the world!" } });
+      player.send({
+        type: "ERROR",
+        data: { message: "Character not in the world!" },
+      });
       return;
     }
 
