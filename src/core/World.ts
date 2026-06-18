@@ -90,7 +90,6 @@ export default class World {
     if (this.charactersWithEvents.size === 0) return;
 
     const charactersState: any[] = [];
-
     for (const charId of [...this.charactersWithEvents]) {
       const character = this.characters.get(charId);
 
@@ -118,6 +117,7 @@ export default class World {
       }
     }
 
+    // TODO: broadcast currently blasts to all characters. we need a new send type that only sends to characters in the proximity of the character with events
     if (charactersState.length > 0) {
       broadcast({
         type: "WORLD_SYNC",

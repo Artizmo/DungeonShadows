@@ -94,7 +94,7 @@ export default class Server {
 
       // 5. Bind Teardown Closures
       socket.on("close", (code) => {
-        Log.SERVER.INFO(`Socket close PID ${playerId} (Code: ${code})`);
+        // Log.SERVER.INFO(`Socket close PID ${playerId} (Code: ${code})`);
         this.handleSocketClose(playerId, socket);
       });
 
@@ -159,9 +159,6 @@ export default class Server {
     if (player) {
       this.game.shutdownPlayer(player);
       this.disconnect(player);
-      Log.SERVER.INFO(
-        `${player.fullName} state cleared from player pool maps.`,
-      );
     }
 
     registerConnections(this.connections);
