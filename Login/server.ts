@@ -134,7 +134,7 @@ app.post(
       });
 
       Log.SERVER.INFO(
-        `[AUTH] Player ${matchedPlayer.firstName} (ID: ${matchedPlayer.id}) logged in successfully.`,
+        `Player ID ${matchedPlayer.id}) authenticated successfully.`,
       );
 
       return res.status(200).json({
