@@ -1,3 +1,9 @@
+import dotenv from "dotenv";
+import path from "path";
+
+// 🔍 Force look in the exact directory where this file resides
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
 import { WebSocketServer, WebSocket } from "ws";
 import type { Config } from "~/@types/system";
 import type { NetworkMessage } from "~/@types/server";
@@ -6,9 +12,21 @@ import Player from "~/core/Player";
 import Log from "~/core/Logger";
 import { playersData } from "data/mock/mock";
 import { registerConnections } from "~/utils/messageBroker";
+import jwt from "jsonwebtoken";
+
+// 🚨 TEMPORARY DIAGNOSTIC LOG
+console.log("-------------------------------------------------------");
+console.log("🔍 GAME SERVER ENV CHECK:");
+console.log(
+  "Loaded GAME_SECRET:",
+  process.env.GAME_SECRET
+    ? "FOUND (Matches Auth Server!)"
+    : "NOT FOUND (Is Undefined!)",
+);
+console.log("Looking in current working directory:", process.cwd());
+console.log("-------------------------------------------------------");
 
 type PlayerId = number;
-type PlayerToken = string;
 
 export default class Server {
   public readonly socketServer: WebSocketServer;
@@ -22,20 +40,22 @@ export default class Server {
 
     this.socketServer.on("connection", (socket: WebSocket, request) => {
       const { origin } = request.headers;
+
       const rawUrl = request.url || "";
       const fullUrlString = rawUrl.startsWith("http")
         ? rawUrl
         : `${origin || "http://localhost"}${rawUrl}`;
 
       const parsedUrl = new URL(fullUrlString);
-      const pid = parsedUrl.searchParams.get("pid");
-      const token = parsedUrl.searchParams.get("token");
 
-      // 1. Validate Origin (Send status 4003 - Forbidden)
+      // 1. Read the access ticket
+      const ticket = parsedUrl.searchParams.get("ticket");
+
+      // Validate Origin
       if (origin !== undefined) {
         const isLocalhost =
           origin.startsWith("http://localhost:") ||
-          origin === "http://localhost";
+          origin === "http://10.0.0.46:5173";
 
         if (!isLocalhost) {
           Log.SERVER.WARN(`Blocked unauthorized connection from: ${origin}`);
@@ -44,62 +64,96 @@ export default class Server {
         }
       }
 
-      // 2. Validate Parameters exist (Send status 4001 - Unauthorized)
-      if (!pid || !token) {
-        Log.SERVER.WARN("Connection rejected: Missing credentials.");
-        socket.close(4001, "Unauthorized");
-        return;
-      }
-
-      const playerId: number = Number(pid);
-      const playerToken: string = String(token);
-
-      if (Number.isNaN(playerId)) {
-        Log.SERVER.WARN(`Connection rejected: Malformed numeric PID (${pid})`);
-        socket.close(4001, "Malformed Player ID");
-        return;
-      }
-
-      // ⚡ 3. THE GHOST RECONCILIATION GATE
-      // If an un-upgraded or stale socket is currently held in memory for this ID, drop it safely
-      if (this.connections.has(playerId)) {
+      // 🛑 GUARD A AGAINST MALFORMED STRINGS COMING FROM FAST FRONTEND RENDERS
+      if (!ticket || ticket === "undefined" || ticket === "[object Object]") {
         Log.SERVER.WARN(
-          `Duplicate connection sequence for PID: ${playerId}. Evicting ghost socket.`,
+          `Connection rejected: Missing or raw un-evaluated access ticket string. Received: "${ticket}"`,
         );
-        const staleSocket = this.connections.get(playerId);
-        if (staleSocket) {
-          staleSocket.onclose = null; // Unbind to stop double invocation loops
+        socket.close(4001, "Unauthorized: Ticket Missing");
+        return;
+      }
+
+      let formatedPlayerId: number;
+      let formatedCharacterId: number;
+
+      // 🛡️ ENFORCED RUNTIME ESCAPE HATCH:
+      // Prevents jsonwebtoken from throwing "secret or public key must be provided"
+      const secretKey =
+        process.env.GAME_SECRET || "fallback_secret_key_development_only";
+
+      try {
+        // 2. Cryptographically decode who this belongs to using our stable secretKey reference
+        const decoded = jwt.verify(ticket, secretKey) as {
+          playerId: number;
+          characterId: number;
+        };
+
+        console.log("🎫 DECODED TICKET RAW DATA:", decoded);
+
+        formatedPlayerId = Number(decoded.playerId);
+        formatedCharacterId = Number(decoded.characterId);
+      } catch (err) {
+        Log.SERVER.WARN(
+          `Connection rejected: Invalid or expired ticket signature. ${err}`,
+        );
+        socket.close(4001, "Unauthorized: Invalid Ticket");
+        return;
+      }
+
+      // Check if data is valid inside registry records
+      const mockData = playersData.get(formatedPlayerId);
+      if (!mockData) {
+        Log.SERVER.ERROR(
+          `Authentication mapping failed: No layout for PID ${formatedPlayerId}`,
+        );
+        socket.close(4004, "Character Profile Not Found");
+        return;
+      }
+
+      // ⚡ 3. GHOST RECONCILIATION GATE (Atomic and Safe)
+      if (this.connections.has(formatedPlayerId)) {
+        const staleSocket = this.connections.get(formatedPlayerId);
+        if (staleSocket && staleSocket !== socket) {
+          Log.SERVER.WARN(
+            `Duplicate connection sequence for PID: ${formatedPlayerId}. Evicting ghost socket.`,
+          );
+          staleSocket.onclose = null;
+          staleSocket.onerror = null;
           staleSocket.close(4000, "Evicted by new session handshake");
         }
-        this.connections.delete(playerId);
       }
 
-      // Explicitly register the raw network socket right now to block fast double-taps
-      this.connections.set(playerId, socket);
+      // 4. ATOMIC SYSTEM ALLOCATION
+      const player = new Player(mockData);
 
-      // 4. Bind Message Receivers
+      this.connections.set(formatedPlayerId, socket);
+      this.players.set(formatedPlayerId, player);
+      registerConnections(this.connections);
+
+      Log.SERVER.INFO(
+        `[ENGINE] ${player.fullName} has successfully connected!`,
+      );
+
+      // 5. Bind Message Receivers
       socket.on("message", (rawData: Buffer) => {
         try {
-          if (!rawData) {
-            Log.SERVER.ERROR(`Failed to handle incoming packet: No data!`);
-            return;
-          }
-
+          if (!rawData) return;
           const message = JSON.parse(rawData.toString("utf-8"));
-          this.handleSocketMessage(message, socket, playerId, playerToken);
+          this.handleSocketMessage(message, socket, formatedPlayerId);
         } catch (err) {
           Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
         }
       });
 
-      // 5. Bind Teardown Closures
-      socket.on("close", (code) => {
-        // Log.SERVER.INFO(`Socket close PID ${playerId} (Code: ${code})`);
-        this.handleSocketClose(playerId, socket);
+      // 6. Bind Teardown Closures
+      socket.on("close", () => {
+        this.handleSocketClose(formatedPlayerId, socket);
       });
 
       socket.on("error", (error) =>
-        Log.SERVER.ERROR(`Socket error for PID ${playerId}: ${error.message}`),
+        Log.SERVER.ERROR(
+          `Socket error for PID ${formatedPlayerId}: ${error.message}`,
+        ),
       );
     });
 
@@ -110,13 +164,7 @@ export default class Server {
     message: NetworkMessage,
     socket: WebSocket,
     playerId: PlayerId,
-    token: PlayerToken,
   ): void {
-    if (message.type === "CONNECT") {
-      this.connect(socket, playerId, token);
-      return;
-    }
-
     const player = this.players.get(playerId);
     if (!player) return;
 
@@ -138,71 +186,26 @@ export default class Server {
         },
         player,
       );
-
       return;
     }
 
     this.game.routeCommands(message, player);
   }
 
-  // 👇 Modified to cross-check socket references before dropping states
   private handleSocketClose(
     playerId: PlayerId,
     closingSocket: WebSocket,
   ): void {
-    // Only clear components out if the socket that is dying is the actual active stream item
     if (this.connections.get(playerId) === closingSocket) {
+      const player = this.players.get(playerId);
+      if (player) {
+        this.game.shutdownPlayer(player);
+        this.players.delete(playerId);
+        Log.SERVER.INFO(`${player.fullName} has disconnected.`);
+      }
       this.connections.delete(playerId);
-    }
-
-    const player = this.players.get(playerId);
-    if (player) {
-      this.game.shutdownPlayer(player);
-      this.disconnect(player);
-    }
-
-    registerConnections(this.connections);
-  }
-
-  private connect(
-    socket: WebSocket,
-    playerId: PlayerId,
-    token: PlayerToken,
-  ): void {
-    if (!token || !playerId) {
-      Log.SERVER.ERROR("Connection failed. Invalid player references.");
-      return;
-    }
-
-    // Guard checking mock registry data validation
-    const mockData = playersData.get(playerId);
-    if (!mockData) {
-      Log.SERVER.ERROR(
-        `Authentication mapping failed: No layout for PID ${playerId}`,
-      );
-      socket.close(4004, "Character Profile Not Found");
-      return;
-    }
-
-    const player = new Player(mockData);
-
-    try {
-      this.connections.set(player.id, socket);
-      this.players.set(player.id, player);
       registerConnections(this.connections);
-
-      Log.SERVER.INFO(`${player.fullName} has connected!`);
-    } catch (e) {
-      Log.SERVER.ERROR(`${player.fullName} failed to connect: ${e}.`);
     }
-  }
-
-  private disconnect(player: Player): void {
-    this.connections.delete(player.id);
-    this.players.delete(player.id);
-    registerConnections(this.connections);
-
-    Log.SERVER.INFO(`${player.fullName} has disconnected.`);
   }
 
   public close(): void {

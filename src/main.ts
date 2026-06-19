@@ -4,6 +4,8 @@ import getLocalFile from "~/utils/functions/getLocalFile";
 import Game from "~/core/Game";
 import Log from "~/core/Logger";
 
+process.stdout.write("\x1b]0;⚔️ DS Game Server\x07");
+
 async function init() {
   const config = await getLocalFile<Config>(CONFIG_PATH);
   Log.SYSTEM.INFO(`${config.name} is starting up...`);

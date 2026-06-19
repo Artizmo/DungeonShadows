@@ -101,6 +101,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["rusty_dagger", "health_potion"],
       stats: { hp: 100, maxHp: 100, mana: 20, maxMana: 50, speed: 4 },
+      level: (456 % 30) + 1,
     },
   ],
   [
@@ -112,6 +113,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["wooden_staff", "mana_potion"],
       stats: { hp: 80, maxHp: 80, mana: 150, maxMana: 150, speed: 5 },
+      level: (457 % 30) + 1,
     },
   ],
   [
@@ -123,6 +125,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["iron_axe", "ale"],
       stats: { hp: 150, maxHp: 150, mana: 10, maxMana: 10, speed: 3 },
+      level: (458 % 30) + 1,
     },
   ],
   [
@@ -134,6 +137,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["short_bow", "arrow_twenty"],
       stats: { hp: 90, maxHp: 90, mana: 30, maxMana: 30, speed: 6 },
+      level: (459 % 30) + 1,
     },
   ],
   [
@@ -145,6 +149,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["iron_sword", "kite_shield"],
       stats: { hp: 120, maxHp: 120, mana: 60, maxMana: 60, speed: 4 },
+      level: (460 % 30) + 1,
     },
   ],
   [
@@ -156,6 +161,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: true,
       inventory: ["bone_wand"],
       stats: { hp: 0, maxHp: 75, mana: 0, maxMana: 200, speed: 4 },
+      level: (461 % 30) + 1,
     },
   ],
   [
@@ -167,6 +173,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["leather_wraps"],
       stats: { hp: 130, maxHp: 130, mana: 0, maxMana: 0, speed: 4 },
+      level: (462 % 30) + 1,
     },
   ],
   [
@@ -178,6 +185,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["ice_shard", "scroll_of_teleport"],
       stats: { hp: 85, maxHp: 85, mana: 100, maxMana: 100, speed: 5 },
+      level: (463 % 30) + 1,
     },
   ],
   [
@@ -189,6 +197,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["thunder_strike"],
       stats: { hp: 110, maxHp: 110, mana: 80, maxMana: 80, speed: 5 },
+      level: (464 % 30) + 1,
     },
   ],
   [
@@ -200,6 +209,7 @@ export const charactersData = new Map<number, CharacterRecord>([
       isDead: false,
       inventory: ["hunting_knife", "herbs"],
       stats: { hp: 95, maxHp: 95, mana: 70, maxMana: 70, speed: 5 },
+      level: (465 % 30) + 1,
     },
   ],
 ]);
@@ -219,6 +229,7 @@ export interface CharacterRecord {
   isDead: boolean;
   inventory: string[];
   stats: Stats;
+  level: number;
 }
 
 interface Stats {
