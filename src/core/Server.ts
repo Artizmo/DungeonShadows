@@ -9,9 +9,13 @@ import type { NetworkMessage } from "~/@types/server";
 import type Game from "~/core/Game";
 import Player from "~/core/Player";
 import Log from "~/core/Logger";
-import { playersData } from "data/mock/mock";
 import { registerConnections } from "~/utils/messageBroker";
 import jwt from "jsonwebtoken";
+import {
+  fetchCharacter,
+  fetchPlayer,
+  fetchZoneMap,
+} from "~/utils/functions/fetchCharacter";
 
 type PlayerId = number;
 
@@ -25,7 +29,26 @@ export default class Server {
     this.game = game;
     this.socketServer = new WebSocketServer({ port: config.port });
 
-    this.socketServer.on("connection", (socket: WebSocket, request) => {
+    setInterval(() => {
+      for (const [id, player] of this.players.entries()) {
+        const socket = this.connections.get(id);
+
+        // Only proceed if the socket is actually open
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          if (!player.isAlive) {
+            Log.SERVER.WARN(`Player ${id} timed out.`);
+            socket.terminate();
+            // handleSocketClose will be called automatically by the 'close' event
+            continue;
+          }
+
+          player.isAlive = false;
+          socket.ping();
+        }
+      }
+    }, 30000);
+
+    this.socketServer.on("connection", async (socket: WebSocket, request) => {
       const { origin } = request.headers;
       const rawUrl = request.url || "";
       const fullUrlString = rawUrl.startsWith("http")
@@ -52,6 +75,7 @@ export default class Server {
         return;
       }
 
+      let player: Player;
       let formatedPlayerId: number;
       let formatedCharacterId: number;
       const secretKey =
@@ -66,19 +90,16 @@ export default class Server {
         formatedPlayerId = Number(decoded.playerId);
         formatedCharacterId = Number(decoded.characterId);
       } catch (err) {
+        socket.send(
+          JSON.stringify({
+            type: "INVALID_JWT",
+            data: "You do not have a valid ticket.",
+          }),
+        );
         Log.SERVER.WARN(
           `Connection rejected: Invalid ticket signature. ${err}`,
         );
         socket.close(4001, "Unauthorized: Invalid Ticket");
-        return;
-      }
-
-      const mockData = playersData.get(formatedPlayerId);
-      if (!mockData) {
-        Log.SERVER.ERROR(
-          `Authentication mapping failed: No data for PID ${formatedPlayerId}`,
-        );
-        socket.close(4004, "Character Profile Not Found");
         return;
       }
 
@@ -91,13 +112,34 @@ export default class Server {
         }
       }
 
-      const player = new Player(mockData);
+      try {
+        player = await fetchPlayer(formatedPlayerId);
+        player.isAlive = true;
+        const character = await fetchCharacter(formatedCharacterId);
+        const zone = await fetchZoneMap();
+        character.playerId = formatedPlayerId;
+        character.zoneMap = zone;
+        player.character = character;
+      } catch (error) {
+        Log.DATA.ERROR(`Could not load data: ${error}`);
+        return;
+      }
 
       this.connections.set(formatedPlayerId, socket);
       this.players.set(formatedPlayerId, player);
       registerConnections(this.connections);
-
       Log.SERVER.INFO(`${player.fullName} has successfully connected!`);
+
+      this.game.join(player.character);
+      player.send({ type: "CHARACTER_CONNECTED", data: player.character });
+
+      socket.on("pong", () => {
+        const p = this.players.get(formatedPlayerId);
+        if (p) {
+          p.isAlive = true;
+          console.log(`Received PONG from PID ${formatedPlayerId}`); // 🎯 WATCH THIS LOG
+        }
+      });
 
       socket.on("message", (rawData: Buffer) => {
         try {
@@ -109,7 +151,7 @@ export default class Server {
         }
       });
 
-      socket.on("close", () => {
+      socket.on("close", (e) => {
         this.handleSocketClose(formatedPlayerId, socket);
       });
 
@@ -142,7 +184,7 @@ export default class Server {
       const trigger = tokens[0].toUpperCase();
       const args = tokens.slice(1);
 
-      this.game.routeCommands(
+      this.game.routeRequests(
         {
           type: trigger,
           data: { ...message.data, args },
@@ -152,7 +194,7 @@ export default class Server {
       return;
     }
 
-    this.game.routeCommands(message, player);
+    this.game.routeRequests(message, player);
   }
 
   private handleSocketClose(

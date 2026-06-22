@@ -2,9 +2,13 @@
   "id": 457,
   "name": "Eldrin Sunstrider",
   "isDead": false,
+  "position": {
+    "x": 5,
+    "y": 10
+  },
   "stats": {
-    "hp": 1000,
-    "maxHp": 1000,
+    "hp": 213,
+    "maxHp": 847,
     "mana": 150,
     "maxMana": 150,
     "speed": 5

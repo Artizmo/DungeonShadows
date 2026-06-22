@@ -14,6 +14,21 @@ export interface Stats {
   speed: number;
 }
 
+export interface Request {
+  type: string;
+  data?: any;
+}
+
+export interface RequestContext {
+  player: Player;
+  game: Game;
+  data: any; // For structured data (like a UI button click payload)
+  args?: string[]; // For tokenized text (like typing "drink waterskin")
+}
+
+export interface IRequestHandler {
+  execute(context: RequestContext): void | Promise<void>;
+}
 
 export interface Command {
   type: string;
@@ -23,7 +38,7 @@ export interface Command {
 export interface CommandContext {
   player: Player;
   game: Game;
-  data: any;       // For structured data (like a UI button click payload)
+  data: any; // For structured data (like a UI button click payload)
   args?: string[]; // For tokenized text (like typing "drink waterskin")
 }
 

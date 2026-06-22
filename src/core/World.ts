@@ -3,7 +3,7 @@ import * as path from "path";
 import EffectsManager from "~/core/EffectsManager";
 import Log from "~/core/Logger";
 import Area from "~/core/Area";
-import { broadcast } from "~/utils/messageBroker";
+import { broadcast, send } from "~/utils/messageBroker";
 import type Character from "~/core/Character";
 import type Game from "~/core/Game";
 
@@ -89,7 +89,6 @@ export default class World {
   public tick(tick: number): void {
     if (this.charactersWithEvents.size === 0) return;
 
-    const charactersState: any[] = [];
     for (const charId of [...this.charactersWithEvents]) {
       const character = this.characters.get(charId);
 
@@ -101,31 +100,30 @@ export default class World {
         continue;
       }
 
+      // 1. Run physics, inputs, and character updates
       character.tick(tick);
 
+      // 2. Process active status effects
       if (character.hasActiveEffects) {
         EffectsManager.tick(character, tick, this);
       }
 
+      // 3. Extract this specific character's isolated frame snapshot
       const snapshot = character.getCharacterSnapshot();
+
       if (snapshot) {
-        charactersState.push(snapshot);
+        // console.log("bingo snapshot", snapshot);
+        // Send a private, targeted packet directly back to the origin character
+        send(character.playerId, {
+          type: "WORLD_SYNC",
+          data: snapshot,
+        });
       }
 
+      // 4. Clean up active loop tracking if their event/effect state has settled
       if (!character.hasPendingEvents && !character.hasActiveEffects) {
         this.charactersWithEvents.delete(charId);
       }
-    }
-
-    // TODO: broadcast currently blasts to all characters. we need a new send type that only sends to characters in the proximity of the character with events
-    if (charactersState.length > 0) {
-      broadcast({
-        type: "WORLD_SYNC",
-        data: {
-          tick,
-          entities: charactersState,
-        },
-      });
     }
   }
 
@@ -139,7 +137,11 @@ export default class World {
     character.onPendingEvent = (charId) => {
       this.charactersWithEvents.add(charId);
     };
+
     this.characters.set(character.id, character);
+    send(character.playerId, { type: "JOIN_SUCCESS", data: true });
+    Log.WORLD.INFO(`${character.name} loaded from ${character.id}.json.`);
+    Log.WORLD.INFO(`${character.name} has entered the world!`);
   }
 
   public leave(character: Character): void {

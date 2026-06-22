@@ -8,6 +8,7 @@ export default class Player {
   public lastName!: string;
   public email!: string;
   public character: Character | null;
+  public isAlive: boolean = true;
 
   constructor(playerRecord: PlayerRecord) {
     this.id = playerRecord.id;

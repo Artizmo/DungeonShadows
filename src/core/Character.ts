@@ -7,8 +7,9 @@ export default class Character {
   public id: number;
   public playerId: number;
   public name: string;
-  public position: Position;
   public stats: Stats;
+  public zoneMap: string;
+  public position: Position;
   public inventory: string[] = [];
   public effects: Map<string, Effect> = new Map();
   public pendingEvents: Array<PendingEvent> = [];
@@ -17,6 +18,7 @@ export default class Character {
 
   constructor(characterRecord: CharacterRecord) {
     this.id = characterRecord.id;
+    this.playerId = characterRecord.playerId;
     this.name = characterRecord.name;
     this.stats = { ...characterRecord.stats };
     this.position = characterRecord.position || { x: 0, y: 0 };

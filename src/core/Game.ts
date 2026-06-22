@@ -1,15 +1,15 @@
 import type { Config } from "~/types/system";
-import type { Command, ICommandHandler } from "~/types/game";
+import type { Request, IRequestHandler } from "~/types/game";
 import type Player from "~/core/Player";
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
 import Log from "~/core/Logger";
-import { COMMAND_REGISTRY } from "~/lib/commands";
+import { REQUEST_REGISTRY } from "~/lib/requests";
+import type Character from "./Character";
 
 export default class Game {
-  private readonly commandHandlers: Map<string, ICommandHandler> = new Map();
-
+  private readonly requestHandlers: Map<string, IRequestHandler> = new Map();
   readonly config: Config;
   readonly loop: Loop;
   server!: Server;
@@ -19,12 +19,12 @@ export default class Game {
   constructor(config: Config) {
     this.config = config;
     this.loop = new Loop(this.config, this);
-    this.registerHandlers();
+    this.registerRequestHandlers();
   }
 
-  private registerHandlers(): void {
-    for (const [trigger, CommandClass] of Object.entries(COMMAND_REGISTRY)) {
-      this.commandHandlers.set(trigger, new CommandClass());
+  private registerRequestHandlers(): void {
+    for (const [trigger, RequestClass] of Object.entries(REQUEST_REGISTRY)) {
+      this.requestHandlers.set(trigger, new RequestClass());
     }
   }
 
@@ -35,16 +35,16 @@ export default class Game {
     this.loop.start();
   }
 
-  public async routeCommands(command: Command, player: Player): Promise<void> {
+  public async routeRequests(request: Request, player: Player): Promise<void> {
     if (!this.isReady) return;
 
-    const handler = this.commandHandlers.get(command.type);
+    const handler = this.requestHandlers.get(request.type);
     if (!handler) {
       player.send({
         type: "WARN",
-        data: `No message handler found for: ${command.type}`,
+        data: `No message handler found for: ${request.type}`,
       });
-      Log.SYSTEM.WARN(`No message handler found for: ${command.type}`);
+      Log.SYSTEM.WARN(`No message handler found for: ${request.type}`);
       return;
     }
 
@@ -52,8 +52,8 @@ export default class Game {
       await handler.execute({
         player,
         game: this,
-        data: command.data,
-        args: command.data?.args || [],
+        data: request.data,
+        args: request.data?.args || [],
       });
     } catch (e) {
       player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
@@ -71,11 +71,15 @@ export default class Game {
     this.world.tick(tick);
   }
 
+  public join(character: Character): void {
+    if (!this.world || !character) return;
+
+    this.world.join(character);
+  }
+
   public shutdownPlayer(player: Player): void {
     const { character } = player;
-
     if (!character) return;
-
     try {
       this.world.leave(character);
       Log.WORLD.INFO(`${character.name} has left the world.`);

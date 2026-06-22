@@ -1,3 +1,5 @@
+import type Character from "~/core/Character";
+
 export const playersData = new Map<number, PlayerRecord>([
   [
     1,
@@ -213,6 +215,24 @@ export const charactersData = new Map<number, CharacterRecord>([
     },
   ],
 ]);
+
+export function getCharactersByPlayerId(playerId: number): CharacterRecord[] {
+  return Array.from(charactersData.values()).filter(
+    (character) => character.playerId === playerId,
+  );
+}
+
+export function getCharacterById(
+  characterId: number,
+  playerId: number,
+): CharacterRecord {
+  const characters = getCharactersByPlayerId(playerId);
+  if (!characters.length) return;
+
+  return characters.find(
+    (character: CharacterRecord) => character.id === characterId,
+  );
+}
 
 export interface PlayerRecord {
   id: number;
