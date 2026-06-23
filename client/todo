@@ -1,0 +1,21 @@
+[] ClientGame class (loop, websockets)
+[] canvases
+  [] map canvas (art, visual grid)
+  [] grid canvas (characters, objects, grid mechanics)
+  [] boundary canvas (lighting, discovery)
+  [] global canvas (full screen)
+[] hud UI
+[] Renderer class (draw, camera, animations?)
+
+// render
+    // const dpr = window.devicePixelRatio ?? 1
+    // const rect = mapCanvasRef.current.getBoundingClientRect()
+    // mapCanvasRef.current.width = rect.width * dpr
+    // mapCanvasRef.current.height = rect.height * dpr
+    // const ctx = mapCanvasRef.current.getContext('2d')
+    // ctx.scale(dpr, dpr)
+    // ctx.beginPath()
+    // ctx.arc(5, 5, 5, 0, 2 * Math.PI)
+    // ctx.stroke()
+    // ctx.fillStyle = '#ff0000'
+    // ctx.fill()

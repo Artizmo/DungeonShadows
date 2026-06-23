@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* @layer base {
+  .text-shadow {
+    color: yellow;
+    font-size: 1.5rem;
+    -webkit-text-stroke: 1px #525253;
+    font-family: fantasy;
+  }
+  .modal-border {
+    border-width: 0.25rem;
+    border-image-slice: 22;
+    border-image-source: linear-gradient(to bottom, rgba(79,79,79,0) 0%,rgba(79,79,79,0.8) 15%,rgba(79,79,79,1) 19%,rgba(79,79,79,1) 25%,rgba(76,72,68,1) 26%,rgba(132,128,120,1) 50%,rgba(76,72,68,1) 75%,rgba(79,79,79,1) 80%,rgba(79,79,79,1) 81%,rgba(79,79,79,0.8) 85%,rgba(79,79,79,0) 100%);
+  }
+  .scrollbar {
+    &::-webkit-scrollbar {
+      width: .75rem;
+      background-color: #4746423b;
+    }
+    &::-webkit-scrollbar-thumb {
+      width: 1rem;
+      border-radius: 1rem;
+      background-color: #d1c89e33;
+    }
+  }
+} */
+
+html {
+  height: 100%;
+}
