@@ -1,0 +1,29 @@
+I have a client and a server.
+Server
+-Game > Loop
+-Game > Server
+-Game > World
+
+Client
+-Game > Loop
+-Game > Client
+-Game > World
+
+In the server Game, there is a command Registry to handle incoming commands from clients. The server processes these commands and updates the game state accordingly. The server's Game Loop continuously checks for new commands, processes them, and updates the World state.
+
+In the client Game, there is a command Sender that allows the client to send commands to the server. The client's Game Loop continuously checks for user input, sends commands to the server, and updates the local World state based on responses from the server.
+
+The Client will start with the following network requests:
+-JOIN_WORLD: the client joins with a CID character ID.
+-LOAD_ZONE: the client requests zone data by zone ID.
+-SYNC_CHARACTER: the client syncs its character state with the server.
+
+Lets focus on the LOAD_ZONE request. This will return zone data and map data.
+
+Game flow:
+1. character joins the game world with charId 123
+2. client sends LOAD_ZONE request for zoneId 456 associated with the character data
+3. server processes LOAD_ZONE request and retrieves zone data
+4. server sends zone data and map data back to client
+5. client renderer renders the map on the canvas, updates the HUD windows with character data.
+6. the client is listening for SYNC_CHARACTER. This will return state changes from the server with O(A) events. The character should only get state changes that directly affect him.
