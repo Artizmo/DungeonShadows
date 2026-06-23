@@ -1,27 +1,26 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": ["dom", "dom.iterable", "es2022"], // 👈 Changed from esnext to match your target
     "allowJs": true,
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "esnext",
+    "module": "esnext", // 👈 LEAVE THIS AS IS (Crucial for Vite)
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "types": ["node"],
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*", "./public/*"]
+      "~/*": ["./src/*"],
+      "~public/*": ["./public/*"],
+      "~/types/*": ["src/@types/*"]
     }
   },
-  "include": ["**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "next.config.js", "public/worker.js"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "public/worker.js"],
   "exclude": ["node_modules"]
 }
