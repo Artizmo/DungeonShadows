@@ -112,7 +112,6 @@ export default class World {
       const snapshot = character.getCharacterSnapshot();
 
       if (snapshot) {
-        // console.log("bingo snapshot", snapshot);
         // Send a private, targeted packet directly back to the origin character
         send(character.playerId, {
           type: "WORLD_SYNC",

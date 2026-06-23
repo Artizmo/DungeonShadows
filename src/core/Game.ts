@@ -63,11 +63,16 @@ export default class Game {
 
   public update(tick: number): void {
     if (!this.isReady) return;
+
+    // Executes logic at the exact same 60fps frequency as the client
     this.world.update(tick);
   }
 
   public tick(tick: number): void {
     if (!this.isReady) return;
+
+    // Executes slower gameplay state changes (e.g., processing the action queue)
+    // at the exact same network tick frequency as the client
     this.world.tick(tick);
   }
 
