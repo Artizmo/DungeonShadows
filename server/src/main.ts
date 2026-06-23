@@ -2,7 +2,7 @@ import { Config } from "~/types/system";
 import { CONFIG_PATH } from "~/utils/constants";
 import getLocalFile from "~/utils/functions/getLocalFile";
 import Game from "~/core/Game";
-import Log from "~/shared/core/Logger";
+import { Log } from "~/shared/core/Logger";
 
 process.stdout.write("\x1b]0;⚔️ DS Game Server\x07");
 

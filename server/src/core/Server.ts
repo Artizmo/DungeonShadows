@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import path from "path";
+import { Log } from "~/shared/core/Logger";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -8,7 +9,6 @@ import type { Config } from "~/@types/system";
 import type { NetworkMessage } from "~/@types/server";
 import type Game from "~/core/Game";
 import Player from "~/core/Player";
-import Log from "~/shared/core/Logger";
 import { registerConnections } from "~/utils/messageBroker";
 import jwt from "jsonwebtoken";
 import {

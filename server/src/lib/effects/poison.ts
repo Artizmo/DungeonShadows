@@ -1,5 +1,5 @@
 import { Effect, EffectType } from "~/lib/effects/types";
-import Log from "~/shared/core/Logger";
+import { Log } from "~/shared/core/Logger";
 import { send } from "~/utils/messageBroker";
 
 export const poison: Effect = {

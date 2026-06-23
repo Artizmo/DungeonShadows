@@ -132,4 +132,4 @@ for (const [cleanName, configName] of Object.entries(systemMapping) as [
   };
 }
 
-export default Log;
+export { Log };
