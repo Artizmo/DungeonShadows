@@ -1,7 +1,7 @@
 import type World from "~/core/World";
 import type Character from "~/core/Character";
 import type { Effect } from "~/lib/effects/types";
-import Log from "./Logger";
+import Log from "~/shared/core/Logger";
 import { send } from "~/utils/messageBroker";
 
 export default class EffectsManager {

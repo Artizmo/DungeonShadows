@@ -8,13 +8,14 @@
     "allowImportingTsExtensions": true,
     "baseUrl": "./",
     "paths": {
-      "~/types/*": ["src/@types/*"] /* 🟩 Placed specific paths FIRST */,
-      "~/*": ["src/*"]
+      "~/types/*": ["src/@types/*"],
+      "~/*": ["src/*"],
+      "~/shared/*": ["../shared/*"]
     }
   },
   "ts-node": {
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["src/**/*", "data/mock"],
+  "include": ["src/**/*", "data/mock", "../shared/**/*"],
   "exclude": ["node_modules", "build", "src/data/saved"]
 }

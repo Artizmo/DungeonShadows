@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 import Zone from "~/core/Zone";
 
 interface RawAreaJson {

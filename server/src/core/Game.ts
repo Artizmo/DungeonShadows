@@ -4,7 +4,7 @@ import type Player from "~/core/Player";
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 import { REQUEST_REGISTRY } from "~/lib/requests";
 import type Character from "./Character";
 

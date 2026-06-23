@@ -1,5 +1,5 @@
 import type { ICommandHandler, CommandContext } from "~/types/game";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 
 export class Drink implements ICommandHandler {
   public execute({ player, args, data }: CommandContext): void {

@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import Character from "~/core/Character";
 import Player from "~/core/Player";
 import type { PlayerRecord } from "data/mock/mock";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 
 export async function fetchCharacter(characterId: number): Promise<Character> {
   if (!characterId) {

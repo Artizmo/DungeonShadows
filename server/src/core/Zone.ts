@@ -1,5 +1,5 @@
 import * as fs from "fs";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 import { ZoneData, Collider, ZoneItem } from "~/@types/world";
 
 export default class Zone {

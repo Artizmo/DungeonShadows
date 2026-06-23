@@ -1,13 +1,13 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "lib": ["dom", "dom.iterable", "es2022"], // 👈 Changed from esnext to match your target
+    "lib": ["dom", "dom.iterable", "es2022"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "esnext", // 👈 LEAVE THIS AS IS (Crucial for Vite)
+    "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
@@ -18,9 +18,15 @@
     "paths": {
       "~/*": ["./src/*"],
       "~public/*": ["./public/*"],
-      "~/types/*": ["src/@types/*"]
+      "~/types/*": ["src/@types/*"],
+      "~/shared/*": ["../shared/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "public/worker.js"],
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../shared/**/*",
+    "public/worker.js"
+  ],
   "exclude": ["node_modules"]
 }

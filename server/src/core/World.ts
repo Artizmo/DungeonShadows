@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import EffectsManager from "~/core/EffectsManager";
-import Log from "~/core/Logger";
+import Log from "~/shared/core/Logger";
 import Area from "~/core/Area";
 import { broadcast, send } from "~/utils/messageBroker";
 import type Character from "~/core/Character";
