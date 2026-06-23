@@ -139,7 +139,6 @@ export default class World {
 
     this.characters.set(character.id, character);
     send(character.playerId, { type: "JOIN_SUCCESS", data: true });
-    Log.WORLD.INFO(`${character.name} loaded from ${character.id}.json.`);
     Log.WORLD.INFO(`${character.name} has entered the world!`);
   }
 

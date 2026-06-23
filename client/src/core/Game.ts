@@ -41,13 +41,12 @@ export default class Game {
   /**
    * 🚀 Boots the game engine utilizing a secure single-use ticket string
    */
-  public async start(canvas: HTMLCanvasElement, ticket: string): Promise<void> {
+  public async start(ticket: string): Promise<void> {
     this.world = new World(this);
     this.client = new Client(this);
     this.character = new Character({
       id: this.client.characterId,
     } as Character);
-    this.renderer = new Renderer(canvas, this);
     this.input = new InputHandler();
     this.isReady = true;
 
@@ -56,6 +55,10 @@ export default class Game {
     this.client.connect(ticket);
 
     this.loop.start();
+  }
+
+  public bindCanvas(canvas: HTMLCanvasElement): void {
+    this.renderer = new Renderer(canvas, this);
   }
 
   // 🎯 EVENT EMITTER SUBSCRIPTION METHOD

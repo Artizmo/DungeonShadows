@@ -1,28 +1,27 @@
 import dotenv from "dotenv";
 import path from "path";
-import { Log } from "~/shared/core/Logger";
-
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
-
+import jwt from "jsonwebtoken";
 import { WebSocketServer, WebSocket } from "ws";
+import { Log } from "~/shared/core/Logger";
+import { EventEmitter } from "events";
 import type { Config } from "~/@types/system";
 import type { NetworkMessage } from "~/@types/server";
 import type Game from "~/core/Game";
 import Player from "~/core/Player";
 import { registerConnections } from "~/utils/messageBroker";
-import jwt from "jsonwebtoken";
-import {
-  fetchCharacter,
-  fetchPlayer,
-  fetchZoneMap,
-} from "~/utils/functions/fetchCharacter";
 
-type PlayerId = number;
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+
+declare module "ws" {
+  interface WebSocket {
+    isAlive: boolean;
+  }
+}
 
 export default class Server {
+  public events: EventEmitter = new EventEmitter();
   public readonly socketServer: WebSocketServer;
-  public readonly connections: Map<PlayerId, WebSocket> = new Map();
-  public readonly players: Map<PlayerId, Player> = new Map();
+  public readonly connections: Map<number, WebSocket> = new Map();
   public readonly game: Game;
 
   constructor(config: Config, game: Game) {
@@ -30,19 +29,19 @@ export default class Server {
     this.socketServer = new WebSocketServer({ port: config.port });
 
     setInterval(() => {
-      for (const [id, player] of this.players.entries()) {
-        const socket = this.connections.get(id);
+      for (const [id, socket] of this.connections.entries()) {
+        // const socket = this.connections.get(id);
 
         // Only proceed if the socket is actually open
         if (socket && socket.readyState === WebSocket.OPEN) {
-          if (!player.isAlive) {
+          if (!socket.isAlive) {
             Log.SERVER.WARN(`Player ${id} timed out.`);
             socket.terminate();
             // handleSocketClose will be called automatically by the 'close' event
             continue;
           }
 
-          player.isAlive = false;
+          socket.isAlive = false;
           socket.ping();
         }
       }
@@ -75,7 +74,6 @@ export default class Server {
         return;
       }
 
-      let player: Player;
       let formatedPlayerId: number;
       let formatedCharacterId: number;
       const secretKey =
@@ -112,32 +110,20 @@ export default class Server {
         }
       }
 
-      try {
-        player = await fetchPlayer(formatedPlayerId);
-        player.isAlive = true;
-        const character = await fetchCharacter(formatedCharacterId);
-        const zone = await fetchZoneMap();
-        character.playerId = formatedPlayerId;
-        character.zoneMap = zone;
-        player.character = character;
-      } catch (error) {
-        Log.DATA.ERROR(`Could not load data: ${error}`);
-        return;
-      }
-
+      socket.isAlive = true;
       this.connections.set(formatedPlayerId, socket);
-      this.players.set(formatedPlayerId, player);
       registerConnections(this.connections);
-      Log.SERVER.INFO(`${player.fullName} has successfully connected!`);
 
-      this.game.join(player.character);
-      player.send({ type: "CHARACTER_CONNECTED", data: player.character });
+      this.events.emit("player_join", {
+        characterId: formatedCharacterId,
+        playerId: formatedPlayerId,
+      });
 
       socket.on("pong", () => {
-        const p = this.players.get(formatedPlayerId);
-        if (p) {
-          p.isAlive = true;
-          console.log(`Received PONG from PID ${formatedPlayerId}`); // 🎯 WATCH THIS LOG
+        const socket = this.connections.get(formatedPlayerId);
+        if (socket) {
+          socket.isAlive = true;
+          Log.SERVER.INFO(`Received PONG from PID ${formatedPlayerId}`);
         }
       });
 
@@ -145,7 +131,7 @@ export default class Server {
         try {
           if (!rawData) return;
           const message = JSON.parse(rawData.toString("utf-8"));
-          this.handleSocketMessage(message, socket, formatedPlayerId);
+          this.handleSocketMessage(message, formatedPlayerId);
         } catch (err) {
           Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
         }
@@ -165,49 +151,44 @@ export default class Server {
     Log.SERVER.INFO(`Server listening on port ${config.port}.`);
   }
 
-  private handleSocketMessage(
-    message: NetworkMessage,
-    socket: WebSocket,
-    playerId: PlayerId,
-  ): void {
-    const player = this.players.get(playerId);
-    if (!player) return;
+  private handleSocketMessage(message: NetworkMessage, playerId: number): void {
+    // const player = this.players.get(playerId);
+    // if (!player) return;
 
-    if (message.type === "TEXT_INPUT") {
-      const rawText =
-        typeof message.data === "string" ? message.data : message.data?.text;
-      if (!rawText) return;
+    // if (message.type === "TEXT_INPUT") {
+    //   const rawText =
+    //     typeof message.data === "string" ? message.data : message.data?.text;
+    //   if (!rawText) return;
 
-      const tokens = rawText.trim().split(/\s+/);
-      if (tokens.length === 0 || tokens[0] === "") return;
+    //   const tokens = rawText.trim().split(/\s+/);
+    //   if (tokens.length === 0 || tokens[0] === "") return;
 
-      const trigger = tokens[0].toUpperCase();
-      const args = tokens.slice(1);
+    //   const trigger = tokens[0].toUpperCase();
+    //   const args = tokens.slice(1);
 
-      this.game.routeRequests(
-        {
-          type: trigger,
-          data: { ...message.data, args },
-        },
-        player,
-      );
-      return;
-    }
+    //   this.game.routeRequests(
+    //     {
+    //       type: trigger,
+    //       data: { ...message.data, args },
+    //     },
+    //     player,
+    //   );
+    //   return;
+    // }
 
-    this.game.routeRequests(message, player);
+    this.events.emit("route_requests", { request: message, playerId });
+    // this.game.routeRequests(message, playerId);
   }
 
-  private handleSocketClose(
-    playerId: PlayerId,
-    closingSocket: WebSocket,
-  ): void {
+  private handleSocketClose(playerId: number, closingSocket: WebSocket): void {
     if (this.connections.get(playerId) === closingSocket) {
-      const player = this.players.get(playerId);
-      if (player) {
-        this.game.shutdownPlayer(player);
-        this.players.delete(playerId);
-        Log.SERVER.INFO(`${player.fullName} has disconnected.`);
-      }
+      // const player = this.players.get(playerId);
+      // if (player) {
+      //   this.players.delete(playerId);
+      //   this.events.emit("player_disconnect", player);
+      //   Log.SERVER.INFO(`${player.fullName} has disconnected.`);
+      // }
+      this.events.emit("player_disconnect", playerId);
       this.connections.delete(playerId);
       registerConnections(this.connections);
     }

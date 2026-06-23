@@ -1,12 +1,18 @@
 import { Log } from "~/shared/core/Logger";
-import type { Config } from "~/types/system";
-import type { Request, IRequestHandler } from "~/types/game";
-import type Player from "~/core/Player";
+import { EventEmitter } from "events";
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
-import { REQUEST_REGISTRY } from "~/lib/requests";
+import type { Config } from "~/types/system";
+import type { Request, IRequestHandler } from "~/types/game";
+import type Player from "~/core/Player";
 import type Character from "./Character";
+import { REQUEST_REGISTRY } from "~/lib/requests";
+import {
+  fetchCharacter,
+  fetchPlayer,
+  fetchZoneMap,
+} from "~/utils/functions/fetchCharacter";
 
 export default class Game {
   private readonly requestHandlers: Map<string, IRequestHandler> = new Map();
@@ -14,6 +20,8 @@ export default class Game {
   readonly loop: Loop;
   server!: Server;
   world!: World;
+
+  public readonly players: Map<number, Player> = new Map();
   isReady = false;
 
   constructor(config: Config) {
@@ -33,10 +41,28 @@ export default class Game {
     this.server = new Server(this.config, this);
     this.isReady = true;
     this.loop.start();
+
+    this.server.events.on("player_disconnect", (playerId: number) => {
+      this.bootPlayer(playerId);
+    });
+
+    this.server.events.on("player_join", (playerConnection) => {
+      this.joinPlayer(playerConnection);
+    });
+
+    this.server.events.on("route_requests", ({ request, playerId }) => {
+      this.routeRequests(request, playerId);
+    });
   }
 
-  public async routeRequests(request: Request, player: Player): Promise<void> {
+  public async routeRequests(
+    request: Request,
+    playerId: number,
+  ): Promise<void> {
     if (!this.isReady) return;
+
+    const player = this.players.get(playerId);
+    if (!player) return;
 
     const handler = this.requestHandlers.get(request.type);
     if (!handler) {
@@ -64,39 +90,47 @@ export default class Game {
   public update(tick: number): void {
     if (!this.isReady) return;
 
-    // Executes logic at the exact same 60fps frequency as the client
     this.world.update(tick);
   }
 
   public tick(tick: number): void {
     if (!this.isReady) return;
 
-    // Executes slower gameplay state changes (e.g., processing the action queue)
-    // at the exact same network tick frequency as the client
     this.world.tick(tick);
   }
 
-  public join(character: Character): void {
-    if (!this.world || !character) return;
-
-    this.world.join(character);
-  }
-
-  public shutdownPlayer(player: Player): void {
-    const { character } = player;
-    if (!character) return;
+  public async joinPlayer({ characterId, playerId }): Promise<void> {
     try {
-      this.world.leave(character);
-      Log.WORLD.INFO(`${character.name} has left the world.`);
-    } catch (e) {
-      Log.SYSTEM.ERROR(e);
+      const zone = await fetchZoneMap();
+      const player = await fetchPlayer(playerId);
+      const character = await fetchCharacter(characterId);
+
+      character.playerId = playerId;
+      character.zoneMap = zone;
+      player.character = character;
+      player.isAlive = true;
+
+      this.players.set(playerId, player);
+      this.world.join(character);
+      Log.SERVER.INFO(`${player.fullName} has successfully connected!`);
+    } catch (error) {
+      Log.DATA.ERROR(`Could not load data: ${error}`);
+      return;
     }
   }
 
-  public shutdown(): void {
-    this.isReady = false;
-    this.loop.stop();
-    this.server.close();
-    Log.SYSTEM.INFO("Game instance successfully shutdown.");
+  public bootPlayer(playerId: number): void {
+    if (!playerId) return;
+
+    const player = this.players.get(playerId);
+
+    if (!player.character) return;
+
+    try {
+      this.world.leave(player.character);
+      Log.WORLD.INFO(`${player.character.name} has left the world.`);
+    } catch (e) {
+      Log.SYSTEM.ERROR(e);
+    }
   }
 }
