@@ -14,8 +14,8 @@
     "@tanstack/react-router": "^1.34.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "vite-tsconfig-paths": "^6.1.1",
-    "shared": "workspace:*"
+    "shared": "workspace:*",
+    "vite-tsconfig-paths": "^6.1.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.1",
@@ -32,6 +32,7 @@
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "prettier": "3.8.4",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.4.5",
     "vite": "^6.4.3"

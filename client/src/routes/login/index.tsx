@@ -4,7 +4,7 @@ import {
   useNavigate,
   type HistoryState,
 } from "@tanstack/react-router";
-import type Character from "~/core/Character";
+import type Character from "~/character/Character";
 import LoginLayout from "~/components/layouts/Login";
 import CredentialFormManager from "~/components/forms/CredentialFormManager";
 import CharacterSelectionForm from "~/components/forms/CharacterSelectionForm";

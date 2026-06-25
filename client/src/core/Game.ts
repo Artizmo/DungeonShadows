@@ -9,7 +9,7 @@ import { Client } from "~/core/Client";
 import { Loop } from "~/core/Loop";
 import { World } from "~/core/World";
 import Renderer from "~/core/Renderer";
-import Character from "~/core/Character";
+import Character from "~/character/Character";
 import { RESPONSE_REGISTRY } from "~/lib/responses";
 import InputHandler from "~/core/InputHandler";
 

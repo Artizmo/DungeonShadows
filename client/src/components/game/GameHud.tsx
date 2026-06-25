@@ -1,4 +1,4 @@
-import type Character from "~/core/Character";
+import type Character from "~/character/Character";
 import { useGame } from "~/hooks/useGame";
 
 interface GameHudProps {

@@ -1,1 +1,73 @@
 [ ] zone map chunking
+[ ] add separate files for event handlers (character talking to world etc)
+// ~/core/events/types.ts
+import type World from "~/core/World";
+
+export interface WorldEventHandler {
+  eventName: string;
+  execute(world: World, ...args: any[]): void;
+}
+
+// ~/core/events/CharacterEventAdded.ts
+import type { WorldEventHandler } from "./types";
+import type World from "~/core/World";
+
+const CharacterEventAdded: WorldEventHandler = {
+  eventName: "eventAdded",
+
+  execute(world: World, charId: number): void {
+    if (!charId) return;
+
+    // Safety gate: verify ownership
+    if (!world.characters.has(charId)) return;
+
+    // Direct, decoupled mutation!
+    world.charactersWithEvents.add(charId);
+  }
+};
+
+export default CharacterEventAdded;
+
+// ~/core/events/WorldEventRouter.ts
+import type World from "~/core/World";
+import Character from "~/core/Character";
+import CharacterEventAdded from "./CharacterEventAdded";
+// import AnotherEventHandler from "./AnotherEventHandler";
+
+export class WorldEventRouter {
+  // Register all your decoupled handlers here
+  private static handlers = [
+    CharacterEventAdded,
+    // AnotherEventHandler
+  ];
+
+  public static initialize(world: World): void {
+    // Clean up previous bindings to prevent hot-reload duplicates
+    Character.events.removeAllListeners();
+
+    for (const handler of this.handlers) {
+      // Direct binding: When the event fires, route it straight to the file's execute function
+      Character.events.on(handler.eventName, (...args: any[]) => {
+        handler.execute(world, ...args);
+      });
+    }
+  }
+}
+
+import { WorldEventRouter } from "~/core/events/WorldEventRouter";
+
+export default class World {
+  public name!: string;
+  public characters: Map<number, Character> = new Map();
+  public areas: Map<number, Area> = new Map();
+  public charactersWithEvents: Set<number> = new Set();
+
+  constructor(worldPath: string) {
+    // ... load setup ...
+
+    // One clean bootstrap line replaces all the listener blocks
+    WorldEventRouter.initialize(this);
+  }
+
+  // ... your update, tick, join, leave loops ...
+}

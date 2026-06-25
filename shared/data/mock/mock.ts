@@ -1,5 +1,3 @@
-import type Character from "~/core/Character";
-
 export const playersData = new Map<number, PlayerRecord>([
   [
     1,

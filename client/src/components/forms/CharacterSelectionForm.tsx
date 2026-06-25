@@ -1,4 +1,4 @@
-import type Character from "~/core/Character";
+import type Character from "~/character/Character";
 
 interface CharacterSelectionProps {
   characters: Character[];
