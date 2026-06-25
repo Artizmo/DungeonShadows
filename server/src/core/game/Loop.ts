@@ -1,22 +1,17 @@
+import { EventEmitter } from "events";
 import { Config } from "~/core/game/@types";
-import type Game from "~/core/game/Game";
 
 export default class GameLoop {
-  private config: Config;
+  public tickCounter = 0;
+  public events: EventEmitter = new EventEmitter();
   private cycleRate: number;
   private cyclesPerTick: number;
   private cycleSize: number;
-
   private loopTimeout: NodeJS.Timeout | null = null;
   private lastTime = 0;
   private frameTime = 0;
 
-  public tickCounter = 0;
-  private game: Game;
-
-  constructor(config: Config, game: Game) {
-    this.game = game;
-    this.config = config;
+  constructor(config: Config) {
     this.cycleRate = config.cycleRate; // e.g., 1 / 60 = 0.016666
     this.cycleSize = config.cycleSize;
 
@@ -67,11 +62,11 @@ export default class GameLoop {
     // Fixed timestep accumulator execution
     while (this.frameTime >= this.cycleRate) {
       // 1. Fixed 60fps logic/physics update
-      this.game.update(this.tickCounter);
+      this.events.emit("UPDATE", deltaTime);
 
       // 2. Slower fixed tick (e.g., Network synchronization)
       if (this.tickCounter % this.cyclesPerTick === 0) {
-        this.game.tick(this.tickCounter);
+        this.events.emit("TICK", this.tickCounter);
       }
 
       this.frameTime -= this.cycleRate;

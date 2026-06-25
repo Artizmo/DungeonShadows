@@ -23,7 +23,7 @@ export default class Game {
 
   constructor(config: Config) {
     this.config = config;
-    this.loop = new Loop(this.config, this);
+    this.loop = new Loop(this.config);
     this.registerRequestHandlers();
   }
 
@@ -39,6 +39,20 @@ export default class Game {
     this.isReady = true;
     this.loop.start();
 
+    // [ ] implement the same events registry as World has
+
+    this.loop.events.on("UPDATE", (deltaTime: number) => {
+      if (!this.isReady) return;
+
+      this.handleUpdate(deltaTime);
+    });
+
+    this.loop.events.on("TICK", (tick: number) => {
+      if (!this.isReady) return;
+
+      this.handleTick(tick);
+    });
+
     this.server.events.on("player_disconnect", (playerId: number) => {
       this.bootPlayer(playerId);
     });
@@ -50,6 +64,14 @@ export default class Game {
     this.server.events.on("route_requests", ({ request, playerId }) => {
       this.routeRequests(request, playerId);
     });
+  }
+
+  public handleUpdate(deltaTime: number): void {
+    this.update(deltaTime);
+  }
+
+  public handleTick(tick: number): void {
+    this.tick(tick);
   }
 
   public async routeRequests(
@@ -82,14 +104,10 @@ export default class Game {
   }
 
   public update(tick: number): void {
-    if (!this.isReady) return;
-
     this.world.update(tick);
   }
 
   public tick(tick: number): void {
-    if (!this.isReady) return;
-
     this.world.tick(tick);
   }
 

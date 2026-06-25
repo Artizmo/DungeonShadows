@@ -1,23 +1,19 @@
+import { EventEmitter } from "eventemitter3";
 import type { Config } from "~/core/game/@types";
-import type Game from "~/core/game/Game";
 
 export class Loop {
+  public events: EventEmitter = new EventEmitter();
   private cycleRate: number;
   private cyclesPerTick: number;
   private cycleSize: number;
-
   private animationFrameId: number | null = null;
   private lastTime = 0;
   private frameTime = 0;
-
   public tickCounter = 0;
-  private game: Game;
 
-  constructor(config: Config, game: Game) {
-    this.game = game;
+  constructor(config: Config) {
     this.cycleRate = config.cycleRate; // e.g., 1 / 60 = 0.016666
     this.cycleSize = config.cycleSize;
-
     this.cyclesPerTick = Math.max(
       1,
       Math.round(config.tickRate / config.cycleRate),
@@ -45,9 +41,6 @@ export class Loop {
     this.animationFrameId = requestAnimationFrame(() => this.tick());
   }
 
-  /**
-   * Core deterministic execution logic (Identical to Server)
-   */
   private runLoopPass(): void {
     const currentTime = performance.now();
     let deltaTime = (currentTime - this.lastTime) / 1000;
@@ -63,11 +56,11 @@ export class Loop {
     // Fixed timestep accumulator execution
     while (this.frameTime >= this.cycleRate) {
       // 1. Fixed 60fps logic/physics update
-      this.game.update(this.tickCounter);
+      this.events.emit("UPDATE", deltaTime);
 
       // 2. Slower fixed tick (e.g., Network synchronization)
       if (this.tickCounter % this.cyclesPerTick === 0) {
-        this.game.tick(this.tickCounter);
+        this.events.emit("TICK", this.tickCounter);
       }
 
       this.frameTime -= this.cycleRate;

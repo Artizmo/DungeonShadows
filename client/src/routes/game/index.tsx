@@ -13,8 +13,6 @@ export const Route = createFileRoute("/game/")({
   component: GameComponent,
 });
 
-export default Route;
-
 function GameComponent() {
   const navigate = useNavigate();
   const { state } = useLocation();

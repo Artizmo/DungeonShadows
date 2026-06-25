@@ -28,7 +28,7 @@ export default class Game {
 
   constructor(config: Config) {
     this.config = config;
-    this.loop = new Loop(config, this);
+    this.loop = new Loop(config);
     this.registerResponseHandlers();
   }
 
@@ -42,11 +42,12 @@ export default class Game {
    * 🚀 Boots the game engine utilizing a secure single-use ticket string
    */
   public async start(ticket: string): Promise<void> {
+    console.log("bingo");
     this.world = new World(this);
     this.client = new Client(this);
-    this.character = new Character({
-      id: this.client.characterId,
-    } as Character);
+    // this.character = new Character({
+    //   id: this.client.characterId,
+    // } as Character);
     this.input = new InputHandler();
     this.isReady = true;
 
