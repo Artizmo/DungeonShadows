@@ -24,8 +24,7 @@ export default class Server {
   public readonly connections: Map<number, WebSocket> = new Map();
   public readonly game: Game;
 
-  constructor(config: Config, game: Game) {
-    this.game = game;
+  constructor(config: Config) {
     this.socketServer = new WebSocketServer({ port: config.port });
 
     setInterval(() => {

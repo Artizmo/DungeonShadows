@@ -5,7 +5,7 @@
   "zones": [
     {
       "id": "arena",
-      "dataPath": "./zones/arena.json"
+      "zonePath": "./zones/arena.json"
     }
   ]
 }

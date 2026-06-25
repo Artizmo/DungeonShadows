@@ -14,11 +14,11 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import Log from "~/core/Logger.ts";
+import { Log } from "~/shared/core/Logger";
 import type * as Express from "express";
 
 // Bring in your global Star Wars & custom player datasets
-import { playersData, charactersData } from "../data/mock/mock.ts";
+import { playersData, charactersData } from "~/shared/data/mock/mock";
 import { authenticate } from "./middleware/auth.ts";
 
 process.stdout.write("\x1Bc");

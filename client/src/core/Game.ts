@@ -58,7 +58,7 @@ export default class Game {
   }
 
   public bindCanvas(canvas: HTMLCanvasElement): void {
-    this.renderer = new Renderer(canvas, this);
+    this.renderer = new Renderer(canvas);
   }
 
   // 🎯 EVENT EMITTER SUBSCRIPTION METHOD
@@ -112,6 +112,13 @@ export default class Game {
   public update(tick: number): void {
     if (!this.isReady || !this.world || !this.character) return;
 
+    // ✨ FIX: If display metrics are uninitialized at origin 0,
+    // hard-snap them instantly to their spawn coordinates to completely kill the diagonal jump.
+    // if (this.character.displayX === 0 && this.character.displayY === 0) {
+    //   this.character.displayX = this.character.position.x;
+    //   this.character.displayY = this.character.position.y;
+    // }
+
     // 1. Calculate time-scaled interpolation using the FIXED simulation step
     // Using this.config.cycleRate guarantees deterministic smoothing across devices
     const speed = 10;
@@ -144,7 +151,7 @@ export default class Game {
     if (dx !== 0 || dy !== 0) {
       // Normalize diagonal velocity so moving diagonally isn't faster
       const length = Math.sqrt(dx * dx + dy * dy);
-      const speedPerTick = 0.2; // Moves 15% of a tile per server tick
+      const speedPerTick = 0.2; // Moves 20% of a tile per server tick
 
       const velocity = {
         x: (dx / length) * speedPerTick,

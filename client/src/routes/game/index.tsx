@@ -71,7 +71,7 @@ function GameComponent() {
   }, [characterId, playerId, navigate]);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-black select-none z-0">
+    <div className="fixed inset-0 overflow-hidden bg-black select-none z-0 rpg-cursor-zone">
       <GameCanvas isReady={isReady} onResize={handleEngineResize} />
       <GameHud playerId={playerId} characterId={characterId} />
     </div>

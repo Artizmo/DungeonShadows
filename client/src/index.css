@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* Scoped custom RPG cursor for the game viewport */
+.rpg-cursor-zone {
+  cursor: url('/cursors/wooden-sword-pointer.png') 4 2, auto;
+}
+
+/* Optional: Scoped hover state inside the game viewport */
+.rpg-cursor-zone button,
+.rpg-cursor-zone a,
+.rpg-cursor-zone [role="button"] {
+  cursor: url('/cursors/wooden-sword-hover.png') 4 2, pointer;
+}

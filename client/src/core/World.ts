@@ -61,6 +61,8 @@ export class World {
   ): void {
     if (!this.game.character) return;
 
+    console.log("bingo server tick", serverTick);
+
     // 1. Calculate how far off the client is from the server
     const dx = Math.abs(this.game.character.position.x - authoritativePos.x);
     const dy = Math.abs(this.game.character.position.y - authoritativePos.y);
@@ -91,7 +93,7 @@ export class World {
 
   public update(tick: number): void {
     // 🎯 Move the render call here so it updates fluidly every single frame
-    this.game.renderer?.render();
+    // this.game.renderer?.render();
   }
 
   public tick(tick: number): void {

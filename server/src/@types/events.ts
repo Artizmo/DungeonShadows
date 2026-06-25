@@ -13,6 +13,7 @@ export type DamageEvent = { type: GameEventType.DAMAGE; amount: number };
 export type CharacterEvent = {
   type: GameEventType.CHARACTER;
   character: Character;
+  tick: number;
 };
 export type DeathEvent = { type: GameEventType.DEATH };
 export type EffectsEvent = {

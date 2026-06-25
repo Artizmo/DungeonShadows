@@ -1,11 +1,13 @@
 {
   "id": 457,
   "name": "Eldrin Sunstrider",
+  "level": 12,
   "isDead": false,
   "position": {
-    "x": 5,
-    "y": 10
+    "x": 61,
+    "y": 16
   },
+  "zoneMap": "shared/data/world/areas/sephus/zones/arena.webp",
   "stats": {
     "hp": 213,
     "maxHp": 847,

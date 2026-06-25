@@ -1,5 +1,4 @@
 import { Log } from "~/shared/core/Logger";
-import { EventEmitter } from "events";
 import Loop from "~/core/Loop";
 import Server from "~/core/Server";
 import World from "~/core/World";
@@ -11,7 +10,7 @@ import { REQUEST_REGISTRY } from "~/lib/requests";
 import {
   fetchCharacter,
   fetchPlayer,
-  fetchZoneMap,
+  // fetchZoneMap,
 } from "~/utils/functions/fetchCharacter";
 
 export default class Game {
@@ -20,8 +19,6 @@ export default class Game {
   readonly loop: Loop;
   server!: Server;
   world!: World;
-
-  public readonly players: Map<number, Player> = new Map();
   isReady = false;
 
   constructor(config: Config) {
@@ -37,8 +34,8 @@ export default class Game {
   }
 
   public start(worldPath: string): void {
-    this.world = new World(worldPath, this);
-    this.server = new Server(this.config, this);
+    this.world = new World(worldPath);
+    this.server = new Server(this.config);
     this.isReady = true;
     this.loop.start();
 
@@ -61,28 +58,25 @@ export default class Game {
   ): Promise<void> {
     if (!this.isReady) return;
 
-    const player = this.players.get(playerId);
-    if (!player) return;
-
     const handler = this.requestHandlers.get(request.type);
     if (!handler) {
-      player.send({
-        type: "WARN",
-        data: `No message handler found for: ${request.type}`,
-      });
+      // player.send({
+      //   type: "WARN",
+      //   data: `No message handler found for: ${request.type}`,
+      // });
       Log.SYSTEM.WARN(`No message handler found for: ${request.type}`);
       return;
     }
 
     try {
-      await handler.execute({
-        player,
-        game: this,
-        data: request.data,
-        args: request.data?.args || [],
-      });
+      // await handler.execute({
+      //   player,
+      //   game: this,
+      //   data: request.data,
+      //   args: request.data?.args || [],
+      // });
     } catch (e) {
-      player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
+      // player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
       Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
     }
   }
@@ -101,18 +95,14 @@ export default class Game {
 
   public async joinPlayer({ characterId, playerId }): Promise<void> {
     try {
-      const zone = await fetchZoneMap();
-      const player = await fetchPlayer(playerId);
-      const character = await fetchCharacter(characterId);
-
-      character.playerId = playerId;
-      character.zoneMap = zone;
-      player.character = character;
+      const player: Player = await fetchPlayer(playerId);
+      const character: Character = await fetchCharacter(characterId);
+      // const zoneMapChunks = await fetchZoneMap(character.zoneMap);
       player.isAlive = true;
-
-      this.players.set(playerId, player);
+      character.player = player;
+      Log.SERVER.INFO(`${player.fullName} has connected!`);
       this.world.join(character);
-      Log.SERVER.INFO(`${player.fullName} has successfully connected!`);
+      player.send({ character });
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
       return;
@@ -122,13 +112,13 @@ export default class Game {
   public bootPlayer(playerId: number): void {
     if (!playerId) return;
 
-    const player = this.players.get(playerId);
-
-    if (!player.character) return;
-
     try {
-      this.world.leave(player.character);
-      Log.WORLD.INFO(`${player.character.name} has left the world.`);
+      for (const character of this.world.characters.values()) {
+        if (character.player.id === playerId) {
+          this.world.leave(character);
+          Log.SERVER.INFO(`${character.player.fullName} has disconnected!`);
+        }
+      }
     } catch (e) {
       Log.SYSTEM.ERROR(e);
     }

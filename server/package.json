@@ -4,9 +4,7 @@
   "description": "Dungeon Shadows server",
   "scripts": {
     "start": "tsx ./src/main.ts",
-    "dev": "tsx watch --ignore ./src/data/saved/ ./src/main.ts",
-    "client": "npx cross-env CID=456 npx tsx ./test/ClientTest.ts",
-    "client2": "npx cross-env CID=457 npx tsx ./test/ClientTest.ts"
+    "dev": "tsx watch --ignore ./src/data/saved/ ./src/main.ts"
   },
   "author": "",
   "license": "ISC",
@@ -15,6 +13,8 @@
     "cookie": "^1.1.1",
     "dotenv": "^17.4.2",
     "jsonwebtoken": "^9.0.2",
+    "shared": "workspace:*",
+    "sharp": "^0.35.2",
     "ws": "^8.7.0"
   },
   "devDependencies": {

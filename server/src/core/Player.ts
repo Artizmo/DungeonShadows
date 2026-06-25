@@ -1,5 +1,5 @@
 import type Character from "~/core/Character";
-import type { PlayerRecord } from "data/mock/mock";
+import type { PlayerRecord } from "~/shared/data/mock/mock";
 import { send } from "~/utils/messageBroker";
 
 export default class Player {
@@ -21,7 +21,7 @@ export default class Player {
     return `${this.firstName} ${this.lastName}`;
   }
 
-  public send(payload: { type: string; data: any }): void {
-    send(this.id, payload);
+  public send(data: any): void {
+    send(this.id, data);
   }
 }

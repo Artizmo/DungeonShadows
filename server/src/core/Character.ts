@@ -1,28 +1,34 @@
 import { GameEventType, type PendingEvent } from "~/@types/events";
 import type { Position, Stats } from "~/@types/game";
-import type { CharacterRecord } from "data/mock/mock";
 import type { Effect } from "~/lib/effects/types";
+import type Player from "~/core/Player";
 
 export default class Character {
   public id: number;
-  public playerId: number;
+  public player: Player;
   public name: string;
+  public level: number;
   public stats: Stats;
   public zoneMap: string;
   public position: Position;
+  public displayX: number = 0;
+  public displayY: number = 0;
   public inventory: string[] = [];
   public effects: Map<string, Effect> = new Map();
   public pendingEvents: Array<PendingEvent> = [];
   public lastProcessedInput: number = 0;
   public onPendingEvent?: (charId: number) => void;
 
-  constructor(characterRecord: CharacterRecord) {
-    this.id = characterRecord.id;
-    this.playerId = characterRecord.playerId;
-    this.name = characterRecord.name;
-    this.stats = { ...characterRecord.stats };
-    this.position = characterRecord.position || { x: 0, y: 0 };
-    this.inventory = [...characterRecord.inventory];
+  constructor(character: Character) {
+    this.id = character.id;
+    this.player = character.player;
+    this.name = character.name;
+    this.level = character.level;
+    this.stats = { ...character.stats };
+    this.position = character.position || { x: 0, y: 0 };
+    this.displayX = character.position.x;
+    this.displayY = character.position.y;
+    this.inventory = [...character.inventory];
   }
 
   public get isDead(): boolean {
@@ -78,15 +84,21 @@ export default class Character {
       return null;
     }
 
+    // const snapshot = {
+    //   id: this.id,
+    //   ack: this.lastProcessedInput,
+    //   events: [...this.pendingEvents],
+    //   effects: Array.from(this.effects.values()).map((effect) => ({
+    //     type: effect.type,
+    //     duration: effect.duration,
+    //     density: effect.density,
+    //   })),
+    // };
     const snapshot = {
       id: this.id,
-      ack: this.lastProcessedInput,
-      events: [...this.pendingEvents],
-      effects: Array.from(this.effects.values()).map((effect) => ({
-        type: effect.type,
-        duration: effect.duration,
-        density: effect.density,
-      })),
+      name: this.name,
+      level: this.level,
+      position: { ...this.position },
     };
     this.pendingEvents = [];
 

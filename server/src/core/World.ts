@@ -3,7 +3,7 @@ import * as path from "path";
 import EffectsManager from "~/core/EffectsManager";
 import { Log } from "~/shared/core/Logger";
 import Area from "~/core/Area";
-import { broadcast, send } from "~/utils/messageBroker";
+import { send } from "~/utils/messageBroker";
 import type Character from "~/core/Character";
 import type Game from "~/core/Game";
 
@@ -11,51 +11,51 @@ interface WorldConfig {
   name: string;
   areas: {
     id: string;
-    manifestPath: string;
+    areaPath: string;
   }[];
 }
 export default class World {
   public name: string;
-  public game: Game;
   public characters: Map<number, Character> = new Map();
   public areas: Map<number, Area> = new Map();
   public charactersWithEvents: Set<number> = new Set();
 
-  constructor(worldPath: string, game: Game) {
+  constructor(worldPath: string) {
     Log.WORLD.INFO("Loading world...");
-    this.game = game;
     try {
-      this.loadWorldAndAreas(worldPath);
+      this.load(worldPath);
       Log.WORLD.INFO("Loaded world!");
     } catch (e) {
       Log.SYSTEM.ERROR(e);
     }
   }
 
-  /**
-   * Reads world.json and kicks off modular area streaming pass
-   */
-  private loadWorldAndAreas(worldPath: string): void {
+  private load(worldPath: string): void {
     try {
-      if (!fs.existsSync(worldPath)) {
+      const worldData = path.join(process.cwd(), "../shared", worldPath);
+
+      if (!fs.existsSync(worldData)) {
         throw new Error(
-          `Master configuration target ledger missing at: ${worldPath}`,
+          `Master configuration target ledger missing at: ${worldData}`,
         );
       }
 
-      const raw = fs.readFileSync(worldPath, "utf-8");
-      const config: WorldConfig = JSON.parse(raw);
-      this.name = config.name;
+      try {
+        const raw = fs.readFileSync(worldData, "utf-8");
+        const world: WorldConfig = JSON.parse(raw);
 
-      if (config.areas) {
-        for (const areaRef of config.areas) {
-          // Calculate the folder path where area.json lives relative to world.json
-          const resolvedAreaFolder = path.dirname(
-            path.resolve(path.dirname(worldPath), areaRef.manifestPath),
-          );
+        this.name = world.name;
 
-          this.loadAreas(resolvedAreaFolder);
+        if (world.areas) {
+          for (const { areaPath } of world.areas) {
+            const area = new Area(areaPath);
+            this.areas.set(area.id, area);
+          }
         }
+      } catch (error: any) {
+        Log.WORLD.ERROR(
+          `Failed parsing master world tree hierarchy: ${error.message}`,
+        );
       }
     } catch (error: any) {
       Log.WORLD.ERROR(
@@ -63,21 +63,6 @@ export default class World {
       );
       throw error;
     }
-  }
-
-  /**
-   * Instantiates an individual Area node context and indexes it
-   */
-  public loadAreas(areaFolderPath: string): void {
-    const areaInstance = new Area(areaFolderPath);
-
-    if (this.areas.has(areaInstance.id)) {
-      throw new Error(
-        `Collision Exception! Area key matching id "${areaInstance.id}" has already been processed.`,
-      );
-    }
-
-    this.areas.set(areaInstance.id, areaInstance);
   }
 
   public update(tick: number): void {
@@ -113,10 +98,7 @@ export default class World {
 
       if (snapshot) {
         // Send a private, targeted packet directly back to the origin character
-        send(character.playerId, {
-          type: "WORLD_SYNC",
-          data: snapshot,
-        });
+        send(character.player.id, { character: snapshot });
       }
 
       // 4. Clean up active loop tracking if their event/effect state has settled
@@ -138,7 +120,7 @@ export default class World {
     };
 
     this.characters.set(character.id, character);
-    send(character.playerId, { type: "JOIN_SUCCESS", data: true });
+    send(character.player.id, { success: true });
     Log.WORLD.INFO(`${character.name} has entered the world!`);
   }
 
@@ -151,5 +133,6 @@ export default class World {
 
     this.charactersWithEvents.delete(character.id);
     this.characters.delete(character.id);
+    Log.WORLD.INFO(`${character.name} has left the world.`);
   }
 }

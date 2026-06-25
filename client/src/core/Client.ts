@@ -68,15 +68,8 @@ export class Client {
       // The Game Server automatically starts the engine now, no manual "CONNECT" message required!
     };
 
-    ws.onmessage = (rawData) => {
+    ws.onmessage = async (rawData) => {
       if (this.socket !== ws) return;
-
-      try {
-        const message = JSON.parse(rawData.data);
-        this.handleSocketMessage(message);
-      } catch (err) {
-        console.error("Failed to parse incoming server packet:", err);
-      }
     };
 
     ws.addEventListener("close", (event) => {

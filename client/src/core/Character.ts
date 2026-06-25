@@ -23,6 +23,7 @@ export default class Character {
   public id: number;
   public playerId: number;
   public name: string;
+  public level: number;
   public zoneMap: Buffer;
   public position: Position;
   public displayX: number = 0;
@@ -36,6 +37,7 @@ export default class Character {
     this.id = character.id;
     this.playerId = character.playerId;
     this.name = character.name;
+    this.level = character.level;
     this.stats = character.stats;
 
     // 🎯 Safety Fallback: Ensure position object exists immediately

@@ -11,6 +11,7 @@ export default class MoveCommand implements ICommandHandler {
     character.addPendingEvent({
       type: GameEventType.CHARACTER,
       character,
+      tick: data.tick,
     });
   }
 }

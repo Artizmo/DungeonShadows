@@ -3,7 +3,7 @@
   "areas": [
     {
       "id": "sephus",
-      "manifestPath": "./areas/sephus/area.json"
+      "areaPath": "./areas/sephus/area.json"
     }
   ]
 }
