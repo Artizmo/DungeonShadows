@@ -1,5 +1,5 @@
-import type Game from "~/core/Game";
-import type Character from "~/character/Character";
+import type Game from "~/core/game/Game";
+import type Character from "~/core/character/Character";
 
 export interface Config {
   cycleRate: number; // e.g., 0.05 (time increment step per update frame)

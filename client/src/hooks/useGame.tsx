@@ -1,7 +1,7 @@
 // ~/hooks/useGame.ts
 import { useState, useEffect, useRef } from "react";
 import gameEngine from "~/core";
-import type Game from "~/core/Game";
+import type Game from "~/core/game/Game";
 
 /**
  * A selective hook that only triggers a re-render if the chosen

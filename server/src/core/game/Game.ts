@@ -4,8 +4,8 @@ import Server from "~/core/game/Server";
 import World from "~/core/world/World";
 import type { Config } from "~/core/game/@types";
 import type { Request, IRequestHandler } from "~/core/game/@types";
-import type Player from "~/player/Player";
-import type Character from "~/core/player/Character";
+import type Player from "~/core/character/Player";
+import type Character from "~/core/character/Character";
 import { REQUEST_REGISTRY } from "~/_lib/requests";
 import {
   fetchCharacter,

@@ -1,6 +1,6 @@
 import type World from "./World";
-import type Player from "../player/Player";
-import type { Position } from "~/core/player/@types";
+import type Player from "../character/Player";
+import type { Position } from "~/core/character/@types";
 import type { Effect } from "~/_lib/effects/types";
 
 export interface Locatable {

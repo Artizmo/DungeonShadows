@@ -11,14 +11,6 @@ export default class SleepCommand implements ICommandHandler {
       return;
     }
 
-    if (character.isDead) {
-      player.send({
-        type: "SLEEP_FAIL",
-        data: "You cannot sleep when you're dead!",
-      });
-      return;
-    }
-
     player.send({
       type: "SLEEP_SUCCESS",
       data: "You close your eyes and begin to rest...",

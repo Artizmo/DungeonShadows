@@ -1,4 +1,4 @@
-import type Character from "~/core/player/Character";
+import type Character from "~/core/character/Character";
 import type World from "~/core/world/World";
 
 export enum EffectType {

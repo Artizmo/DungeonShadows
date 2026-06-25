@@ -1,7 +1,7 @@
-import type Player from "~/player/Player";
+import type Player from "~/core/character/Player";
 import type Game from "~/core/game/Game";
 import type World from "~/core/world/World";
-import type Character from "~/core/player/Character";
+import type Character from "~/core/character/Character";
 
 declare module "ws" {
   interface WebSocket {

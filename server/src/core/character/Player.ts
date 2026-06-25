@@ -1,4 +1,4 @@
-import type Character from "~/core/player/Character";
+import type Character from "~/core/character/Character";
 import type { PlayerRecord } from "~/shared/data/mock/mock";
 import { send } from "~/_utils/messageBroker";
 

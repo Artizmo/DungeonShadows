@@ -1,4 +1,4 @@
-import type { Effect, Position, Stats } from "~/character/@types";
+import type { Effect, Position, Stats } from "~/core/character/@types";
 
 export default class Character {
   public id: number;

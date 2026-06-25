@@ -1,5 +1,5 @@
 import type { Config } from "~/@types/game";
-import type Game from "~/core/Game";
+import type Game from "~/core/game/Game";
 
 export class Loop {
   private cycleRate: number;

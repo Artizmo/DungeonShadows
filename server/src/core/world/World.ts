@@ -3,7 +3,7 @@ import EffectsManager from "~/core/game/EffectsManager";
 import { Log } from "~/shared/core/Logger";
 import Area from "~/core/world/Area";
 import { send } from "~/_utils/messageBroker";
-import Character from "~/core/player/Character";
+import Character from "~/core/character/Character";
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
 import type { WorldConfig } from "./@types";
 

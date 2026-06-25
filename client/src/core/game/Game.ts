@@ -5,13 +5,13 @@ import type {
   GameEvent,
   GameListener,
 } from "~/types/game";
-import { Client } from "~/core/Client";
-import { Loop } from "~/core/Loop";
+import { Client } from "~/core/game/Client";
+import { Loop } from "~/core/game/Loop";
 import { World } from "~/core/World";
 import Renderer from "~/core/Renderer";
-import Character from "~/character/Character";
+import Character from "~/core/character/Character";
 import { RESPONSE_REGISTRY } from "~/lib/responses";
-import InputHandler from "~/core/InputHandler";
+import InputHandler from "~/core/game/InputHandler";
 
 export default class Game {
   public readonly config: Config;

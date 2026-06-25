@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import type Character from "~/core/player/Character";
+import type Character from "~/core/character/Character";
 
 export default class Save {
   private readonly baseDir = path.join(process.cwd(), "data", "characters");

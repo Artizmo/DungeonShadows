@@ -1,4 +1,4 @@
-import type Character from "~/core/player/Character";
+import type Character from "~/core/character/Character";
 import type { Effect } from "~/_lib/effects/types";
 import { Log } from "~/shared/core/Logger";
 import { send } from "~/_utils/messageBroker";
