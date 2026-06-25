@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import Character from "~/core/player/Character";
-import Player from "~/player/Player";
+import Player from "~/core/player/Player";
 import { Log } from "~/shared/core/Logger";
 
 export async function fetchCharacter(characterId: number): Promise<Character> {
