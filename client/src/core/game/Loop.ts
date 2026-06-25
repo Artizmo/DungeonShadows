@@ -1,4 +1,4 @@
-import type { Config } from "~/@types/game";
+import type { Config } from "~/core/game/@types";
 import type Game from "~/core/game/Game";
 
 export class Loop {

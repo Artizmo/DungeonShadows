@@ -1,4 +1,4 @@
-import type { IResponseHandler } from "~/types/game";
+import type { IResponseHandler } from "~/core/game/@types";
 import characterConnected from "~/lib/responses/characterConnected";
 import worldSync from "~/lib/responses/worldSync";
 

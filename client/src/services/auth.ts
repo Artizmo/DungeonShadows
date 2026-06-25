@@ -1,4 +1,4 @@
-import { AUTH_API_URL } from "~/utils/constants";
+import { AUTH_API_URL } from "~/_utils/constants";
 
 export const fetchGameTicket = async (
   characterId: number,

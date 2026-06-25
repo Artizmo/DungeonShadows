@@ -1,4 +1,4 @@
-import type { IResponseHandler, ResponseContext } from "~/types/game";
+import type { IResponseHandler, ResponseContext } from "~/core/game/@types";
 
 export default class WorldSyncResponse implements IResponseHandler {
   public async execute({ data, game }: ResponseContext): Promise<void> {

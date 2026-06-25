@@ -4,13 +4,13 @@ import type {
   IResponseHandler,
   GameEvent,
   GameListener,
-} from "~/types/game";
+} from "~/core/game/@types";
 import { Client } from "~/core/game/Client";
 import { Loop } from "~/core/game/Loop";
-import { World } from "~/core/World";
+import { World } from "~/core/world/World";
 import Renderer from "~/core/Renderer";
 import Character from "~/core/character/Character";
-import { RESPONSE_REGISTRY } from "~/lib/responses";
+import { RESPONSE_REGISTRY } from "~/_lib/responses";
 import InputHandler from "~/core/game/InputHandler";
 
 export default class Game {

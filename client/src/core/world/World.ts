@@ -1,4 +1,4 @@
-import Game from "./game/Game";
+import Game from "~/core/game/Game";
 
 // Define the incoming state interfaces based on your server contracts
 export interface Vector3D {

@@ -1,5 +1,5 @@
 import type Game from "~/core/game/Game";
-import { GAME_SERVER_URL } from "~/utils/constants";
+import { GAME_SERVER_URL } from "~/_utils/constants";
 
 const URL = `ws://${GAME_SERVER_URL || "localhost:8000"}`;
 
