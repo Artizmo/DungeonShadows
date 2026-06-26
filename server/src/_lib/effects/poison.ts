@@ -1,6 +1,5 @@
 import { Effect, EffectType } from "~/_lib/effects/types";
 import { Log } from "~/shared/core/Logger";
-import { send } from "~/_utils/messageBroker";
 
 export const poison: Effect = {
   name: "Poison",
@@ -22,10 +21,10 @@ export const poison: Effect = {
     if ((effect.duration + 3) % effect.interval === 0) {
       Log.CHAR.INFO(`${character.name} takes 5 poison damage.`);
 
-      send(character.player.id, {
-        type: "POISON_AFFECT",
-        data: "Poison is coursing through your veins!",
-      });
+      // send(character.player.id, {
+      //   type: "POISON_AFFECT",
+      //   data: "Poison is coursing through your veins!",
+      // });
     }
   },
 };

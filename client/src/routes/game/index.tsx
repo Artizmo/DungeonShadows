@@ -52,6 +52,7 @@ function GameComponent() {
 
       // Start connection, clocks, and internal game structures without a canvas
       await gameEngine.start(ticket);
+      gameEngine.events.emit("CHARACTER_UPDATED");
 
       if (!isAborted) {
         setIsReady(true);
@@ -71,7 +72,7 @@ function GameComponent() {
   return (
     <div className="fixed inset-0 overflow-hidden bg-black select-none z-0 rpg-cursor-zone">
       <GameCanvas isReady={isReady} onResize={handleEngineResize} />
-      <GameHud playerId={playerId} characterId={characterId} />
+      <GameHud />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { Log } from "~/shared/core/Logger";
 import type { Config } from "~/core/game/@types";
 import type { NetworkMessage } from "~/core/game/@types";
 import type Game from "~/core/game/Game";
-import { registerConnections } from "~/_utils/messageBroker";
+import { WebSocketConnection } from "~/_utils/messageBroker";
 
 dotenv.config();
 
@@ -99,11 +99,12 @@ export default class Server {
 
       socket.isAlive = true;
       this.connections.set(formatedPlayerId, socket);
-      registerConnections(this.connections);
+      const connection = new WebSocketConnection(socket);
 
       this.events.emit("player_join", {
         characterId: formatedCharacterId,
         playerId: formatedPlayerId,
+        connection,
       });
 
       socket.on("pong", () => {
@@ -143,7 +144,6 @@ export default class Server {
     if (this.connections.get(playerId) === closingSocket) {
       this.events.emit("player_disconnect", playerId);
       this.connections.delete(playerId);
-      registerConnections(this.connections);
     }
   }
 

@@ -1,5 +1,7 @@
 import type Game from "~/core/game/Game";
 import { GAME_SERVER_URL } from "~/_utils/constants";
+import { Deserialize } from "~/shared/proto/deserializer";
+import { OpCode } from "~/shared/proto/@types";
 
 const URL = `ws://${GAME_SERVER_URL || "localhost:8000"}`;
 
@@ -60,6 +62,7 @@ export class Client {
 
     const ws: ManagedWebSocket = new WebSocket(authenticatedUrl);
     ws.wasIntentionallyClosed = false;
+    ws.binaryType = "arraybuffer";
     this.socket = ws;
 
     ws.onopen = () => {
@@ -70,6 +73,35 @@ export class Client {
 
     ws.onmessage = async (rawData) => {
       if (this.socket !== ws) return;
+
+      // 1. 🟢 Handle Binary Streams (FlatBuffers)
+      if (rawData.data instanceof ArrayBuffer) {
+        const rawPacket = new Uint8Array(rawData.data);
+
+        // 1️⃣ Extract your baked-in opcode byte
+        const type = OpCode[rawPacket[0]];
+
+        // 2️⃣ 🟢 Slice off byte 0 so FlatBuffers gets its original unshifted buffer!
+        const flatbufferBytes = rawPacket.subarray(1);
+        const data = Deserialize.character(flatbufferBytes);
+        this.handleSocketMessage({ type, data });
+        return;
+      }
+
+      // 2. 🟢 Handle Text Streams (JSON, fallback logs, chat messages)
+      if (typeof rawData.data === "string") {
+        try {
+          const message = JSON.parse(rawData.data);
+
+          // Handle legacy JSON routes here...
+        } catch (parseError) {
+          console.warn(
+            "Received raw string text that isn't valid JSON:",
+            rawData.data,
+          );
+        }
+        return;
+      }
     };
 
     ws.addEventListener("close", (event) => {
@@ -88,6 +120,7 @@ export class Client {
 
   private handleSocketMessage(message: any) {
     if (!this.game) return;
+
     this.game.routeResponses(message);
   }
 

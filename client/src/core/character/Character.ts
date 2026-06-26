@@ -5,7 +5,7 @@ export default class Character {
   public playerId: number;
   public name: string;
   public level: number;
-  public zoneMap: Buffer;
+  public zoneMap: string;
   public position: Position;
   public displayX: number = 0;
   public displayY: number = 0;

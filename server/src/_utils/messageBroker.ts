@@ -1,14 +1,16 @@
-import type { WebSocket } from "ws";
+import type { IConnection } from "~/core/game/@types";
 
-let sockets: Map<number, WebSocket> = new Map();
+export class WebSocketConnection implements IConnection {
+  constructor(private ws: any) {} // Your raw ws instance
 
-export function registerConnections(connections: Map<number, WebSocket>): void {
-  sockets = connections;
-}
+  public send(data: Uint8Array) {
+    if (this.ws.readyState === 1) {
+      // OPEN
+      this.ws.send(data, { binary: true });
+    }
+  }
 
-export function send(playerId: number, data: any): void {
-  const socket = sockets.get(playerId);
-  if (socket?.readyState !== 1) return;
-
-  socket.send(JSON.stringify(data));
+  public disconnect() {
+    this.ws.close();
+  }
 }

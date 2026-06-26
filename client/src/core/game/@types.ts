@@ -17,7 +17,7 @@ export type Response<T = any> = Payload<T>;
 export type Command<T = any> = Payload<T>;
 
 export interface ResponseContext {
-  character: Character;
+  character?: Character;
   game: Game;
   data: any; // For structured data (like a UI button click payload)
 }

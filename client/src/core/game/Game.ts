@@ -10,10 +10,12 @@ import { Loop } from "~/core/game/Loop";
 import { World } from "~/core/world/World";
 import Renderer from "~/core/Renderer";
 import Character from "~/core/character/Character";
-import { RESPONSE_REGISTRY } from "~/_lib/responses";
+import { RESPONSE_REGISTRY } from "~/core/game/responses";
 import InputHandler from "~/core/game/InputHandler";
+import EventEmitter from "eventemitter3";
 
 export default class Game {
+  public events: EventEmitter = new EventEmitter();
   public readonly config: Config;
   public readonly loop: Loop;
   public character: Character | null = null;
@@ -42,12 +44,8 @@ export default class Game {
    * 🚀 Boots the game engine utilizing a secure single-use ticket string
    */
   public async start(ticket: string): Promise<void> {
-    console.log("bingo");
     this.world = new World(this);
     this.client = new Client(this);
-    // this.character = new Character({
-    //   id: this.client.characterId,
-    // } as Character);
     this.input = new InputHandler();
     this.isReady = true;
 
@@ -62,28 +60,28 @@ export default class Game {
     this.renderer = new Renderer(canvas);
   }
 
-  // 🎯 EVENT EMITTER SUBSCRIPTION METHOD
-  public subscribe(event: GameEvent, callback: GameListener): () => void {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set());
-    }
-    this.listeners.get(event)!.add(callback);
+  // // 🎯 EVENT EMITTER SUBSCRIPTION METHOD
+  // public subscribe(event: GameEvent, callback: GameListener): () => void {
+  //   if (!this.listeners.has(event)) {
+  //     this.listeners.set(event, new Set());
+  //   }
+  //   this.listeners.get(event)!.add(callback);
 
-    // Return an un-subscription teardown function cleanly
-    return () => {
-      this.listeners.get(event)?.delete(callback);
-    };
-  }
+  //   // Return an un-subscription teardown function cleanly
+  //   return () => {
+  //     this.listeners.get(event)?.delete(callback);
+  //   };
+  // }
 
-  // 🎯 EVENT EMITTER DISPATCH METHOD
-  public emit(event: GameEvent): void {
-    const targets = this.listeners.get(event);
-    if (!targets) return;
-    targets.forEach((callback) => callback(this));
-  }
+  // // 🎯 EVENT EMITTER DISPATCH METHOD
+  // public emit(event: GameEvent): void {
+  //   const targets = this.listeners.get(event);
+  //   if (!targets) return;
+  //   targets.forEach((callback) => callback(this));
+  // }
 
   public async routeResponses(response: Response): Promise<void> {
-    if (!this.isReady || !this.character) return;
+    if (!this.isReady) return;
 
     const { character } = this;
     const handler = this.responseHandlers.get(response.type);
@@ -95,7 +93,6 @@ export default class Game {
 
     try {
       await handler.execute({
-        character,
         game: this,
         data: response.data,
       });
@@ -133,7 +130,7 @@ export default class Game {
 
     // 3. Trigger world logic
     this.world.update(tick);
-    this.emit("WORLD_UPDATED");
+    this.events.emit("WORLD_UPDATE", { zone: "Arena" });
   }
 
   public tick(tick: number): void {
@@ -164,7 +161,6 @@ export default class Game {
     }
 
     this.world.tick(tick);
-    this.emit("CHARACTER_UPDATED");
   }
 
   public shutdown(): void {

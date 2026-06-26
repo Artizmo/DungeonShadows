@@ -25,7 +25,7 @@ export async function fetchCharacter(characterId: number): Promise<Character> {
       throw new Error("Character data corrupt.");
     }
 
-    return new Character(characterRecord);
+    return characterRecord;
   } catch (error: any) {
     Log.SERVER.ERROR(
       `Failed to fetch data for characterId ${characterId}: ${error.message}`,
@@ -55,7 +55,7 @@ export async function fetchPlayer(playerId: number): Promise<Player> {
       throw new Error("Player data corrupt.");
     }
 
-    return new Player(playerRecord);
+    return playerRecord;
   } catch (error: any) {
     Log.SERVER.ERROR(
       `Failed to fetch data for playerId ${playerId}: ${error.message}`,

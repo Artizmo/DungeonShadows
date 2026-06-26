@@ -2,7 +2,6 @@ import path from "path";
 import EffectsManager from "~/core/game/EffectsManager";
 import { Log } from "~/shared/core/Logger";
 import Area from "~/core/world/Area";
-import { send } from "~/_utils/messageBroker";
 import Character from "~/core/character/Character";
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
 import type { WorldConfig } from "./@types";
@@ -86,7 +85,7 @@ export default class World {
 
       if (snapshot) {
         // Send a private, targeted packet directly back to the origin character
-        send(character.player.id, { character: snapshot });
+        // send(character.player.id, { character: snapshot });
       }
 
       // 4. Clean up active loop tracking if their event/effect state has settled
@@ -98,25 +97,20 @@ export default class World {
 
   public join(character: Character): void {
     if (!character) return;
-
-    if (this.characters.has(character.id)) {
-      throw new Error("Character is already in the world.");
-    }
+    if (this.characters.has(character.id)) return;
 
     this.characters.set(character.id, character);
-    send(character.player.id, { success: true });
+
     Log.WORLD.INFO(`${character.name} has entered the world!`);
   }
 
   public leave(character: Character): void {
     if (!character) return;
-
-    if (!this.characters.has(character.id)) {
-      throw "Character is not in the world.";
-    }
+    if (!this.characters.has(character.id)) return;
 
     this.removeCharacterEvent(character.id);
     this.characters.delete(character.id);
+
     Log.WORLD.INFO(`${character.name} has left the world.`);
   }
 

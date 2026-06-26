@@ -10,6 +10,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "checkJs": false
+    "checkJs": false,
+    "paths": {
+      "~/shared/*": ["../shared/*"]
+    }
   }
 }

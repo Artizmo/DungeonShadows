@@ -1,9 +1,5 @@
-import type { ICommandHandler } from "~/core/game/@types";
-import MoveCommand from "~/_lib/requests/move";
+import { PlayerJoinHandler } from "~/_lib/requests/playerJoin";
 
-export const REQUEST_REGISTRY: Record<string, new () => ICommandHandler> = {
-  // Core
-
-  // Character
-  MOVE_REQUEST: MoveCommand,
+export const REQUEST_REGISTRY = {
+  PLAYER_JOIN: PlayerJoinHandler,
 };

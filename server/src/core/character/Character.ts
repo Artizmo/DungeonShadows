@@ -36,6 +36,10 @@ export default class Character {
     return this.effects.size > 0;
   }
 
+  public get isAlive(): boolean {
+    return this.stats.hp === 0;
+  }
+
   public addPendingEvent(event: PendingEvent): void {
     if (!event) return;
 

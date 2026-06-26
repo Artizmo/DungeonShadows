@@ -1,0 +1,32 @@
+namespace GameProtocol;
+
+table Player {
+  id: int;
+  fullName: string;
+}
+
+struct Position {
+  x: float;
+  y: float;
+}
+
+table Stats {
+  hp: int;
+  max_hp: int;
+  mana: int;
+  max_mana: int;
+  speed: int;
+}
+
+table Character {
+  id: int;
+  player: Player;
+  name: string;
+  level: int;
+  position: Position;
+  stats: Stats;
+  zoneMap: string;
+  isAlive: bool;
+}
+
+root_type Character;

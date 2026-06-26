@@ -1,7 +1,7 @@
 import type Character from "~/core/character/Character";
 import type { Effect } from "~/_lib/effects/types";
 import { Log } from "~/shared/core/Logger";
-import { send } from "~/_utils/messageBroker";
+// import { send } from "~/_utils/messageBroker";
 
 export default class EffectsManager {
   public static tick(character: Character, _tick: number): void {
@@ -39,10 +39,10 @@ export default class EffectsManager {
     const effectInstance = { ...effect };
 
     // character.addEffect(effectInstance);
-    send(character.player.id, {
-      type: "ADD_EFFECT",
-      data: effectInstance.applyMessage,
-    });
+    // send(character.player.id, {
+    //   type: "ADD_EFFECT",
+    //   data: effectInstance.applyMessage,
+    // });
   }
 
   public static removeEffect(activeEffect: Effect, character: Character): void {
@@ -52,9 +52,9 @@ export default class EffectsManager {
     }
 
     // character.removeEffect(activeEffect);
-    send(character.player.id, {
-      type: "REMOVE_EFFECT",
-      data: activeEffect.resolveMessage,
-    });
+    // send(character.player.id, {
+    //   type: "REMOVE_EFFECT",
+    //   data: activeEffect.resolveMessage,
+    // });
   }
 }

@@ -1,3 +1,4 @@
+import { WebSocket } from "ws";
 import type Player from "~/core/character/Player";
 import type Game from "~/core/game/Game";
 import type World from "~/core/world/World";
@@ -45,20 +46,42 @@ export interface GameEvent {
   tick: (ctx: GameEventContext) => void;
 }
 
-export interface Request {
-  type: string;
-  data?: any;
-}
-
+// 1. For actions where the player is already fully initialized in the world
 export interface RequestContext {
   player: Player;
   game: Game;
-  data: any; // For structured data (like a UI button click payload)
-  args?: string[]; // For tokenized text (like typing "drink waterskin")
+  payload: Uint8Array; // Raw FlatBuffer bytes specific to this action
+}
+
+export interface IConnection {
+  send(data: Uint8Array): void;
+  disconnect(): void;
+}
+
+// 2. 🟢 For login/join actions where the Player instance does NOT exist yet
+export interface ConnectionContext {
+  connection: IConnection;
+  playerId: number;
+  characterId: number;
 }
 
 export interface IRequestHandler {
   execute(context: RequestContext): void | Promise<void>;
+}
+
+export interface IConnectionHandler {
+  execute(context: ConnectionContext): Promise<void>;
+}
+
+export interface EffectContext {
+  game: any;
+  targetCharacter: any;
+  elapsedTicks: number;
+}
+
+export interface IEffectHandler {
+  tick(context: EffectContext): void;
+  expire(context: EffectContext): void;
 }
 
 export interface Command {
@@ -77,7 +100,16 @@ export interface ICommandHandler {
   execute(context: CommandContext): void | Promise<void>;
 }
 
-import { WebSocket } from "ws";
+export type GameEventMap = {
+  PLAYER_JOIN: { playerId: string; characterId: string; connection: any };
+  PLAYER_MOVE: { playerId: string; x: number; y: number };
+  APPLY_EFFECT: { targetId: string; duration: number };
+};
+
+// 🟢 A generic handler interface bound to a specific event key
+export interface IGameHandler<K extends keyof GameEventMap> {
+  execute(payload: GameEventMap[K]): void | Promise<void>;
+}
 
 export interface NetworkMessage {
   type: string;

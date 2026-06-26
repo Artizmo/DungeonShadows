@@ -4,9 +4,8 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "scripts": {
-  },
   "dependencies": {
+    "flatbuffers": "^25.9.23"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

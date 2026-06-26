@@ -1,6 +1,5 @@
 import { Effect, EffectType } from "~/_lib/effects/types";
 import { Log } from "~/shared/core/Logger";
-import { send } from "~/_utils/messageBroker";
 
 export const burn: Effect = {
   name: "Burn",
@@ -21,10 +20,10 @@ export const burn: Effect = {
     if ((effect.duration + 3) % effect.interval === 0) {
       Log.CHAR.INFO(`${character.name} takes 2 burn damage.`);
 
-      send(character.player.id, {
-        type: "BURN_AFFECT",
-        data: "Your skin rash burns! Ouch!",
-      });
+      // send(character.player.id, {
+      //   type: "BURN_AFFECT",
+      //   data: "Your skin rash burns! Ouch!",
+      // });
     }
   },
 };

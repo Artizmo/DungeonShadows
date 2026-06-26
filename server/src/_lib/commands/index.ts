@@ -3,13 +3,11 @@ import CheckInventory from "~/_lib/commands/inventory";
 import Sleep from "~/_lib/commands/sleep";
 import Score from "~/_lib/commands/score";
 import { Drink } from "~/_lib/commands/consumable";
-import MoveCommand from "~/_lib/requests/move";
 
 export const COMMAND_REGISTRY: Record<string, new () => ICommandHandler> = {
   // Core
 
   // Character
-  MOVE_REQUEST: MoveCommand,
   SCORE: Score,
   CHECK_INVENTORY: CheckInventory,
   SLEEP: Sleep,
