@@ -95,6 +95,54 @@ export default class Renderer {
   }
 
   /**
+   * Draws an active character sprite onto the screen, relative to the camera viewport.
+   */
+  public renderCharacter(
+    character: any,
+    cameraX: number,
+    cameraY: number,
+  ): void {
+    if (!this.canvas || !this.ctx) return;
+
+    // 1. Convert the character's grid position into world pixels
+    const worldX = character.position.x * this.TILE_SIZE;
+    const worldY = character.position.y * this.TILE_SIZE;
+
+    // 2. Translate world pixels into screen-space drawing coordinates
+    const drawX = worldX - cameraX;
+    const drawY = worldY - cameraY;
+
+    // Frustum Culling: Skip drawing if the character is entirely off-screen
+    if (
+      drawX + this.TILE_SIZE < 0 ||
+      drawY + this.TILE_SIZE < 0 ||
+      drawX > this.canvas.width ||
+      drawY > this.canvas.height
+    ) {
+      return;
+    }
+
+    // 3. 🟢 THE GREEN VELVET CIRCLE
+    // Calculate the center point of the tile and the circle's radius
+    const radius = this.TILE_SIZE / 2;
+    const centerX = drawX + radius;
+    const centerY = drawY + radius;
+
+    this.ctx.beginPath();
+    // arc(x, y, radius, startAngle, endAngle) -> Math.PI * 2 makes a full 360 degree circle
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+
+    // Set fill to a rich, deep forest velvet green
+    this.ctx.fillStyle = "#1b4d3e";
+    this.ctx.fill();
+
+    // Draw a crisp, slightly darker outline border around the velvet circle so it pops on dark tiles
+    this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 1.5;
+    this.ctx.stroke();
+  }
+
+  /**
    * Main viewport render pipeline step. Executed via central Game update tick.
    */
   public render(cameraX: number, cameraY: number) {

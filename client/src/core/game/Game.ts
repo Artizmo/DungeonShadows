@@ -112,6 +112,11 @@ export default class Game {
     this.world.update(tick);
     this.renderer.render(this.camera.x, this.camera.y);
 
+    const character = this.world.character;
+    if (character) {
+      this.renderer.renderCharacter(character, this.camera.x, this.camera.y);
+    }
+
     this.events.emit("WORLD_UPDATE", { zone: "Arena" });
   }
 

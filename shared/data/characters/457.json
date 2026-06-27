@@ -5,8 +5,8 @@
   "level": 12,
   "isAlive": true,
   "position": {
-    "x": 1,
-    "y": 1
+    "x": 61,
+    "y": 16
   },
   "zone": {
     "id": "arena:sephus",
