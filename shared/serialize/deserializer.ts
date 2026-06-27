@@ -10,7 +10,7 @@ export class Deserialize {
     const characterTable = GameProtocol.Character.getRootAsCharacter(buffer);
 
     // 3. Pull out the nested table safely (handle null-checks)
-    // const statsTable = characterTable.stats();
+    const statsTable = characterTable.stats();
     // const posStruct = characterTable.position();
     const playerTable = characterTable.player();
     const zoneTable = characterTable.zone();
@@ -25,22 +25,21 @@ export class Deserialize {
         email: playerTable!.email() ?? "",
       },
       name: characterTable.name() ?? "",
-      // player: characterTable.player(),
       level: characterTable.level(),
       zone: {
         id: zoneTable!.id() ?? "",
         areaId: zoneTable!.areaId() ?? "",
-        mapName: zoneTable!.mapName() ?? "",
+        mapPath: zoneTable!.mapName() ?? "",
       },
       isAlive: characterTable.isAlive(),
       position: {
         x: characterTable.position()!.x() ?? 0,
         y: characterTable.position()!.y() ?? 0,
       },
-      // stats: {
-      //   hp: statsTable ? statsTable.hp() : 0,
-      //   maxHp: statsTable ? statsTable.maxHp() : 0,
-      // }
+      stats: {
+        hp: statsTable ? statsTable.hp() : 0,
+        maxHp: statsTable ? statsTable.maxHp() : 0,
+      },
     };
   }
 

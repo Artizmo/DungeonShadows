@@ -13,7 +13,13 @@ export type Character = {
   zone: Zone;
   isAlive: boolean;
   position: Position;
+  stats: Stats;
 };
+
+export interface Stats {
+  hp: number;
+  maxHp: number;
+}
 
 export type Position = {
   x: number;
@@ -23,7 +29,7 @@ export type Position = {
 export type Zone = {
   id: string;
   areaId: string;
-  mapName: string;
+  mapPath: string;
 };
 
 export enum OpCode {

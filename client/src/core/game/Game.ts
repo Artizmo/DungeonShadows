@@ -99,25 +99,30 @@ export default class Game {
   }
 
   public update(tick: number): void {
-    if (!this.isReady || !this.world) return;
-    if (!this.renderer.canvas) return;
+    const { world, renderer, camera, input } = this;
 
-    if (this.world.character) {
-      this.camera.update(
-        this.world.character,
-        this.renderer.canvas.width,
-        this.renderer.canvas.height,
+    // Tier 1: Infrastructure Guard. If core engine systems aren't ready, fail fast.
+    if (!this.isReady || !world || !renderer.canvas) return;
+
+    const character = world.character;
+
+    if (character) {
+      character.handleInputMovement(input);
+      camera.update(
+        character,
+        this.renderer.canvas!.width,
+        this.renderer.canvas!.height,
       );
     }
-    this.world.update(tick);
-    this.renderer.render(this.camera.x, this.camera.y);
 
-    const character = this.world.character;
+    this.renderer.render(camera.x, camera.y);
+
     if (character) {
-      this.renderer.renderCharacter(character, this.camera.x, this.camera.y);
+      this.renderer.renderCharacter(character, camera.x, camera.y);
     }
 
-    this.events.emit("WORLD_UPDATE", { zone: "Arena" });
+    // 🟢 Update simulation world
+    world.update(tick);
   }
 
   public tick(tick: number): void {

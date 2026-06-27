@@ -11,7 +11,7 @@ export default class Player implements IPlayer {
   public lastName!: string;
   public email!: string;
 
-  constructor(player: Player) {
+  constructor(player: IPlayer) {
     this.id = player.id;
     this.firstName = player.firstName;
     this.lastName = player.lastName;

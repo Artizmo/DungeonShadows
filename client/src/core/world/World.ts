@@ -1,4 +1,3 @@
-import type { ICharacter } from "~/core/character/Character";
 import type Area from "./Area";
 import type Character from "~/core/character/Character";
 

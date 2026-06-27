@@ -142,39 +142,38 @@ export default class Renderer {
     this.ctx.stroke();
   }
 
-  /**
-   * Main viewport render pipeline step. Executed via central Game update tick.
-   */
   public render(cameraX: number, cameraY: number) {
     if (!this.canvas || !this.ctx) return;
 
     const viewWidth = this.canvas.width;
     const viewHeight = this.canvas.height;
 
-    // 1. Clear background array space
+    // 1. Reset background
     this.ctx.fillStyle = "#11111b";
     this.ctx.fillRect(0, 0, viewWidth, viewHeight);
 
     if (this.chunkSize === 0) return;
 
-    // 2. Render map assets relative to the current viewport camera parameters
+    // 2. Loop through loaded binary chunks
     for (const [key, texture] of this.chunkTextures.entries()) {
       const [chunkX, chunkY] = key.split("_").map(Number);
 
+      // Coordinate translation based on our base chunk sizing scale
       const drawX = chunkX * this.chunkSize - cameraX;
       const drawY = chunkY * this.chunkSize - cameraY;
 
-      // Frustum Culling
+      // 🟢 DYNAMIC FRUSTUM CULLING: Use the texture's actual size for the boundary check
       if (
-        drawX + this.chunkSize < 0 ||
-        drawY + this.chunkSize < 0 ||
+        drawX + texture.width < 0 ||
+        drawY + texture.height < 0 ||
         drawX > viewWidth ||
         drawY > viewHeight
       ) {
         continue;
       }
 
-      this.ctx.drawImage(texture, drawX, drawY, this.chunkSize, this.chunkSize);
+      // 🟢 THE FIX: Render with native width and height instead of forcing this.chunkSize twice
+      this.ctx.drawImage(texture, drawX, drawY, texture.width, texture.height);
     }
   }
 }
