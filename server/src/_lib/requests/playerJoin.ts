@@ -1,9 +1,5 @@
-import { Serialize } from "~/shared/proto/serializer";
-import {
-  fetchCharacter,
-  fetchPlayer,
-  fetchZoneMap,
-} from "~/_utils/functions/fetchCharacter";
+import { Serialize } from "~/shared/serialize/serializer";
+import { fetchCharacter, fetchPlayer } from "~/_utils/functions/fetchCharacter";
 import Character from "~/core/character/Character";
 import Player from "~/core/character/Player";
 import type { IConnectionHandler, ConnectionContext } from "~/core/game/@types";
@@ -26,19 +22,28 @@ export class PlayerJoinHandler implements IConnectionHandler {
 
       const player = new Player(playerData, connection);
       const character = new Character(characterData);
-
-      player.isAlive = true;
       character.player = player;
-
-      const zoneMap = await fetchZoneMap(character.zoneMap);
-      character.zoneMap = "placeholder";
-
-      Log.SERVER.INFO(`${player.fullName} has connected!`);
-
       this.game.world.join(character);
 
-      const payload: Uint8Array = Serialize.character(character);
-      player.send(payload);
+      // 🟢 Send CHARACTER_SPAWN data
+      const data: Uint8Array = Serialize.character(character);
+      player.send(data);
+
+      // 🟢 Send MAP_CHUNK data from cache
+      const mapChunks = await this.game.mapCache.getZoneMapChunks(
+        character.zone,
+      );
+
+      for (const chunk of mapChunks) {
+        const data: Uint8Array = Serialize.mapChunk({
+          x: chunk.x,
+          y: chunk.y,
+          imageBytes: chunk.textureBytes,
+        });
+        player.send(data);
+      }
+
+      Log.SERVER.INFO(`${player.fullName} has connected!`);
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
     }

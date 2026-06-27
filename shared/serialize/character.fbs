@@ -2,7 +2,15 @@ namespace GameProtocol;
 
 table Player {
   id: int;
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
+table Zone {
+  id: string;
+  areaId: string;
+  mapName: string;
 }
 
 struct Position {
@@ -25,8 +33,8 @@ table Character {
   level: int;
   position: Position;
   stats: Stats;
-  zoneMap: string;
-  isAlive: bool;
+  zone: Zone;
+  is_alive: bool;
 }
 
 root_type Character;

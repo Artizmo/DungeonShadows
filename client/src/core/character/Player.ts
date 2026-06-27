@@ -1,25 +1,24 @@
-import type { IConnection } from "~/core/game/@types";
+export interface IPlayer {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
 
-export default class Player {
+export default class Player implements IPlayer {
   public id: number;
   public firstName!: string;
   public lastName!: string;
   public email!: string;
-  private connection: IConnection;
 
-  constructor(player: Player, connection: IConnection) {
+  constructor(player: Player) {
     this.id = player.id;
     this.firstName = player.firstName;
     this.lastName = player.lastName;
     this.email = player.email;
-    this.connection = connection;
   }
 
   public get fullName(): string {
     return `${this.firstName} ${this.lastName}`;
-  }
-
-  public send(packet: Uint8Array): void {
-    this.connection.send(packet);
   }
 }

@@ -1,40 +1,35 @@
 import type { Effect, Position, Stats } from "~/core/character/@types";
+import type { IPlayer } from "~/core/character/Player";
+import type Player from "~/core/character/Player";
+import type Zone from "../world/Zone";
 
-export default class Character {
+export interface ICharacter {
+  id: number;
+  name: string;
+  isAlive: boolean;
+  player: IPlayer;
+}
+
+export default class Character implements ICharacter {
   public id: number;
-  public playerId: number;
+  public player!: Player;
   public name: string;
-  public level: number;
-  public zoneMap: string;
-  public position: Position;
-  public displayX: number = 0;
-  public displayY: number = 0;
-  public stats: Stats;
-  public inventory: string[] = [];
+  public level!: number;
+  public zone!: Zone;
+  public position!: Position;
+  public stats!: Stats;
+  public isAlive: boolean;
   public effects: Map<string, Effect> = new Map();
-  public lastProcessedInput: number = 0;
   public onPendingEvent?: (charId: number) => void;
   constructor(character: Character) {
     this.id = character.id;
-    this.playerId = character.playerId;
+    this.player = character.player;
     this.name = character.name;
     this.level = character.level;
-    this.stats = character.stats;
-
-    // 🎯 Safety Fallback: Ensure position object exists immediately
-    // to prevent LERP math from throwing errors on frame 1
-    this.position = character.position || { x: 0, y: 0 };
-    this.displayX = this.position.x;
-    this.displayY = this.position.y;
-
-    this.effects = character.effects;
-    this.zoneMap = character.zoneMap;
-  }
-
-  public init(x: number, y: number) {
-    this.position = { x, y };
-    this.displayX = x;
-    this.displayY = y;
+    this.zone = character.zone;
+    this.isAlive = character.isAlive;
+    this.stats = { ...character.stats };
+    this.position = { ...character.position };
   }
 
   public tick() {}

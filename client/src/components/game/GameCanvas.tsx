@@ -1,37 +1,30 @@
 import { useEffect, useRef } from "react";
-import gameEngine from "~/core";
 
 interface GameCanvasProps {
-  isReady: boolean;
   onResize: (canvas: HTMLCanvasElement) => void;
 }
 
-export default function GameCanvas({ isReady, onResize }: GameCanvasProps) {
+export default function GameCanvas({ onResize }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Bind the canvas to the engine immediately once the engine's core is ready
+  // 1. Initial Setup Loop (Runs once when ready)
   useEffect(() => {
     const canvasElement = canvasRef.current;
-    if (!canvasElement || !isReady) return;
+    if (!canvasElement) return;
 
     // Set initial canvas backbuffer size to fill window pixel space
     canvasElement.width = window.innerWidth;
     canvasElement.height = window.innerHeight;
 
-    console.log(
-      "🎨 Canvas DOM ready. Binding to game engine graphics pipeline.",
-    );
+    console.log("🎨 Game canvas is ready!");
 
-    // Hand the DOM element off to our new engine method safely
-    gameEngine.bindCanvas(canvasElement);
-
-    // Notify parent resize handler of initial dimensions
+    // Bubble up to the route controller. Let the parent handle the bind!
     onResize(canvasElement);
-  }, [isReady, onResize]);
+  }, [onResize]);
 
-  // Handle subsequent window resizes smoothly without dropped connections
+  // 2. Continuous Resize Listener Loop
   useEffect(() => {
-    let resizeTimeout: NodeJS.Timeout;
+    let resizeTimeout: number;
 
     const handleResize = () => {
       clearTimeout(resizeTimeout);
@@ -40,14 +33,10 @@ export default function GameCanvas({ isReady, onResize }: GameCanvasProps) {
         const canvasElement = canvasRef.current;
         if (!canvasElement) return;
 
-        const width = window.innerWidth;
-        const height = window.innerHeight;
+        canvasElement.width = window.innerWidth;
+        canvasElement.height = window.innerHeight;
 
-        // Mutate drawing resolution instantly
-        canvasElement.width = width;
-        canvasElement.height = height;
-
-        // Bubble up the callback to resize the engine's projection viewport
+        // Bubble up the new dimensions to update the engine projection matrix
         onResize(canvasElement);
       }, 100);
     };

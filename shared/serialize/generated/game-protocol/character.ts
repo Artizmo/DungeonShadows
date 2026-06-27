@@ -7,6 +7,7 @@ import * as flatbuffers from 'flatbuffers';
 import { Player } from '../game-protocol/player.js';
 import { Position } from '../game-protocol/position.js';
 import { Stats } from '../game-protocol/stats.js';
+import { Zone } from '../game-protocol/zone.js';
 
 
 export class Character {
@@ -59,11 +60,9 @@ stats(obj?:Stats):Stats|null {
   return offset ? (obj || new Stats()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
-zoneMap():string|null
-zoneMap(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-zoneMap(optionalEncoding?:any):string|Uint8Array|null {
+zone(obj?:Zone):Zone|null {
   const offset = this.bb!.__offset(this.bb_pos, 16);
-  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+  return offset ? (obj || new Zone()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 isAlive():boolean {
@@ -99,8 +98,8 @@ static addStats(builder:flatbuffers.Builder, statsOffset:flatbuffers.Offset) {
   builder.addFieldOffset(5, statsOffset, 0);
 }
 
-static addZoneMap(builder:flatbuffers.Builder, zoneMapOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(6, zoneMapOffset, 0);
+static addZone(builder:flatbuffers.Builder, zoneOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(6, zoneOffset, 0);
 }
 
 static addIsAlive(builder:flatbuffers.Builder, isAlive:boolean) {

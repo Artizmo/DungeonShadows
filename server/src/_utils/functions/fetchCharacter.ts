@@ -1,8 +1,9 @@
 import path from "path";
 import fs from "fs/promises";
-import Character from "~/core/character/Character";
-import Player from "~/core/character/Player";
 import { Log } from "~/shared/core/Logger";
+import type Character from "~/core/character/Character";
+import type Player from "~/core/character/Player";
+import type { Zone } from "~/core/character/@types";
 
 export async function fetchCharacter(characterId: number): Promise<Character> {
   if (!characterId) {
@@ -62,12 +63,4 @@ export async function fetchPlayer(playerId: number): Promise<Player> {
     );
     throw new Error(`Player data not found for ID: ${playerId}`);
   }
-}
-
-export async function fetchZoneMap(zoneMapPath: string) {
-  const mapPath = path.resolve(process.cwd(), zoneMapPath);
-
-  // [ ] chunk map and figure out if i need to return the chunks here and how to stream
-
-  return;
 }

@@ -2,7 +2,7 @@ import { useGame } from "~/hooks/useGame";
 import { GameClock } from "./GameClock";
 
 export default function GameHud() {
-  const name = useGame<string>((game) => game.character?.name ?? "");
+  const name = useGame<string>((game) => game.world!.character?.name ?? "");
   const isReady = name.length > 0;
 
   return (

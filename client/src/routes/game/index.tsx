@@ -1,77 +1,50 @@
-import { useEffect, useState, useCallback } from "react";
-import {
-  createFileRoute,
-  useNavigate,
-  useLocation,
-} from "@tanstack/react-router";
+import { useCallback } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import gameEngine from "~/core";
 import GameHud from "~/components/game/GameHud";
 import GameCanvas from "~/components/game/GameCanvas";
 import { fetchGameTicket } from "~/services/auth";
 
 export const Route = createFileRoute("/game/")({
+  // 1. Guard: Enforce valid history state before the route even mounts
+  beforeLoad: ({ location }) => {
+    const state = location.state as Record<string, any>;
+    const characterId = Number(state?.characterId);
+    const playerId = Number(state?.playerId);
+
+    if (!characterId || !playerId) {
+      throw redirect({ to: "/login" });
+    }
+
+    return { characterId, playerId };
+  },
+
+  // 2. Loader: Resolve async engine initialization before rendering the UI
+  loader: async ({ context }) => {
+    const ticket = await fetchGameTicket(context.characterId, context.playerId);
+    if (!ticket) {
+      throw redirect({ to: "/login" });
+    }
+
+    console.log("🎯 Valid token acquired. Igniting engine core logic streams.");
+    await gameEngine.start(ticket);
+
+    // Catch hooks up to fresh data on refresh
+    gameEngine.events.emit("CHARACTER_UPDATED");
+  },
+
   component: GameComponent,
 });
 
 function GameComponent() {
-  const navigate = useNavigate();
-  const { state } = useLocation();
-  const stateRecord = state as Record<string, any>;
-  const characterId = Number(stateRecord?.characterId) || 0;
-  const playerId = Number(stateRecord?.playerId) || 0;
-
-  const [isReady, setIsReady] = useState(false);
-
-  // Wrapped engine resize handler passed cleanly downstream
+  // Bind canvas to the persistent engine singleton
   const handleEngineResize = useCallback((canvas: HTMLCanvasElement) => {
     gameEngine.bindCanvas(canvas);
   }, []);
 
-  // Structural Core Connection - Fires exactly ONCE
-  useEffect(() => {
-    let isAborted = false;
-
-    if (!characterId || !playerId) {
-      navigate({ to: "/login" });
-      return;
-    }
-
-    const bootSequence = async () => {
-      console.log("🔌 Initializing secure socket connection process...");
-      const ticket = await fetchGameTicket(characterId, playerId);
-
-      if (isAborted) return;
-      if (!ticket) {
-        navigate({ to: "/login" });
-        return;
-      }
-
-      console.log(
-        "🎯 Valid token acquired. Igniting engine core logic streams.",
-      );
-
-      // Start connection, clocks, and internal game structures without a canvas
-      await gameEngine.start(ticket);
-      gameEngine.events.emit("CHARACTER_UPDATED");
-
-      if (!isAborted) {
-        setIsReady(true);
-      }
-    };
-
-    bootSequence();
-
-    return () => {
-      isAborted = true;
-      setIsReady(false);
-      console.log("🛑 Shutting down engine instance...");
-      gameEngine.shutdown();
-    };
-  }, [characterId, playerId, navigate]);
-
   return (
     <div className="fixed inset-0 overflow-hidden bg-black select-none z-0 rpg-cursor-zone">
-      <GameCanvas isReady={isReady} onResize={handleEngineResize} />
+      <GameCanvas onResize={handleEngineResize} />
       <GameHud />
     </div>
   );

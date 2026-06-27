@@ -27,23 +27,45 @@ id():number {
   return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
-fullName():string|null
-fullName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
-fullName(optionalEncoding?:any):string|Uint8Array|null {
+firstName():string|null
+firstName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+firstName(optionalEncoding?:any):string|Uint8Array|null {
   const offset = this.bb!.__offset(this.bb_pos, 6);
   return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
 }
 
+lastName():string|null
+lastName(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+lastName(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 8);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
+email():string|null
+email(optionalEncoding:flatbuffers.Encoding):string|Uint8Array|null
+email(optionalEncoding?:any):string|Uint8Array|null {
+  const offset = this.bb!.__offset(this.bb_pos, 10);
+  return offset ? this.bb!.__string(this.bb_pos + offset, optionalEncoding) : null;
+}
+
 static startPlayer(builder:flatbuffers.Builder) {
-  builder.startObject(2);
+  builder.startObject(4);
 }
 
 static addId(builder:flatbuffers.Builder, id:number) {
   builder.addFieldInt32(0, id, 0);
 }
 
-static addFullName(builder:flatbuffers.Builder, fullNameOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, fullNameOffset, 0);
+static addFirstName(builder:flatbuffers.Builder, firstNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(1, firstNameOffset, 0);
+}
+
+static addLastName(builder:flatbuffers.Builder, lastNameOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(2, lastNameOffset, 0);
+}
+
+static addEmail(builder:flatbuffers.Builder, emailOffset:flatbuffers.Offset) {
+  builder.addFieldOffset(3, emailOffset, 0);
 }
 
 static endPlayer(builder:flatbuffers.Builder):flatbuffers.Offset {
@@ -51,10 +73,12 @@ static endPlayer(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createPlayer(builder:flatbuffers.Builder, id:number, fullNameOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createPlayer(builder:flatbuffers.Builder, id:number, firstNameOffset:flatbuffers.Offset, lastNameOffset:flatbuffers.Offset, emailOffset:flatbuffers.Offset):flatbuffers.Offset {
   Player.startPlayer(builder);
   Player.addId(builder, id);
-  Player.addFullName(builder, fullNameOffset);
+  Player.addFirstName(builder, firstNameOffset);
+  Player.addLastName(builder, lastNameOffset);
+  Player.addEmail(builder, emailOffset);
   return Player.endPlayer(builder);
 }
 }

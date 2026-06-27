@@ -1,32 +1,33 @@
-import type {
-  Config,
-  Response,
-  IResponseHandler,
-  GameEvent,
-  GameListener,
-} from "~/core/game/@types";
+// client/src/core/game/Game.ts
+import EventEmitter from "eventemitter3";
+import { Log } from "~/shared/core/Logger";
 import { Client } from "~/core/game/Client";
 import { Loop } from "~/core/game/Loop";
 import { World } from "~/core/world/World";
 import Renderer from "~/core/Renderer";
-import Character from "~/core/character/Character";
-import { RESPONSE_REGISTRY } from "~/core/game/responses";
-import InputHandler from "~/core/game/InputHandler";
-import EventEmitter from "eventemitter3";
+import type Character from "~/core/character/Character";
+import InputHandler from "~/core/InputHandler";
+import type { Config, Response, IResponseHandler } from "~/core/game/@types";
+import { RESPONSE_REGISTRY } from "~/_lib/responses";
+import Camera from "../Camera";
 
 export default class Game {
   public events: EventEmitter = new EventEmitter();
   public readonly config: Config;
   public readonly loop: Loop;
-  public character: Character | null = null;
-  public client: Client | null = null;
-  public world: World | null = null;
-  public input: InputHandler | null = null;
-  public renderer: Renderer | null = null;
+  public client!: Client;
+  public world!: World;
+  public camera!: Camera;
+  public input!: InputHandler;
+  public renderer!: Renderer;
   public isReady = false;
-  private readonly responseHandlers: Map<string, IResponseHandler> = new Map();
 
-  private listeners: Map<GameEvent, Set<GameListener>> = new Map();
+  // Viewport tracking camera metrics
+  public cameraX = 0;
+  public cameraY = 0;
+
+  private readonly TILE_SIZE = 32;
+  private readonly responseHandlers: Map<string, IResponseHandler> = new Map();
 
   constructor(config: Config) {
     this.config = config;
@@ -40,127 +41,88 @@ export default class Game {
     }
   }
 
-  /**
-   * 🚀 Boots the game engine utilizing a secure single-use ticket string
-   */
   public async start(ticket: string): Promise<void> {
-    this.world = new World(this);
-    this.client = new Client(this);
+    this.world = new World();
+    this.client = new Client();
     this.input = new InputHandler();
+    this.renderer = new Renderer();
+    this.camera = new Camera();
     this.isReady = true;
-
-    // 1. Pass the secure token directly down into the client instance setup
-    // Client will decode it locally to populate this.client.playerId & characterId
     this.client.connect(ticket);
-
     this.loop.start();
+
+    this.loop.events.on("UPDATE", (deltaTime: number) =>
+      this.handleUpdate(deltaTime),
+    );
+
+    this.loop.events.on("TICK", (tick: number) => this.handleTick(tick));
+
+    this.client.events.on("ROUTE_RESPONSES", (message: any) => {
+      this.handleRouteResponses(message);
+    });
   }
 
-  public bindCanvas(canvas: HTMLCanvasElement): void {
-    this.renderer = new Renderer(canvas);
+  public handleRouteResponses(message: any): void {
+    if (!this.isReady) return;
+    this.routeResponses(message);
   }
 
-  // // 🎯 EVENT EMITTER SUBSCRIPTION METHOD
-  // public subscribe(event: GameEvent, callback: GameListener): () => void {
-  //   if (!this.listeners.has(event)) {
-  //     this.listeners.set(event, new Set());
-  //   }
-  //   this.listeners.get(event)!.add(callback);
+  /**
+   * Tracks matrix movements and forces rendering sequentially under a uniform loop
+   */
+  public handleUpdate(deltaTime: number): void {
+    if (!this.isReady || !this.world || !this.renderer) return;
 
-  //   // Return an un-subscription teardown function cleanly
-  //   return () => {
-  //     this.listeners.get(event)?.delete(callback);
-  //   };
-  // }
+    this.update(deltaTime);
+  }
 
-  // // 🎯 EVENT EMITTER DISPATCH METHOD
-  // public emit(event: GameEvent): void {
-  //   const targets = this.listeners.get(event);
-  //   if (!targets) return;
-  //   targets.forEach((callback) => callback(this));
-  // }
+  public handleTick(tick: number): void {
+    if (!this.world) return;
+    this.tick(tick);
+  }
 
   public async routeResponses(response: Response): Promise<void> {
-    if (!this.isReady) return;
-
-    const { character } = this;
-    const handler = this.responseHandlers.get(response.type);
+    if (!response) return;
+    const { type, data } = response;
+    const handler = this.responseHandlers.get(type);
 
     if (!handler) {
-      console.log(`No message handler found for: ${response.type}`);
+      console.log(`No message handler found for: ${type}`);
       return;
     }
 
     try {
-      await handler.execute({
-        game: this,
-        data: response.data,
-      });
-    } catch (e) {
-      console.log(`Error executing handler: ${e}`);
+      await handler.execute({ game: this, data });
+    } catch (error) {
+      console.log(`Error executing handler: ${error}`);
     }
   }
 
-  public send(type: string, data: any): void {
-    if (!this.client) return;
-
-    this.client.send(type, data);
-  }
-
   public update(tick: number): void {
-    if (!this.isReady || !this.world || !this.character) return;
+    if (!this.isReady || !this.world) return;
+    if (!this.renderer.canvas) return;
 
-    // ✨ FIX: If display metrics are uninitialized at origin 0,
-    // hard-snap them instantly to their spawn coordinates to completely kill the diagonal jump.
-    // if (this.character.displayX === 0 && this.character.displayY === 0) {
-    //   this.character.displayX = this.character.position.x;
-    //   this.character.displayY = this.character.position.y;
-    // }
-
-    // 1. Calculate time-scaled interpolation using the FIXED simulation step
-    // Using this.config.cycleRate guarantees deterministic smoothing across devices
-    const speed = 10;
-    const lerpFactor = 1 - Math.exp(-speed * this.config.cycleRate);
-
-    // 2. Apply interpolation safely inside the fixed loop
-    this.character.displayX +=
-      (this.character.position.x - this.character.displayX) * lerpFactor;
-    this.character.displayY +=
-      (this.character.position.y - this.character.displayY) * lerpFactor;
-
-    // 3. Trigger world logic
+    if (this.world.character) {
+      this.camera.update(
+        this.world.character,
+        this.renderer.canvas.width,
+        this.renderer.canvas.height,
+      );
+    }
     this.world.update(tick);
+    this.renderer.render(this.camera.x, this.camera.y);
+
     this.events.emit("WORLD_UPDATE", { zone: "Arena" });
   }
 
   public tick(tick: number): void {
-    if (!this.isReady || !this.world || !this.character || !this.input) return;
-
-    // 1. Calculate direction vector from currently held keys
-    let dx = 0;
-    let dy = 0;
-
-    if (this.input.keys.w) dy -= 1;
-    if (this.input.keys.s) dy += 1;
-    if (this.input.keys.a) dx -= 1;
-    if (this.input.keys.d) dx += 1;
-
-    // 2. If the user is pressing a key, apply movement velocity per tick
-    if (dx !== 0 || dy !== 0) {
-      // Normalize diagonal velocity so moving diagonally isn't faster
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const speedPerTick = 0.2; // Moves 20% of a tile per server tick
-
-      const velocity = {
-        x: (dx / length) * speedPerTick,
-        y: (dy / length) * speedPerTick,
-      };
-
-      // Pass the fine-grained sub-tile movement to your action queue
-      this.world.queueAction("MOVE", velocity);
-    }
+    if (!this.isReady || !this.world) return;
 
     this.world.tick(tick);
+  }
+
+  public bindCanvas(canvas: HTMLCanvasElement): void {
+    this.renderer!.bind(canvas);
   }
 
   public shutdown(): void {
@@ -173,7 +135,6 @@ export default class Game {
     if (this.world) {
       this.world.clear();
     }
-    this.renderer = null;
     console.log("🛑 Game Engine core successfully shut down.");
   }
 }

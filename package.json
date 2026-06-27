@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "codegen": "flatc --ts --gen-all -o shared/proto/generated shared/proto/index.fbs"
+    "codegen": "flatc --ts --gen-all -o shared/serialize/generated shared/serialize/index.fbs"
 	},
 	"devDependencies": {
 		"typescript": "^6.0.3"

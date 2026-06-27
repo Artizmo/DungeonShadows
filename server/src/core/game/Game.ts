@@ -9,17 +9,19 @@ import type {
   NetworkMessage,
 } from "~/core/game/@types";
 import { REQUEST_REGISTRY } from "~/_lib/requests";
+import { MapCache } from "~/_utils/mapCache";
 
 export default class Game {
+  readonly config: Config;
+  readonly loop: Loop;
+  public server!: Server;
+  public world!: World;
+  public mapCache: MapCache = new MapCache();
+  public isReady = false;
   private readonly requestHandlers = new Map<
     keyof GameEventMap,
     IGameHandler<any>
   >();
-  readonly config: Config;
-  readonly loop: Loop;
-  server!: Server;
-  world!: World;
-  isReady = false;
 
   constructor(config: Config) {
     this.config = config;

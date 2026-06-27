@@ -1,0 +1,2 @@
+include "character.fbs";
+include "mapChunk.fbs";

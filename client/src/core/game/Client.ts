@@ -1,7 +1,8 @@
 import type Game from "~/core/game/Game";
 import { GAME_SERVER_URL } from "~/_utils/constants";
-import { Deserialize } from "~/shared/proto/deserializer";
-import { OpCode } from "~/shared/proto/@types";
+import { Deserialize } from "~/shared/serialize/deserializer";
+import { OpCode } from "~/shared/serialize/@types";
+import EventEmitter from "eventemitter3";
 
 const URL = `ws://${GAME_SERVER_URL || "localhost:8000"}`;
 
@@ -10,16 +11,10 @@ interface ManagedWebSocket extends WebSocket {
 }
 
 export class Client {
-  private socket: ManagedWebSocket | null = null;
-  public readonly game: Game | null = null;
-
-  // Keep these properties tracked locally on the instance
+  public events: EventEmitter = new EventEmitter();
   public playerId: number = 0;
   public characterId: number = 0;
-
-  constructor(game: Game) {
-    this.game = game;
-  }
+  private socket: ManagedWebSocket | null = null;
 
   /**
    * Helper method to decode a JWT payload on the client side without verification
@@ -58,7 +53,7 @@ export class Client {
 
     // 2. Build the secure URL string using the single-use ticket
     const authenticatedUrl = `${URL}?ticket=${encodeURIComponent(ticket)}`;
-    console.log("🔌 Initializing secure socket connection...");
+    console.log("🔌 Initializing connection...");
 
     const ws: ManagedWebSocket = new WebSocket(authenticatedUrl);
     ws.wasIntentionallyClosed = false;
@@ -74,21 +69,20 @@ export class Client {
     ws.onmessage = async (rawData) => {
       if (this.socket !== ws) return;
 
-      // 1. 🟢 Handle Binary Streams (FlatBuffers)
+      // Handle Binary Streams (FlatBuffers)
       if (rawData.data instanceof ArrayBuffer) {
         const rawPacket = new Uint8Array(rawData.data);
 
-        // 1️⃣ Extract your baked-in opcode byte
-        const type = OpCode[rawPacket[0]];
+        const opcodeNumber = rawPacket[0];
+        const type = OpCode[opcodeNumber]; // "CHARACTER_SPAWN", "MAP_CHUNK_DATA", etc.
+        const flatbufferBytes = rawPacket.subarray(1); // Pointer view slice (O(1) execution)
 
-        // 2️⃣ 🟢 Slice off byte 0 so FlatBuffers gets its original unshifted buffer!
-        const flatbufferBytes = rawPacket.subarray(1);
-        const data = Deserialize.character(flatbufferBytes);
-        this.handleSocketMessage({ type, data });
+        // 🟢 Send the RAW binary payload straight to the route controller!
+        this.handleSocketMessage({ type, data: flatbufferBytes });
         return;
       }
 
-      // 2. 🟢 Handle Text Streams (JSON, fallback logs, chat messages)
+      // Handle Text Streams (JSON, fallback logs, chat messages)
       if (typeof rawData.data === "string") {
         try {
           const message = JSON.parse(rawData.data);
@@ -104,24 +98,15 @@ export class Client {
       }
     };
 
-    ws.addEventListener("close", (event) => {
-      console.error("Socket closed by client!", {
-        code: event.code,
-        reason: event.reason,
-        wasClean: event.wasClean,
-      });
-
-      // 🎯 Add a stack trace to see what code triggered the close
-      console.trace("Who called close()?");
-    });
+    ws.onclose = () => {
+      console.log("🛑 Client disconnected from game server.");
+    };
 
     ws.onerror = () => {};
   }
 
   private handleSocketMessage(message: any) {
-    if (!this.game) return;
-
-    this.game.routeResponses(message);
+    this.events.emit("ROUTE_RESPONSES", message);
   }
 
   disconnect() {

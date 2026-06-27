@@ -1,6 +1,6 @@
 {
-  "id": "arena",
-  "parentAreaId": "sephus",
+  "id": "arena:sephus",
+  "areaId": "sephus",
   "name": "Arena",
   "map": {
     "width": 160,

@@ -3,6 +3,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 export { Character } from './game-protocol/character.js';
+export { MapChunk } from './game-protocol/map-chunk.js';
+export { MapChunkPacket } from './game-protocol/map-chunk-packet.js';
+export { PacketType } from './game-protocol/packet-type.js';
 export { Player } from './game-protocol/player.js';
 export { Position } from './game-protocol/position.js';
 export { Stats } from './game-protocol/stats.js';
+export { Zone } from './game-protocol/zone.js';

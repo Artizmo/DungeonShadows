@@ -9,3 +9,9 @@ export interface Stats {
   maxMana: number;
   speed: number;
 }
+
+export interface Zone {
+  id: string;
+  areaId: string;
+  mapName: string;
+}

@@ -19,7 +19,7 @@ export type Command<T = any> = Payload<T>;
 export interface ResponseContext {
   character?: Character;
   game: Game;
-  data: any; // For structured data (like a UI button click payload)
+  data: Uint8Array;
 }
 
 export interface IResponseHandler {
