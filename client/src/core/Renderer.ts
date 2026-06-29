@@ -36,12 +36,9 @@ export default class Renderer {
     const browserWidth = window.innerWidth;
     const browserHeight = window.innerHeight;
 
-    // 1. Enforce maximal hard boundaries
     const clampedWidth = Math.min(browserWidth, this.MAX_WIDTH);
     const clampedHeight = Math.min(browserHeight, this.MAX_HEIGHT);
 
-    // 2. 🟢 THE SNAP FORMULA: Drop partial edge fragments by grounding into multiple structural tiles
-    // e.g. 1875 max cap drops down cleanly to 1856 (58 columns * 32px)
     const snappedWidth =
       Math.floor(clampedWidth / this.TILE_SIZE) * this.TILE_SIZE;
     const snappedHeight =
@@ -50,7 +47,6 @@ export default class Renderer {
     this.canvas.width = snappedWidth;
     this.canvas.height = snappedHeight;
 
-    // 3. Keep rendering pixels crisp and aliased
     if (this.ctx) {
       this.ctx.imageSmoothingEnabled = false;
       (this.ctx as any).mozImageSmoothingEnabled = false;
@@ -104,9 +100,16 @@ export default class Renderer {
   ): void {
     if (!this.canvas || !this.ctx) return;
 
-    // 1. Convert the character's grid position into world pixels
-    const worldX = character.position.x * this.TILE_SIZE;
-    const worldY = character.position.y * this.TILE_SIZE;
+    // 1. 🟢 PHASE 6 FIX: Convert the character's smooth rendering coordinates
+    // instead of logical grid cells into world pixels.
+    // If renderX doesn't exist yet (fallback), use position coordinates.
+    const renderX =
+      "renderX" in character ? character.renderX : character.position.x;
+    const renderY =
+      "renderY" in character ? character.renderY : character.position.y;
+
+    const worldX = renderX * this.TILE_SIZE;
+    const worldY = renderY * this.TILE_SIZE;
 
     // 2. Translate world pixels into screen-space drawing coordinates
     const drawX = worldX - cameraX;
@@ -122,21 +125,18 @@ export default class Renderer {
       return;
     }
 
-    // 3. 🟢 THE GREEN VELVET CIRCLE
-    // Calculate the center point of the tile and the circle's radius
+    // 3. THE GREEN VELVET CIRCLE
     const radius = this.TILE_SIZE / 2;
     const centerX = drawX + radius;
     const centerY = drawY + radius;
 
     this.ctx.beginPath();
-    // arc(x, y, radius, startAngle, endAngle) -> Math.PI * 2 makes a full 360 degree circle
     this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
 
     // Set fill to a rich, deep forest velvet green
     this.ctx.fillStyle = "#1b4d3e";
     this.ctx.fill();
 
-    // Draw a crisp, slightly darker outline border around the velvet circle so it pops on dark tiles
     this.ctx.strokeStyle = "#ffffff";
     this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
@@ -158,11 +158,10 @@ export default class Renderer {
     for (const [key, texture] of this.chunkTextures.entries()) {
       const [chunkX, chunkY] = key.split("_").map(Number);
 
-      // Coordinate translation based on our base chunk sizing scale
       const drawX = chunkX * this.chunkSize - cameraX;
       const drawY = chunkY * this.chunkSize - cameraY;
 
-      // 🟢 DYNAMIC FRUSTUM CULLING: Use the texture's actual size for the boundary check
+      // DYNAMIC FRUSTUM CULLING
       if (
         drawX + texture.width < 0 ||
         drawY + texture.height < 0 ||
@@ -172,7 +171,6 @@ export default class Renderer {
         continue;
       }
 
-      // 🟢 THE FIX: Render with native width and height instead of forcing this.chunkSize twice
       this.ctx.drawImage(texture, drawX, drawY, texture.width, texture.height);
     }
   }

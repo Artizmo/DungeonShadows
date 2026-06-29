@@ -1,8 +1,8 @@
 import type { Effect, Position, Stats } from "~/core/character/@types";
-import type { IPlayer } from "~/core/character/Player";
 import Player from "~/core/character/Player";
 import type Zone from "../world/Zone";
 import type InputHandler from "../InputHandler";
+import type { IPendingAction, IPlayer } from "~/shared/serialize/@types";
 
 export interface ICharacter {
   id: number;
@@ -25,8 +25,9 @@ export default class Character implements ICharacter {
   public stats: Stats;
   public isAlive: boolean;
   public effects: Map<string, Effect> = new Map();
-  public onPendingEvent?: (charId: number) => void;
-  private speed: number = 0.06;
+  public pendingActions: IPendingAction<any>[] = [];
+  public speed: number = 0.06;
+  private sequenceId: number = 0;
 
   constructor(character: ICharacter) {
     this.id = character.id;
@@ -39,12 +40,35 @@ export default class Character implements ICharacter {
     this.position = { ...character.position };
   }
 
+  // public handleInputMovement(input: InputHandler): void {
+  //   if (input.keys.w) this.position.y -= this.speed;
+  //   if (input.keys.s) this.position.y += this.speed;
+  //   if (input.keys.a) this.position.x -= this.speed;
+  //   if (input.keys.d) this.position.x += this.speed;
+  // }
+
   public handleInputMovement(input: InputHandler): void {
-    if (input.keys.w) this.position.y -= this.speed;
-    if (input.keys.s) this.position.y += this.speed;
-    if (input.keys.a) this.position.x -= this.speed;
-    if (input.keys.d) this.position.x += this.speed;
+    const isMoving =
+      input.keys.w || input.keys.s || input.keys.a || input.keys.d;
+    if (!isMoving) return;
+
+    this.sequenceId++;
+
+    const action: IPendingAction = {
+      type: "MOVE",
+      sequenceId: this.sequenceId,
+      payload: { ...input.keys },
+    };
+
+    // 1. Queue it
+    this.pendingActions.push(action);
+
+    // 2. Predict it locally
+    if (action.payload.w) this.position.y -= this.speed;
+    if (action.payload.s) this.position.y += this.speed;
+    if (action.payload.a) this.position.x -= this.speed;
+    if (action.payload.d) this.position.x += this.speed;
   }
 
-  public tick() {}
+  public tick(tick: number) {}
 }

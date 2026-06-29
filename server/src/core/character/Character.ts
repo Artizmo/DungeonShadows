@@ -1,7 +1,6 @@
 import { EventEmitter } from "events";
 import { type PendingEvent } from "~/core/game/@types";
 import type { Position, Stats, Zone } from "~/core/character/@types";
-import type { Effect } from "~/_lib/effects/types";
 import type Player from "~/core/character/Player";
 
 export default class Character {
@@ -14,9 +13,10 @@ export default class Character {
   public isAlive: boolean;
   public zone: Zone;
   public position: Position;
+  public speed: number;
   public inventory: string[] = [];
-  public effects: Map<string, Effect> = new Map();
   public pendingEvents: Array<PendingEvent> = [];
+  public lastProcessedId: number;
 
   constructor(character: Character) {
     this.id = character.id;
@@ -32,10 +32,6 @@ export default class Character {
 
   public get hasPendingEvents(): boolean {
     return this.pendingEvents.length > 0;
-  }
-
-  public get hasEffects(): boolean {
-    return this.effects.size > 0;
   }
 
   public addPendingEvent(event: PendingEvent): void {

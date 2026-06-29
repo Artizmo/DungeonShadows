@@ -1,6 +1,17 @@
 import * as flatbuffers from "flatbuffers";
 import { GameProtocol } from "./generated/index.js";
-import type { Character, IMapChunkData } from "~/shared/serialize/@types.ts";
+import {
+  GameEventType,
+  type Character,
+  type IMapChunkData,
+  type MoveEvent,
+} from "~/shared/serialize/@types.js";
+
+// 1. 🟢 IMPORT ALL WORLD STATE ELEMENTS DIRECTLY FROM THEIR KEBAB-CASE FILES
+import { WorldStateUpdate } from "~/shared/serialize/generated/game-protocol/world-state-update.js";
+import { ComponentUpdate } from "~/shared/serialize/generated/game-protocol/component-update.js";
+import { OutboundEvent } from "~/shared/serialize/generated/game-protocol/outbound-event.js";
+import { MoveEvent as FbsMoveEvent } from "~/shared/serialize/generated/game-protocol/move-event.js";
 
 export class Deserialize {
   public static character(bytes: Uint8Array): Character {
@@ -11,7 +22,6 @@ export class Deserialize {
 
     // 3. Pull out the nested table safely (handle null-checks)
     const statsTable = characterTable.stats();
-    // const posStruct = characterTable.position();
     const playerTable = characterTable.player();
     const zoneTable = characterTable.zone();
 
@@ -66,5 +76,43 @@ export class Deserialize {
       y,
       imageBytes,
     };
+  }
+
+  /**
+   * Translates an incoming binary WorldState byte block back into usable runtime updates
+   */
+  public static worldState(data: Uint8Array): MoveEvent[] {
+    const buf = new flatbuffers.ByteBuffer(data);
+
+    // 2. 🟢 Read the root structure cleanly using the exact top-level file imports
+    const worldState = WorldStateUpdate.getRootAsWorldStateUpdate(buf);
+    const updatesLength = worldState.updatesLength();
+    const extractedEvents: MoveEvent[] = [];
+
+    for (let i = 0; i < updatesLength; i++) {
+      const componentUpdate = worldState.updates(i);
+      if (!componentUpdate) continue;
+
+      const lastProcessedId = componentUpdate.lastProcessedId();
+      const payloadType = componentUpdate.payloadType();
+
+      // Check the Union Type Discriminator to cleanly read memory pointers
+      if (payloadType === OutboundEvent.MoveEvent) {
+        const movePayload = new FbsMoveEvent();
+        componentUpdate.payload(movePayload);
+
+        extractedEvents.push({
+          type: GameEventType.MOVE,
+          characterId: movePayload.characterId(),
+          x: movePayload.x(),
+          y: movePayload.y(),
+          lastProcessedId: lastProcessedId,
+        });
+      }
+
+      // Future expansions (like DamageEvent) can be mapped seamlessly right here!
+    }
+
+    return extractedEvents;
   }
 }

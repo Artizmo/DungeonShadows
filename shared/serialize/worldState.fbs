@@ -1,0 +1,33 @@
+// C:\Users\selva\OneDrive\Desktop\DungeonShadows\shared\serialize\worldState.fbs
+include "character.fbs";
+include "mapChunk.fbs";
+include "actions.fbs";
+
+namespace GameProtocol;
+
+// 1. You must declare DamageEvent as a table so the union can find it!
+table DamageEvent {
+  target_id:uint;
+  amount:int;
+}
+
+table MoveEvent {
+  character_id:uint;
+  x:float;
+  y:float;
+}
+
+// 2. Now the union can safely map both tables
+union OutboundEvent {
+  MoveEvent,
+  DamageEvent
+}
+
+table ComponentUpdate {
+  last_processed_id:uint;
+  payload:OutboundEvent;
+}
+
+table WorldStateUpdate {
+  updates:[ComponentUpdate];
+}

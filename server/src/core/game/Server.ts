@@ -7,6 +7,7 @@ import type { Config } from "~/core/game/@types";
 import type { NetworkMessage } from "~/core/game/@types";
 import type Game from "~/core/game/Game";
 import { WebSocketConnection } from "~/_utils/messageBroker";
+import { OpCode } from "~/shared/serialize/@types";
 
 dotenv.config();
 
@@ -112,11 +113,25 @@ export default class Server {
         Log.SERVER.INFO(`Received PONG from PID ${formatedPlayerId}`);
       });
 
-      socket.on("message", (rawData: Buffer) => {
+      socket.on("message", (rawData: Buffer, isBinary: boolean) => {
         try {
           if (!rawData) return;
+
+          // 1. Route Binary Packets (FlatBuffers)
+          if (isBinary) {
+            const bytes = new Uint8Array(rawData);
+            const type = OpCode[bytes[0]];
+            const data = bytes.subarray(1);
+            this.handleSocketMessage(
+              { type, data, socket },
+              formatedCharacterId,
+            );
+            return;
+          }
+
+          // 2. Fallback JSON Packets
           const message = JSON.parse(rawData.toString("utf-8"));
-          this.handleSocketMessage(message, formatedPlayerId);
+          this.handleSocketMessage({ ...message, socket }, formatedCharacterId);
         } catch (err) {
           Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
         }
@@ -136,8 +151,11 @@ export default class Server {
     Log.SERVER.INFO(`Server listening on port ${config.port}.`);
   }
 
-  private handleSocketMessage(message: NetworkMessage, playerId: number): void {
-    this.events.emit("route_requests", { request: message, playerId });
+  private handleSocketMessage(
+    request: NetworkMessage,
+    characterId: number,
+  ): void {
+    this.events.emit("route_requests", { request, characterId });
   }
 
   private handleSocketClose(playerId: number, closingSocket: WebSocket): void {

@@ -128,9 +128,25 @@ export class Client {
     }
   }
 
-  send(type: string, data: any = null) {
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ type, data }));
-    }
+  /**
+   * Sends raw binary data (FlatBuffers).
+   * No type string or JSON wrapping needed because the OpCode is inside the bytes!
+   */
+  public sendBinary(bytes: Uint8Array): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+
+    // Use .buffer to satisfy TypeScript's WebSocket definitions
+    this.socket.send(bytes.buffer);
+  }
+
+  /**
+   * Legacy/Fallback method for JSON-based events.
+   */
+  public sendJson(type: string, data: any = null): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+
+    const payload =
+      typeof data === "string" ? data : JSON.stringify({ type, data });
+    this.socket.send(payload);
   }
 }

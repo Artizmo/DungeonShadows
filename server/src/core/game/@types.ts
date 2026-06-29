@@ -3,6 +3,7 @@ import type Player from "~/core/character/Player";
 import type Game from "~/core/game/Game";
 import type World from "~/core/world/World";
 import type Character from "~/core/character/Character";
+import type { IPendingAction } from "~/shared/serialize/@types";
 
 declare module "ws" {
   interface WebSocket {
@@ -16,6 +17,7 @@ export enum GameEventType {
   REMOVE_EFFECT = "REMOVE_EFFECT",
   DEATH = "DEATH",
   CHARACTER = "CHARACTER",
+  MOVE = "MOVE",
 }
 
 export type DamageEvent = { type: GameEventType.DAMAGE; amount: number };
@@ -28,11 +30,30 @@ export type DeathEvent = { type: GameEventType.DEATH };
 export type EffectsEvent = {
   type: GameEventType.ADD_EFFECT | GameEventType.REMOVE_EFFECT;
 };
+
+export type MoveCommandEvent = {
+  type: GameEventType.MOVE;
+  sequenceId: number;
+  w: boolean;
+  s: boolean;
+  a: boolean;
+  d: boolean;
+};
+
+export type MoveEvent = {
+  type: GameEventType.MOVE;
+  characterId: number;
+  x: number;
+  y: number;
+  lastProcessedId: number;
+};
+
 export type PendingEvent =
   | DamageEvent
   | DeathEvent
   | EffectsEvent
-  | CharacterEvent;
+  | CharacterEvent
+  | MoveEvent;
 
 export interface GameEventContext {
   character: Character;
@@ -48,9 +69,9 @@ export interface GameEvent {
 
 // 1. For actions where the player is already fully initialized in the world
 export interface RequestContext {
-  player: Player;
+  character: Character;
   game: Game;
-  payload: Uint8Array; // Raw FlatBuffer bytes specific to this action
+  data: Uint8Array; // Raw FlatBuffer bytes specific to this action
 }
 
 export interface IConnection {
@@ -104,6 +125,7 @@ export type GameEventMap = {
   PLAYER_JOIN: { playerId: string; characterId: string; connection: any };
   PLAYER_MOVE: { playerId: string; x: number; y: number };
   APPLY_EFFECT: { targetId: string; duration: number };
+  CLIENT_BATCH_INPUT: IPendingAction;
 };
 
 // 🟢 A generic handler interface bound to a specific event key

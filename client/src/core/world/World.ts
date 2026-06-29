@@ -18,6 +18,9 @@ export class World {
   public tick(tick: number): void {
     // Leave this clear or restricted purely to fixed physics step network checks
     // this.game.character?.tick();
+    if (this.character) {
+      this.character.tick(tick);
+    }
   }
 
   public clear(): void {}

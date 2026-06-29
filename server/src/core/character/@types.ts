@@ -10,5 +10,5 @@ export interface Stats {
 export interface Zone {
   id: string;
   areaId: string;
-  mapName: string;
+  mapPath: string;
 }

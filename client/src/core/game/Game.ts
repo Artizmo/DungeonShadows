@@ -10,6 +10,8 @@ import InputHandler from "~/core/InputHandler";
 import type { Config, Response, IResponseHandler } from "~/core/game/@types";
 import { RESPONSE_REGISTRY } from "~/_lib/responses";
 import Camera from "../Camera";
+import type { IMovePayload } from "~/shared/serialize/@types";
+import { Serialize } from "~/shared/serialize/serializer";
 
 export default class Game {
   public events: EventEmitter = new EventEmitter();
@@ -21,12 +23,6 @@ export default class Game {
   public input!: InputHandler;
   public renderer!: Renderer;
   public isReady = false;
-
-  // Viewport tracking camera metrics
-  public cameraX = 0;
-  public cameraY = 0;
-
-  private readonly TILE_SIZE = 32;
   private readonly responseHandlers: Map<string, IResponseHandler> = new Map();
 
   constructor(config: Config) {
@@ -84,6 +80,7 @@ export default class Game {
   public async routeResponses(response: Response): Promise<void> {
     if (!response) return;
     const { type, data } = response;
+
     const handler = this.responseHandlers.get(type);
 
     if (!handler) {
@@ -100,25 +97,14 @@ export default class Game {
 
   public update(tick: number): void {
     const { world, renderer, camera, input } = this;
-
-    // Tier 1: Infrastructure Guard. If core engine systems aren't ready, fail fast.
-    if (!this.isReady || !world || !renderer.canvas) return;
-
-    const character = world.character;
+    const { character } = world;
 
     if (character) {
+      // 🟢 Client prediction
       character.handleInputMovement(input);
-      camera.update(
-        character,
-        this.renderer.canvas!.width,
-        this.renderer.canvas!.height,
-      );
-    }
-
-    this.renderer.render(camera.x, camera.y);
-
-    if (character) {
-      this.renderer.renderCharacter(character, camera.x, camera.y);
+      camera.update(character, renderer.canvas!.width, renderer.canvas!.height);
+      renderer.render(camera.x, camera.y);
+      renderer.renderCharacter(character, camera.x, camera.y);
     }
 
     // 🟢 Update simulation world
@@ -127,8 +113,21 @@ export default class Game {
 
   public tick(tick: number): void {
     if (!this.isReady || !this.world) return;
+    if (!this.world.character) return;
+
+    // 🟢 Send character actions to server
+    if (this.world?.character?.pendingActions?.length > 0) {
+      // Pass the ENTIRE array to the serializer, not individual pieces!
+      const data: Uint8Array = Serialize.pendingActions(
+        this.world.character.pendingActions,
+      );
+
+      // Blast the single, efficient batch packet over the wire
+      this.client.sendBinary(data);
+    }
 
     this.world.tick(tick);
+    this.world.character.pendingActions = [];
   }
 
   public bindCanvas(canvas: HTMLCanvasElement): void {

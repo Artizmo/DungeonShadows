@@ -1,14 +1,29 @@
 // ~/core/network/GameSerializer.ts
 import * as flatbuffers from "flatbuffers";
 import { GameProtocol } from "~/shared/serialize/generated/index.js";
-import { Character, OpCode } from "~/shared/serialize/@types.js";
-import { Position } from "./generated/game-protocol.js";
+import {
+  OpCode,
+  type ICharacter,
+  type IMovePayload,
+  type IPendingAction,
+} from "~/shared/serialize/@types.js";
+
+// 1. 🟢 IMPORT ALL WORLD STATE ELEMENTS FROM THEIR KEBAB-CASE FILES
+import { WorldStateUpdate } from "./generated/game-protocol/world-state-update.js";
+import { ComponentUpdate } from "./generated/game-protocol/component-update.js";
+import { MoveEvent as FbsMoveEvent } from "./generated/game-protocol/move-event.js";
+import { OutboundEvent } from "./generated/game-protocol/outbound-event.js";
+
+import { ActionPayload } from "./generated/game-protocol/action-payload.js";
+import { MovePayload } from "./generated/game-protocol/move-payload.js";
+import { ActionData } from "./generated/game-protocol/action-data.js";
+import { ClientBatchPacket } from "./generated/game-protocol/client-batch-packet.js";
 
 export class Serialize {
   /**
    * Translates a runtime Character entity into a flat binary Uint8Array
    */
-  public static character(character: Character): Uint8Array {
+  public static character(character: ICharacter): Uint8Array {
     const builder = new flatbuffers.Builder(1024);
     const { Character, Player, Zone, Position } = GameProtocol;
 
@@ -24,7 +39,7 @@ export class Serialize {
 
     const zoneId = builder.createString(character.zone.id);
     const areaId = builder.createString(character.zone.areaId);
-    const mapName = builder.createString(character.zone.mapName);
+    const mapName = builder.createString(character.zone.mapPath);
     Zone.startZone(builder);
     Zone.addId(builder, zoneId);
     Zone.addAreaId(builder, areaId);
@@ -65,17 +80,14 @@ export class Serialize {
     y: number;
     imageBytes: Uint8Array;
   }): Uint8Array {
-    // Instantiate a local builder instance just like the character method
     const builder = new flatbuffers.Builder(1024);
     const { MapChunk } = GameProtocol;
 
-    // 1. Serialize the raw image byte vector into the FlatBuffer context
     const imgBytesOffset = MapChunk.createImageBytesVector(
       builder,
       data.imageBytes,
     );
 
-    // 2. Map coordinates alongside vector pointer offsets
     MapChunk.startMapChunk(builder);
     MapChunk.addX(builder, data.x);
     MapChunk.addY(builder, data.y);
@@ -84,9 +96,98 @@ export class Serialize {
 
     builder.finish(chunkOffset);
 
-    // 3. Match your character pattern: Glue your opcode prefix to frame zero!
+    return Serialize.prependedPacket(OpCode.MAP_CHUNK, builder.asUint8Array());
+  }
+
+  public static pendingActions(actions: IPendingAction<any>[]): Uint8Array {
+    const builder = new flatbuffers.Builder(2048);
+    const actionOffsets: number[] = [];
+
+    for (const action of actions) {
+      let payloadOffset = 0;
+      let unionType = ActionPayload.NONE;
+
+      if (action.type === "MOVE") {
+        const moveData = action.payload as IMovePayload;
+
+        MovePayload.startMovePayload(builder);
+        MovePayload.addW(builder, moveData.w);
+        MovePayload.addS(builder, moveData.s);
+        MovePayload.addA(builder, moveData.a);
+        MovePayload.addD(builder, moveData.d);
+
+        payloadOffset = MovePayload.endMovePayload(builder);
+        unionType = ActionPayload.MovePayload;
+      }
+
+      if (unionType === ActionPayload.NONE) continue;
+
+      ActionData.startActionData(builder);
+      ActionData.addSequenceId(builder, action.sequenceId);
+      ActionData.addPayloadType(builder, unionType);
+      ActionData.addPayload(builder, payloadOffset);
+
+      actionOffsets.push(ActionData.endActionData(builder));
+    }
+
+    const actionsVectorOffset = ClientBatchPacket.createActionsVector(
+      builder,
+      actionOffsets,
+    );
+
+    ClientBatchPacket.startClientBatchPacket(builder);
+    ClientBatchPacket.addActions(builder, actionsVectorOffset);
+    const batchOffset = ClientBatchPacket.endClientBatchPacket(builder);
+
+    builder.finish(batchOffset);
+
     return Serialize.prependedPacket(
-      OpCode.MAP_CHUNK, // Assuming you have MAP_CHUNK_DATA defined in OpCode enum
+      OpCode.CLIENT_BATCH_INPUT,
+      builder.asUint8Array(),
+    );
+  }
+
+  /**
+   * Translates an array of server-calculated tick events into a flat binary packet
+   */
+  public static worldState(events: any[]): Uint8Array {
+    const builder = new flatbuffers.Builder(2048);
+    const updateOffsets: number[] = [];
+
+    for (const event of events) {
+      if (event.type === "MOVE") {
+        // Step A: Build the concrete MoveEvent table using the aliased FbsMoveEvent
+        FbsMoveEvent.startMoveEvent(builder);
+        FbsMoveEvent.addCharacterId(builder, event.characterId);
+        FbsMoveEvent.addX(builder, event.x);
+        FbsMoveEvent.addY(builder, event.y);
+        const moveEventOffset = FbsMoveEvent.endMoveEvent(builder);
+
+        // Step B: Build the ComponentUpdate wrapper pairing it with the sequence ID
+        ComponentUpdate.startComponentUpdate(builder);
+        ComponentUpdate.addLastProcessedId(builder, event.lastProcessedId);
+        ComponentUpdate.addPayloadType(builder, OutboundEvent.MoveEvent);
+        ComponentUpdate.addPayload(builder, moveEventOffset);
+
+        const componentOffset = ComponentUpdate.endComponentUpdate(builder);
+        updateOffsets.push(componentOffset);
+      }
+    }
+
+    // Step C: Create the vector array of updates and finish the root table
+    const updatesVectorOffset = WorldStateUpdate.createUpdatesVector(
+      builder,
+      updateOffsets,
+    );
+
+    WorldStateUpdate.startWorldStateUpdate(builder);
+    WorldStateUpdate.addUpdates(builder, updatesVectorOffset);
+    const worldStateOffset = WorldStateUpdate.endWorldStateUpdate(builder);
+
+    builder.finish(worldStateOffset);
+
+    return Serialize.prependedPacket(
+      OpCode.WORLD_STATE_UPDATE,
       builder.asUint8Array(),
     );
   }

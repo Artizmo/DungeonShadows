@@ -1,10 +1,3 @@
-export interface IPlayer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
 export default class Player implements IPlayer {
   public id: number;
   public firstName!: string;

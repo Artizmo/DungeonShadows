@@ -2,14 +2,20 @@ import { Log } from "~/shared/core/Logger";
 import Loop from "~/core/game/Loop";
 import Server from "~/core/game/Server";
 import World from "~/core/world/World";
-import type {
-  Config,
-  GameEventMap,
-  IGameHandler,
-  NetworkMessage,
+import {
+  GameEventType,
+  type Config,
+  type GameEventMap,
+  type IGameHandler,
+  type MoveCommandEvent,
+  type MoveEvent,
+  type NetworkMessage,
+  type PendingEvent,
 } from "~/core/game/@types";
 import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
+import type Character from "~/core/character/Character";
+import { Serialize } from "~/shared/serialize/serializer";
 
 export default class Game {
   readonly config: Config;
@@ -17,6 +23,7 @@ export default class Game {
   public server!: Server;
   public world!: World;
   public mapCache: MapCache = new MapCache();
+  public activeCharacters: Map<number, Character> = new Map();
   public isReady = false;
   private readonly requestHandlers = new Map<
     keyof GameEventMap,
@@ -66,8 +73,8 @@ export default class Game {
       this.handlePlayerJoin(playerConnection);
     });
 
-    this.server.events.on("route_requests", ({ request, playerId }) => {
-      this.routeRequests(request, playerId);
+    this.server.events.on("route_requests", ({ request, characterId }) => {
+      this.routeRequests(request, characterId);
     });
   }
 
@@ -90,13 +97,16 @@ export default class Game {
 
   public async routeRequests(
     request: NetworkMessage,
-    playerId: number,
+    characterId: number,
   ): Promise<void> {
     if (!this.isReady) return;
+    if (!characterId) return;
 
+    const character = this.world.characters.get(characterId);
     const handler = this.requestHandlers.get(
       request.type as keyof GameEventMap,
     );
+
     if (!handler) {
       // player.send({
       //   type: "WARN",
@@ -107,12 +117,12 @@ export default class Game {
     }
 
     try {
-      // await handler.execute({
-      //   player,
-      //   game: this,
-      //   data: request.data,
-      //   args: request.data?.args || [],
-      // });
+      await handler.execute({
+        character,
+        game: this,
+        data: request.data,
+        args: request.data?.args || [],
+      });
     } catch (e) {
       // player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
       Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
@@ -123,33 +133,37 @@ export default class Game {
     this.world.update(tick);
   }
 
+  // Inside Game.ts (Your Fixed Server Tick Loop)
   public tick(tick: number): void {
+    // 1. Loop through characters who received packets during this frame window
+    for (const [characterId, character] of this.activeCharacters) {
+      const tickEventsToBroadcast: MoveEvent[] = [];
+      // 2. Extract the completed MoveEvents your handler already calculated
+      const events = character.pendingEvents;
+
+      console.log("bingo", events.length);
+      for (const event of events) {
+        if (event.type === GameEventType.MOVE) {
+          // TypeScript is completely happy here because MoveEvent naturally has x, y, and characterId!
+          tickEventsToBroadcast.push(event);
+        }
+      }
+
+      // 3. Wipe the character queue clean so they don't double-broadcast next tick
+      character.pendingEvents = [];
+
+      // 4. Phase 4: Pass the accumulated updates to your FlatBuffer broadcaster
+      if (tickEventsToBroadcast.length > 0) {
+        // this.broadcastTickUpdates(tickEventsToBroadcast);
+        const events = Serialize.worldState(tickEventsToBroadcast);
+        character.player.send(events);
+      }
+    }
+
+    // 5. Clean the active set tracking for the next frame window
+    this.activeCharacters.clear();
     this.world.tick(tick);
   }
-
-  // public async joinPlayer({
-  //   characterId,
-  //   playerId,
-  //   playerSocket,
-  // }): Promise<void> {
-  //   try {
-  //     const playerData = await fetchPlayer(playerId);
-  //     const player = new Player(playerData, playerSocket);
-  //     player.isAlive = true;
-
-  //     const character: Character = await fetchCharacter(characterId);
-  //     character.player = player;
-
-  //     const zoneMap = await fetchZoneMap(character.zoneMap);
-
-  //     Log.SERVER.INFO(`${player.fullName} has connected!`);
-  //     this.world.join(character);
-  //     player.send({ type: "CHARACTER_UPDATE", character });
-  //   } catch (error) {
-  //     Log.DATA.ERROR(`Could not load data: ${error}`);
-  //     return;
-  //   }
-  // }
 
   public bootPlayer(playerId: number): void {
     if (!playerId) return;
