@@ -100,14 +100,22 @@ export default class Game {
     const { character } = world;
 
     if (character) {
-      // 🟢 Client prediction
+      // 1. 🟢 Phase 1: Client prediction (updates character.position)
       character.handleInputMovement(input);
+
+      // 2. 🟢 Phase 6: Smooth Interpolation (updates character.renderX/Y toward character.position)
+      // Pass a standardized delta time frame slice (1/60s) for the LERP calculation
+      character.updateVisuals(1 / 60);
+
+      // 3. Update the camera view target based on the smooth visual position
       camera.update(character, renderer.canvas!.width, renderer.canvas!.height);
+
+      // 4. Draw the background and smooth entity models
       renderer.render(camera.x, camera.y);
       renderer.renderCharacter(character, camera.x, camera.y);
     }
 
-    // 🟢 Update simulation world
+    // 5. 🟢 Update simulation world
     world.update(tick);
   }
 
