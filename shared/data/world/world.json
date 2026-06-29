@@ -1,0 +1,9 @@
+{
+  "name": "DungeonShadows",
+  "areas": [
+    {
+      "id": "sephus",
+      "areaPath": "./areas/sephus/area.json"
+    }
+  ]
+}

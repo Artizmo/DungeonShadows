@@ -1,0 +1,9 @@
+packages:
+  - "shared"
+  - "client"
+  - "server"
+  - "login-server"
+allowBuilds:
+  bcrypt: true
+  esbuild: false
+minimumReleaseAge: 60

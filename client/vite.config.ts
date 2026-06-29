@@ -26,7 +26,7 @@ export default defineConfig({
   ],
   server: {
     host: true,
-    port: Number(process.env.VITE_GAME_SERVER_URL),
+    port: Number(process.env.VITE_WEB_PORT),
   },
   build: {
     target: "esnext",

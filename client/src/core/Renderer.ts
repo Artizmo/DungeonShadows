@@ -1,121 +1,177 @@
-import type Character from "./Character";
-import type Game from "./Game";
+// client/src/core/render/Renderer.ts
+import type { IMapChunkData } from "~/shared/serialize/@types";
 
 export default class Renderer {
-  public canvas: HTMLCanvasElement;
-  public ctx: CanvasRenderingContext2D;
-  public zoneWebpImage: HTMLImageElement | null = null;
-  public playerSprite: HTMLImageElement | null = null;
-  private game: any;
+  public canvas: HTMLCanvasElement | null = null;
+  public ctx: CanvasRenderingContext2D | null = null;
+  private chunkTextures: Map<string, HTMLImageElement> = new Map();
+  private chunkSize: number = 0;
 
-  constructor(canvas: HTMLCanvasElement, game: Game) {
-    this.game = game;
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d")!;
-    this.loadAssets();
-  }
-
-  private loadAssets() {
-    // Load map sprite (handled in connection response, but keep reference)
-    // Load Player Sprite
-    const img = new Image();
-    img.src = "/sprites/player.webp";
-    img.onload = () => (this.playerSprite = img);
-  }
-
-  // Inside Renderer.ts
+  private readonly TILE_SIZE = 32;
+  private readonly MAX_WIDTH = 1920;
+  private readonly MAX_HEIGHT = 896;
 
   /**
-   * Master render loop: Clear -> Map -> Character
+   * 🟢 Safe getter for current buffer width
    */
-  public render(): void {
-    this.ctx.fillStyle = "#000000";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    this.renderZoneMap();
-    this.renderCharacter();
+  public get width(): number {
+    return this.canvas ? this.canvas.width : 0;
   }
 
-  // 🎯 1. Centralize the Camera Math
-  private getCameraView() {
-    const character = this.game.character;
-    const TILE_SIZE = 32;
-    const viewportWidth = this.canvas.width;
-    const viewportHeight = this.canvas.height;
+  /**
+   * 🟢 Safe getter for current buffer height
+   */
+  public get height(): number {
+    return this.canvas ? this.canvas.height : 0;
+  }
 
-    const currentX = character?.displayX ?? character?.position?.x ?? 0;
-    const currentY = character?.displayY ?? character?.position?.y ?? 0;
+  /**
+   * Safe binding method invoked by React component mounts/resizes.
+   * Forces the canvas dimensions to cleanly divide into 32px increments.
+   */
+  public bind(canvas: HTMLCanvasElement) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext("2d");
 
-    let camTileX = currentX - viewportWidth / TILE_SIZE / 2;
-    let camTileY = currentY - viewportHeight / TILE_SIZE / 2;
+    const browserWidth = window.innerWidth;
+    const browserHeight = window.innerHeight;
 
-    // 🎯 Clamp to map bounds so the camera stops when you hit the edge of the world
-    if (this.zoneWebpImage) {
-      const maxMapTilesX = this.zoneWebpImage.width / TILE_SIZE;
-      const maxMapTilesY = this.zoneWebpImage.height / TILE_SIZE;
+    const clampedWidth = Math.min(browserWidth, this.MAX_WIDTH);
+    const clampedHeight = Math.min(browserHeight, this.MAX_HEIGHT);
 
-      if (camTileX + viewportWidth / TILE_SIZE > maxMapTilesX) {
-        camTileX = maxMapTilesX - viewportWidth / TILE_SIZE;
-      }
-      if (camTileY + viewportHeight / TILE_SIZE > maxMapTilesY) {
-        camTileY = maxMapTilesY - viewportHeight / TILE_SIZE;
-      }
+    const snappedWidth =
+      Math.floor(clampedWidth / this.TILE_SIZE) * this.TILE_SIZE;
+    const snappedHeight =
+      Math.floor(clampedHeight / this.TILE_SIZE) * this.TILE_SIZE;
+
+    this.canvas.width = snappedWidth;
+    this.canvas.height = snappedHeight;
+
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = false;
+      (this.ctx as any).mozImageSmoothingEnabled = false;
+      (this.ctx as any).webkitImageSmoothingEnabled = false;
+      (this.ctx as any).msImageSmoothingEnabled = false;
     }
 
-    // Always enforce the absolute zero boundaries
-    if (camTileX < 0) camTileX = 0;
-    if (camTileY < 0) camTileY = 0;
-
-    return { camTileX, camTileY, currentX, currentY, TILE_SIZE };
-  }
-
-  // 🎯 Inside renderZoneMap()
-  private renderZoneMap(): void {
-    if (!this.zoneWebpImage) return;
-
-    const { camTileX, camTileY, TILE_SIZE } = this.getCameraView();
-    const viewportWidth = this.canvas.width;
-    const viewportHeight = this.canvas.height;
-
-    // 🎯 FIX: Round the source pixels so the map doesn't vibrate
-    const sourceX = Math.round(camTileX * TILE_SIZE);
-    const sourceY = Math.round(camTileY * TILE_SIZE);
-
-    this.ctx.drawImage(
-      this.zoneWebpImage,
-      sourceX,
-      sourceY,
-      viewportWidth,
-      viewportHeight,
-      0,
-      0,
-      viewportWidth,
-      viewportHeight,
+    console.log(
+      `📐 Canvas locked seamlessly to grid lines: ${snappedWidth}x${snappedHeight} (${snappedWidth / 32}x${snappedHeight / 32} cells)`,
     );
   }
 
-  // 🎯 Inside renderCharacter()
-  private renderCharacter(): void {
-    if (!this.game.character) return;
+  /**
+   * Converts raw FlatBuffer bytes concurrently into cached GPU image objects.
+   */
+  public loadMap(chunk: IMapChunkData) {
+    const chunkKey = `${chunk.x}_${chunk.y}`;
+    if (this.chunkTextures.has(chunkKey)) return;
 
-    const { camTileX, camTileY, currentX, currentY, TILE_SIZE } =
-      this.getCameraView();
+    const blob = new Blob([chunk.imageBytes], { type: "image/webp" });
+    const objectUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.src = objectUrl;
 
-    // 🎯 FIX: Round the final screen placement coordinates
-    const screenX = Math.round((currentX - camTileX) * TILE_SIZE);
-    const screenY = Math.round((currentY - camTileY) * TILE_SIZE);
+    img.onload = () => {
+      if (this.chunkSize === 0 && img.width > 0) {
+        this.chunkSize = img.width;
+        console.log(
+          `📏 Auto-detected map chunk spacing scale: ${this.chunkSize}px`,
+        );
+      }
+      this.chunkTextures.set(chunkKey, img);
+      URL.revokeObjectURL(objectUrl);
+    };
+
+    img.onerror = () => {
+      console.error(
+        `❌ Failed to decode texture bytes for chunk layout ${chunkKey}`,
+      );
+      URL.revokeObjectURL(objectUrl);
+    };
+  }
+
+  /**
+   * Draws an active character sprite onto the screen, relative to the camera viewport.
+   */
+  public renderCharacter(
+    character: any,
+    cameraX: number,
+    cameraY: number,
+  ): void {
+    if (!this.canvas || !this.ctx) return;
+
+    // 1. 🟢 PHASE 6 FIX: Convert the character's smooth rendering coordinates
+    // instead of logical grid cells into world pixels.
+    // If renderX doesn't exist yet (fallback), use position coordinates.
+    const renderX =
+      "renderX" in character ? character.renderX : character.position.x;
+    const renderY =
+      "renderY" in character ? character.renderY : character.position.y;
+
+    const worldX = renderX * this.TILE_SIZE;
+    const worldY = renderY * this.TILE_SIZE;
+
+    // 2. Translate world pixels into screen-space drawing coordinates
+    const drawX = worldX - cameraX;
+    const drawY = worldY - cameraY;
+
+    // Frustum Culling: Skip drawing if the character is entirely off-screen
+    if (
+      drawX + this.TILE_SIZE < 0 ||
+      drawY + this.TILE_SIZE < 0 ||
+      drawX > this.canvas.width ||
+      drawY > this.canvas.height
+    ) {
+      return;
+    }
+
+    // 3. THE GREEN VELVET CIRCLE
+    const radius = this.TILE_SIZE / 2;
+    const centerX = drawX + radius;
+    const centerY = drawY + radius;
 
     this.ctx.beginPath();
-    const centerX = screenX + TILE_SIZE / 2;
-    const centerY = screenY + TILE_SIZE / 2;
-    const radius = 12;
+    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
 
-    this.ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-    this.ctx.fillStyle = "#22c55e";
+    // Set fill to a rich, deep forest velvet green
+    this.ctx.fillStyle = "#1b4d3e";
     this.ctx.fill();
 
     this.ctx.strokeStyle = "#ffffff";
-    this.ctx.lineWidth = 2;
+    this.ctx.lineWidth = 1.5;
     this.ctx.stroke();
+  }
+
+  public render(cameraX: number, cameraY: number) {
+    if (!this.canvas || !this.ctx) return;
+
+    const viewWidth = this.canvas.width;
+    const viewHeight = this.canvas.height;
+
+    // 1. Reset background
+    this.ctx.fillStyle = "#11111b";
+    this.ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+    if (this.chunkSize === 0) return;
+
+    // 2. Loop through loaded binary chunks
+    for (const [key, texture] of this.chunkTextures.entries()) {
+      const [chunkX, chunkY] = key.split("_").map(Number);
+
+      const drawX = chunkX * this.chunkSize - cameraX;
+      const drawY = chunkY * this.chunkSize - cameraY;
+
+      // DYNAMIC FRUSTUM CULLING
+      if (
+        drawX + texture.width < 0 ||
+        drawY + texture.height < 0 ||
+        drawX > viewWidth ||
+        drawY > viewHeight
+      ) {
+        continue;
+      }
+
+      this.ctx.drawImage(texture, drawX, drawY, texture.width, texture.height);
+    }
   }
 }

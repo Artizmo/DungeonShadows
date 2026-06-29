@@ -1,0 +1,63 @@
+import { EventEmitter } from "events";
+import { type PendingEvent } from "~/core/game/@types";
+import type { Position, Stats, Zone } from "~/core/character/@types";
+import type Player from "~/core/character/Player";
+
+export default class Character {
+  public static events: EventEmitter = new EventEmitter();
+  public id: number;
+  public player: Player;
+  public name: string;
+  public level: number;
+  public stats: Stats;
+  public isAlive: boolean;
+  public zone: Zone;
+  public position: Position;
+  public speed: number;
+  public inventory: string[] = [];
+  public pendingEvents: Array<PendingEvent> = [];
+  public lastProcessedId: number;
+
+  constructor(character: Character) {
+    this.id = character.id;
+    this.player = character.player;
+    this.name = character.name;
+    this.level = character.level;
+    this.stats = { ...character.stats };
+    this.isAlive = character.isAlive;
+    this.position = { ...character.position };
+    this.inventory = [...character.inventory];
+    this.zone = { ...character.zone };
+  }
+
+  public get hasPendingEvents(): boolean {
+    return this.pendingEvents.length > 0;
+  }
+
+  public addPendingEvent(event: PendingEvent): void {
+    if (!event) return;
+
+    this.pendingEvents.push(event);
+
+    Character.events.emit("eventAdded", this.id);
+  }
+
+  public getCharacterSnapshot(): any | null {
+    if (this.pendingEvents.length === 0) {
+      return null;
+    }
+
+    const snapshot = {
+      id: this.id,
+      name: this.name,
+      level: this.level,
+      position: { ...this.position },
+    };
+    this.pendingEvents = [];
+
+    return snapshot;
+  }
+
+  public tick(_tick: number): void {}
+  public update(_tick: number): void {}
+}

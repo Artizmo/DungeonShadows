@@ -1,9 +1,0 @@
-{
-  "name": "DungeonShadows",
-  "areas": [
-    {
-      "id": "sephus",
-      "manifestPath": "./areas/sephus/area.json"
-    }
-  ]
-}

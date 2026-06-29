@@ -1,0 +1,4 @@
+include "character.fbs";
+include "mapChunk.fbs";
+include "actions.fbs";
+include "worldState.fbs";

@@ -1,0 +1,47 @@
+{
+  "id": "arena:sephus",
+  "areaId": "sephus",
+  "name": "Arena",
+  "map": {
+    "width": 160,
+    "height": 160,
+    "file": "arena.webp"
+  },
+  "colliders": [
+    {
+      "id": "wall_north",
+      "type": "POLYGON",
+      "vertices": [[0.0, 0.0], [5.0, 0.0], [5.0, 0.2], [0.0, 0.2]]
+    },
+    {
+      "id": "wall_south",
+      "type": "POLYGON",
+      "vertices": [[0.0, 4.8], [5.0, 4.8], [5.0, 5.0], [0.0, 5.0]]
+    },
+    {
+      "id": "wall_west",
+      "type": "POLYGON",
+      "vertices": [[0.0, 0.0], [0.2, 0.0], [0.2, 5.0], [0.0, 5.0]]
+    },
+    {
+      "id": "wall_east",
+      "type": "POLYGON",
+      "vertices": [[4.8, 0.0], [5.0, 0.0], [5.0, 5.0], [4.8, 5.0]]
+    }
+  ],
+  "items": [
+    {
+      "id": "center_fountain",
+      "name": "marble fountain",
+      "x": 2.5,
+      "y": 2.5,
+      "colliders": [
+        {
+          "type": "CIRCLE",
+          "center": [0.0, 0.0],
+          "radius": 0.5
+        }
+      ]
+    }
+  ]
+}
