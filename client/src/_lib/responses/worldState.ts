@@ -23,12 +23,6 @@ export default class WorldStateResponse implements IResponseHandler {
 
       // 🟢 THE RECONCILIATION HOOK
       onMoveVerified: (payload, lastSequence) => {
-        console.log("🟢 bingo c! Packet successfully unlocked:", payload);
-        console.log(
-          "🔢 Server confirmed processing up to sequence:",
-          lastSequence,
-        );
-
         const localChar = this.game.world.character;
         if (!localChar) return;
 

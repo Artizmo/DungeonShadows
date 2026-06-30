@@ -1,9 +1,9 @@
-export type Player = {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-};
+// export type Player = {
+//   id: number;
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+// };
 
 export interface IPlayer {
   id: number;
@@ -18,45 +18,45 @@ export interface ICharacter {
   isAlive: boolean;
   player: IPlayer;
   level: number;
-  zone: Zone;
-  position: Position;
-  stats: Stats;
+  zone: IZone;
+  position: IPosition;
+  stats: IStats;
 }
 
-export type Character = {
-  id: number;
-  name: string;
-  level: number;
-  player: Player;
-  zone: Zone;
-  isAlive: boolean;
-  position: Position;
-  stats: Stats;
-};
+// export type Character = {
+//   id: number;
+//   name: string;
+//   level: number;
+//   player: Player;
+//   zone: Zone;
+//   isAlive: boolean;
+//   position: Position;
+//   stats: Stats;
+// };
 
-export interface Stats {
+export interface IStats {
   hp: number;
   maxHp: number;
 }
 
-export type Position = {
+export interface IPosition {
   x: number;
   y: number;
-};
+}
 
-export type Zone = {
+export interface IZone {
   id: string;
   areaId: string;
   mapPath: string;
-};
-
-export enum OpCode {
-  CHARACTER_SPAWN = 0,
-  MAP_CHUNK = 1,
-  CLIENT_BATCH_INPUT = 2,
-  WORLD_STATE_UPDATE = 3,
-  MOVE = 4,
 }
+
+// export enum OpCode {
+//   CHARACTER_SPAWN = 0,
+//   MAP_CHUNK = 1,
+//   CLIENT_BATCH_INPUT = 2,
+//   WORLD_STATE_UPDATE = 3,
+//   MOVE = 4,
+// }
 
 export interface IMapChunkData {
   x: number;
@@ -89,9 +89,9 @@ export interface IPendingAction<T = any> {
   payload: T;
 }
 
-export interface IMovePayload {
-  w: boolean;
-  s: boolean;
-  a: boolean;
-  d: boolean;
-}
+// export interface IMovePayload {
+//   w: boolean;
+//   s: boolean;
+//   a: boolean;
+//   d: boolean;
+// }

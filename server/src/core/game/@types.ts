@@ -3,7 +3,7 @@ import type Player from "~/core/character/Player";
 import type Game from "~/core/game/Game";
 import type World from "~/core/world/World";
 import type Character from "~/core/character/Character";
-import type { IPendingAction } from "~/shared/serialize/@types";
+import type { IPendingAction } from "~/shared/types";
 
 declare module "ws" {
   interface WebSocket {

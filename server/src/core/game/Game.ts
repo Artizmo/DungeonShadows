@@ -147,7 +147,6 @@ export default class Game {
 
       // 4. Phase 4: Pass the accumulated updates to your FlatBuffer broadcaster
       if (tickEventsToBroadcast.length > 0) {
-        console.log("bingo events to send", tickEventsToBroadcast);
         // this.broadcastTickUpdates(tickEventsToBroadcast);
         const serializationPayload = tickEventsToBroadcast.map((event) => ({
           ...event,

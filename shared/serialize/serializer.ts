@@ -5,21 +5,15 @@ import { MessagePayload } from "./generated/game-protocol/message-payload.js";
 
 // Layout Payload File Targets
 import { MovePayload } from "./generated/game-protocol/move-payload.js";
-import { AttackPayload } from "./generated/game-protocol/attack-payload.js";
 import { MoveEvent } from "./generated/game-protocol/move-event.js";
-import { DamageEvent } from "./generated/game-protocol/damage-event.js";
 import { CharacterSpawnEvent } from "./generated/game-protocol/character-spawn-event.js";
 import { MapChunk } from "./generated/game-protocol/map-chunk.js";
 
 // Structural Entities
 import { GameProtocol } from "~/shared/serialize/generated/index.js";
-import type { ICharacter } from "~/shared/serialize/@types.js";
+import type { ICharacter } from "~/shared/types.js";
 
 export class Serialize {
-  /**
-   * Universal Packet Builder: Combines any list of client actions or server events
-   * into a unified [{ type, data }] batch array.
-   */
   public static packet(actions: any[]): Uint8Array {
     const builder = new flatbuffers.Builder(4096);
     const envelopeOffsets: number[] = [];

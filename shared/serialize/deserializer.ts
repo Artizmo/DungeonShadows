@@ -27,7 +27,6 @@ export class Deserialize {
       if (!envelope) continue;
 
       const payloadType = envelope.payloadType();
-      console.log("bingo", payloadType);
       const sequenceId = Number(envelope.sequenceId());
 
       switch (payloadType) {

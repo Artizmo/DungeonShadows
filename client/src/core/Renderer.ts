@@ -1,5 +1,5 @@
 // client/src/core/render/Renderer.ts
-import type { IMapChunkData } from "~/shared/serialize/@types";
+import type { IMapChunkData } from "~/shared/types";
 
 export default class Renderer {
   public canvas: HTMLCanvasElement | null = null;
