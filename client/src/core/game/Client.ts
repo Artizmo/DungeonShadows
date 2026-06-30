@@ -1,7 +1,4 @@
-import type Game from "~/core/game/Game";
 import { GAME_SERVER_URL } from "~/_utils/constants";
-import { Deserialize } from "~/shared/serialize/deserializer";
-import { OpCode } from "~/shared/serialize/@types";
 import EventEmitter from "eventemitter3";
 
 const URL = `ws://${GAME_SERVER_URL || "localhost:8000"}`;
@@ -16,9 +13,6 @@ export class Client {
   public characterId: number = 0;
   private socket: ManagedWebSocket | null = null;
 
-  /**
-   * Helper method to decode a JWT payload on the client side without verification
-   */
   private decodeTicket(
     ticket: string,
   ): { playerId: number; characterId: number } | null {
@@ -41,7 +35,6 @@ export class Client {
   connect(ticket: string) {
     this.disconnect();
 
-    // 1. Decode the ticket locally to hydrate Client properties
     const decoded = this.decodeTicket(ticket);
     if (decoded) {
       this.playerId = Number(decoded.playerId);
@@ -51,10 +44,8 @@ export class Client {
       );
     }
 
-    // 2. Build the secure URL string using the single-use ticket
     const authenticatedUrl = `${URL}?ticket=${encodeURIComponent(ticket)}`;
     console.log("🔌 Initializing connection...");
-
     const ws: ManagedWebSocket = new WebSocket(authenticatedUrl);
     ws.wasIntentionallyClosed = false;
     ws.binaryType = "arraybuffer";
@@ -63,30 +54,20 @@ export class Client {
     ws.onopen = () => {
       if (this.socket !== ws) return;
       console.log("⚔️ Connected securely to Dungeon Shadows Server");
-      // The Game Server automatically starts the engine now, no manual "CONNECT" message required!
     };
 
     ws.onmessage = async (rawData) => {
       if (this.socket !== ws) return;
 
-      // Handle Binary Streams (FlatBuffers)
       if (rawData.data instanceof ArrayBuffer) {
-        const rawPacket = new Uint8Array(rawData.data);
-
-        const opcodeNumber = rawPacket[0];
-        const type = OpCode[opcodeNumber]; // "CHARACTER_SPAWN", "MAP_CHUNK_DATA", etc.
-        const flatbufferBytes = rawPacket.subarray(1); // Pointer view slice (O(1) execution)
-
-        // 🟢 Send the RAW binary payload straight to the route controller!
-        this.handleSocketMessage({ type, data: flatbufferBytes });
+        const data = new Uint8Array(rawData.data);
+        this.events.emit("world_state", data);
         return;
       }
 
-      // Handle Text Streams (JSON, fallback logs, chat messages)
       if (typeof rawData.data === "string") {
         try {
-          const message = JSON.parse(rawData.data);
-
+          // const message = JSON.parse(rawData.data);
           // Handle legacy JSON routes here...
         } catch (parseError) {
           console.warn(
@@ -102,11 +83,9 @@ export class Client {
       console.log("🛑 Client disconnected from game server.");
     };
 
-    ws.onerror = () => {};
-  }
-
-  private handleSocketMessage(message: any) {
-    this.events.emit("ROUTE_RESPONSES", message);
+    ws.onerror = (error) => {
+      console.log(`🛑 Client error: ${error}!`);
+    };
   }
 
   disconnect() {
@@ -128,20 +107,12 @@ export class Client {
     }
   }
 
-  /**
-   * Sends raw binary data (FlatBuffers).
-   * No type string or JSON wrapping needed because the OpCode is inside the bytes!
-   */
   public sendBinary(bytes: Uint8Array): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
 
-    // Use .buffer to satisfy TypeScript's WebSocket definitions
     this.socket.send(bytes.buffer);
   }
 
-  /**
-   * Legacy/Fallback method for JSON-based events.
-   */
   public sendJson(type: string, data: any = null): void {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) return;
 

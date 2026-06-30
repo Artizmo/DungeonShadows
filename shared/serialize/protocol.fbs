@@ -1,0 +1,112 @@
+namespace GameProtocol;
+
+// ============================================================================
+// 1. THE UNIFIED ENVELOPE (The Core Engine)
+// ============================================================================
+
+// A master union mapping EVERY possible interaction type across both Client and Server
+union MessagePayload {
+  // Client -> Server Actions
+  MovePayload,
+  AttackPayload,
+
+  // Server -> Client Events
+  MoveEvent,
+  DamageEvent,
+  CharacterSpawnEvent,
+  MapChunk
+}
+
+// The standard { type, data } object layout structure
+table MessageEnvelope {
+  sequence_id: uint64;          // For client inputs (sequence) and server updates (last_sequence verification)
+  payload: MessagePayload;
+}
+
+// THE SINGLE MASTER CONTAINER ROOT
+table GamePacket {
+  tick: uint64;                   // Global timeline context marker
+  messages: [MessageEnvelope];   // 🟢 The batched array stream pipeline
+}
+
+root_type GamePacket;
+
+// ============================================================================
+// 2. SUB-STRUCTS & BASE ENTITIES (From your character.fbs)
+// ============================================================================
+
+struct Position {
+  x: float;
+  y: float;
+}
+
+table Player {
+  id: int;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
+
+table Zone {
+  id: string;
+  area_id: string;
+  map_name: string;
+}
+
+table Stats {
+  hp: int;
+  max_hp: int;
+  mana: int;
+  max_mana: int;
+  speed: int;
+}
+
+table CharacterData {
+  id: int;
+  player: Player;
+  name: string;
+  level: int;
+  position: Position;
+  stats: Stats;
+  zone: Zone;
+  is_alive: bool;
+}
+
+// ============================================================================
+// 3. PAYLOAD DATA DEFINITIONS (From your mapChunk, worldState, & actions files)
+// ============================================================================
+
+// Client Action Payloads
+table MovePayload {
+  w: bool;
+  s: bool;
+  a: bool;
+  d: bool;
+}
+
+table AttackPayload {
+  target_id: uint;
+  skill_id: uint;
+}
+
+// Server Event Payloads
+table MoveEvent {
+  character_id: uint;
+  x: float;
+  y: float;
+}
+
+table DamageEvent {
+  target_id: uint;
+  amount: int;
+}
+
+table CharacterSpawnEvent {
+  character: CharacterData;      // Full composition block tracking local/remote entities
+}
+
+table MapChunk {
+  x: int32;
+  y: int32;
+  image_bytes: [ubyte];         // 🟢 Direct WebP binary payload buffer allocation array slice
+}

@@ -4,9 +4,18 @@ import Character, { type ICharacter } from "~/core/character/Character";
 
 export default class CharacterConnectedResponse implements IResponseHandler {
   public async execute({ data, game }: ResponseContext): Promise<void> {
-    const character: ICharacter = Deserialize.character(data);
+    try {
+      Deserialize.packet(data, {
+        onEntitySpawn: (payload) => {
+          console.log(
+            "🚀 Deserialization successful! Spawned character:",
+            payload.name,
+          );
+        },
+      });
+    } catch (error) {}
 
-    game.world!.character = new Character(character);
-    game.events.emit("CHARACTER_UPDATE", character);
+    // game.world!.character = new Character(character);
+    // game.events.emit("CHARACTER_UPDATE", character);
   }
 }

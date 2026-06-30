@@ -2,21 +2,17 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
-export { ActionData } from './game-protocol/action-data.js';
-export { ActionPayload } from './game-protocol/action-payload.js';
 export { AttackPayload } from './game-protocol/attack-payload.js';
-export { Character } from './game-protocol/character.js';
-export { ClientBatchPacket } from './game-protocol/client-batch-packet.js';
-export { ComponentUpdate } from './game-protocol/component-update.js';
+export { CharacterData } from './game-protocol/character-data.js';
+export { CharacterSpawnEvent } from './game-protocol/character-spawn-event.js';
 export { DamageEvent } from './game-protocol/damage-event.js';
+export { GamePacket } from './game-protocol/game-packet.js';
 export { MapChunk } from './game-protocol/map-chunk.js';
-export { MapChunkPacket } from './game-protocol/map-chunk-packet.js';
+export { MessageEnvelope } from './game-protocol/message-envelope.js';
+export { MessagePayload } from './game-protocol/message-payload.js';
 export { MoveEvent } from './game-protocol/move-event.js';
 export { MovePayload } from './game-protocol/move-payload.js';
-export { OutboundEvent } from './game-protocol/outbound-event.js';
-export { PacketType } from './game-protocol/packet-type.js';
 export { Player } from './game-protocol/player.js';
 export { Position } from './game-protocol/position.js';
 export { Stats } from './game-protocol/stats.js';
-export { WorldStateUpdate } from './game-protocol/world-state-update.js';
 export { Zone } from './game-protocol/zone.js';

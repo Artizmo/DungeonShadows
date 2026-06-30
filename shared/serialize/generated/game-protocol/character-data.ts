@@ -10,22 +10,22 @@ import { Stats } from '../game-protocol/stats.js';
 import { Zone } from '../game-protocol/zone.js';
 
 
-export class Character {
+export class CharacterData {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):Character {
+  __init(i:number, bb:flatbuffers.ByteBuffer):CharacterData {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsCharacter(bb:flatbuffers.ByteBuffer, obj?:Character):Character {
-  return (obj || new Character()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsCharacterData(bb:flatbuffers.ByteBuffer, obj?:CharacterData):CharacterData {
+  return (obj || new CharacterData()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsCharacter(bb:flatbuffers.ByteBuffer, obj?:Character):Character {
+static getSizePrefixedRootAsCharacterData(bb:flatbuffers.ByteBuffer, obj?:CharacterData):CharacterData {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new Character()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new CharacterData()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 id():number {
@@ -70,7 +70,7 @@ isAlive():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
-static startCharacter(builder:flatbuffers.Builder) {
+static startCharacterData(builder:flatbuffers.Builder) {
   builder.startObject(8);
 }
 
@@ -106,7 +106,7 @@ static addIsAlive(builder:flatbuffers.Builder, isAlive:boolean) {
   builder.addFieldInt8(7, +isAlive, +false);
 }
 
-static endCharacter(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endCharacterData(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }

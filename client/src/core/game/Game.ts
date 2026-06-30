@@ -1,17 +1,13 @@
-// client/src/core/game/Game.ts
 import EventEmitter from "eventemitter3";
-import { Log } from "~/shared/core/Logger";
 import { Client } from "~/core/game/Client";
 import { Loop } from "~/core/game/Loop";
 import { World } from "~/core/world/World";
 import Renderer from "~/core/Renderer";
-import type Character from "~/core/character/Character";
 import InputHandler from "~/core/InputHandler";
-import type { Config, Response, IResponseHandler } from "~/core/game/@types";
-import { RESPONSE_REGISTRY } from "~/_lib/responses";
+import type { Config, IResponseHandler } from "~/core/game/@types";
 import Camera from "../Camera";
-import type { IMovePayload } from "~/shared/serialize/@types";
 import { Serialize } from "~/shared/serialize/serializer";
+import WorldStateResponse from "~/_lib/responses/worldState";
 
 export default class Game {
   public events: EventEmitter = new EventEmitter();
@@ -23,18 +19,10 @@ export default class Game {
   public input!: InputHandler;
   public renderer!: Renderer;
   public isReady = false;
-  private readonly responseHandlers: Map<string, IResponseHandler> = new Map();
 
   constructor(config: Config) {
     this.config = config;
     this.loop = new Loop(config);
-    this.registerResponseHandlers();
-  }
-
-  private registerResponseHandlers(): void {
-    for (const [trigger, ResponseClass] of Object.entries(RESPONSE_REGISTRY)) {
-      this.responseHandlers.set(trigger, new ResponseClass());
-    }
   }
 
   public async start(ticket: string): Promise<void> {
@@ -53,19 +41,17 @@ export default class Game {
 
     this.loop.events.on("TICK", (tick: number) => this.handleTick(tick));
 
-    this.client.events.on("ROUTE_RESPONSES", (message: any) => {
-      this.handleRouteResponses(message);
+    this.client.events.on("world_state", (data: Uint8Array) => {
+      this.handleResponseHandler(data);
     });
   }
 
-  public handleRouteResponses(message: any): void {
+  public handleResponseHandler(data: Uint8Array): void {
     if (!this.isReady) return;
-    this.routeResponses(message);
+
+    this.responseHandler(data);
   }
 
-  /**
-   * Tracks matrix movements and forces rendering sequentially under a uniform loop
-   */
   public handleUpdate(deltaTime: number): void {
     if (!this.isReady || !this.world || !this.renderer) return;
 
@@ -77,16 +63,10 @@ export default class Game {
     this.tick(tick);
   }
 
-  public async routeResponses(response: Response): Promise<void> {
-    if (!response) return;
-    const { type, data } = response;
+  public async responseHandler(data: Uint8Array): Promise<void> {
+    if (!data) return;
 
-    const handler = this.responseHandlers.get(type);
-
-    if (!handler) {
-      console.log(`No message handler found for: ${type}`);
-      return;
-    }
+    const handler = new WorldStateResponse(this);
 
     try {
       await handler.execute({ game: this, data });
@@ -126,7 +106,7 @@ export default class Game {
     // 🟢 Send character actions to server
     if (this.world?.character?.pendingActions?.length > 0) {
       // Pass the ENTIRE array to the serializer, not individual pieces!
-      const data: Uint8Array = Serialize.pendingActions(
+      const data: Uint8Array = Serialize.packet(
         this.world.character.pendingActions,
       );
 

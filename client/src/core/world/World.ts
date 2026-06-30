@@ -8,8 +8,6 @@ export class World {
     // add action to characters pending actions
   }
 
-  public reconcile(): void {}
-
   public update(tick: number): void {
     // 🎯 Move the render call here so it updates fluidly every single frame
     // this.game.renderer?.render();

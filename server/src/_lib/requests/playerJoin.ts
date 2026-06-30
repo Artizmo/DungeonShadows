@@ -21,12 +21,16 @@ export class PlayerJoinHandler implements IConnectionHandler {
       ]);
 
       const player = new Player(playerData, connection);
+      Log.SERVER.INFO(`${player.fullName} has connected!`);
       const character = new Character(characterData);
       character.player = player;
       this.game.world.join(character);
 
       // 🟢 Send CHARACTER_SPAWN data
-      const data: Uint8Array = Serialize.character(character);
+      const data: Uint8Array = Serialize.packet([
+        { type: "CHARACTER_SPAWN", character },
+      ]);
+
       player.send(data);
 
       // 🟢 Send MAP_CHUNK data from cache
@@ -35,15 +39,18 @@ export class PlayerJoinHandler implements IConnectionHandler {
       );
 
       for (const chunk of mapChunks) {
-        const data: Uint8Array = Serialize.mapChunk({
-          x: chunk.x,
-          y: chunk.y,
-          imageBytes: chunk.textureBytes,
-        });
+        const data: Uint8Array = Serialize.packet([
+          {
+            type: "MAP_CHUNK",
+            data: {
+              x: chunk.x,
+              y: chunk.y,
+              imageBytes: chunk.textureBytes,
+            },
+          },
+        ]);
         player.send(data);
       }
-
-      Log.SERVER.INFO(`${player.fullName} has connected!`);
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
     }

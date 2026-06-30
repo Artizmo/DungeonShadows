@@ -119,19 +119,17 @@ export default class Server {
 
           // 1. Route Binary Packets (FlatBuffers)
           if (isBinary) {
-            const bytes = new Uint8Array(rawData);
-            const type = OpCode[bytes[0]];
-            const data = bytes.subarray(1);
-            this.handleSocketMessage(
-              { type, data, socket },
-              formatedCharacterId,
-            );
+            const data = new Uint8Array(rawData);
+            this.events.emit("character_input", data, formatedCharacterId);
             return;
+          } else {
+            // 2. Fallback JSON Packets
+            // const message = JSON.parse(rawData.toString("utf-8"));
+            // this.handleSocketMessage(
+            //   { ...message, socket },
+            //   formatedCharacterId,
+            // );
           }
-
-          // 2. Fallback JSON Packets
-          const message = JSON.parse(rawData.toString("utf-8"));
-          this.handleSocketMessage({ ...message, socket }, formatedCharacterId);
         } catch (err) {
           Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
         }
@@ -149,13 +147,6 @@ export default class Server {
     });
 
     Log.SERVER.INFO(`Server listening on port ${config.port}.`);
-  }
-
-  private handleSocketMessage(
-    request: NetworkMessage,
-    characterId: number,
-  ): void {
-    this.events.emit("route_requests", { request, characterId });
   }
 
   private handleSocketClose(playerId: number, closingSocket: WebSocket): void {

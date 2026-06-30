@@ -1,4 +1,3 @@
-// InputHandler.ts
 export default class InputHandler {
   public keys: Record<string, boolean> = {
     w: false,

@@ -75,29 +75,28 @@ export default class Character implements ICharacter {
 
   /**
    * 🟢 PHASE 5: SERVER RECONCILIATION
-   * Call this immediately inside your network handler when the deserializer outputs 'bingo world'
    */
-  public reconcile(serverUpdates: MoveEvent[]): void {
-    const myUpdate = serverUpdates.find(
-      (event) => event.characterId === this.id,
-    );
-    if (!myUpdate) return;
+  public reconcile(x: number, y: number, lastSequence: number): void {
+    // 1. Hard Override with Server Ground Truth
+    // We reset our logical physics state directly to the server's official coordinates.
+    this.position.x = x;
+    this.position.y = y;
 
-    // 1. Ground Truth Override (Snap logical state)
-    this.position.x = myUpdate.x;
-    this.position.y = myUpdate.y;
-
-    // 2. The O(A) Pluck
-    const serverLastProcessedId = myUpdate.lastProcessedId;
+    // 2. The O(1) Pluck
+    // Discard all inputs that the server has already received and calculated.
     while (
       this.pendingActions.length > 0 &&
-      this.pendingActions[0].sequenceId <= serverLastProcessedId
+      this.pendingActions[0].sequenceId <= lastSequence
     ) {
       this.pendingActions.shift();
     }
 
     // 3. Re-Simulation Pass
+    // Re-run our physics function on all inputs the server hasn't processed yet.
+    // This instantly catches us right back up to the present frame.
     for (const action of this.pendingActions) {
+      // Note: If your applyPhysics uses a fixed time-delta (e.g., 1 / 60),
+      // make sure it passes that same fixed step size here to ensure deterministic results.
       this.applyPhysics(action.payload);
     }
   }

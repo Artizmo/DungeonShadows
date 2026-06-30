@@ -16,9 +16,9 @@ export default class Camera {
     canvasWidth: number,
     canvasHeight: number,
   ): void {
-    // 1. Transform character grid positions into world space pixels
-    const playerWorldX = character.position.x * this.TILE_SIZE;
-    const playerWorldY = character.position.y * this.TILE_SIZE;
+    // 1. 🟢 FIX: Transform character smooth render positions into world space pixels
+    const playerWorldX = character.renderX * this.TILE_SIZE;
+    const playerWorldY = character.renderY * this.TILE_SIZE;
 
     // 2. Find total width and height boundaries of the active layout zone
     const maxZoneWidthPixels = 1920 * this.TILE_SIZE;

@@ -8,6 +8,8 @@
     "flatbuffers": "^25.9.23"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.1"
   }
 }

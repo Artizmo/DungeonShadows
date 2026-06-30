@@ -16,6 +16,9 @@ import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
 import type Character from "~/core/character/Character";
 import { Serialize } from "~/shared/serialize/serializer";
+import { PlayerJoinHandler } from "~/_lib/requests/playerJoin";
+import { Deserialize } from "~/shared/serialize/deserializer";
+import BatchInputRequest from "~/_lib/requests/batchInput";
 
 export default class Game {
   readonly config: Config;
@@ -26,24 +29,24 @@ export default class Game {
   public activeCharacters: Map<number, Character> = new Map();
   public isReady = false;
   private readonly requestHandlers = new Map<
-    keyof GameEventMap,
+    keyof GameEventType,
     IGameHandler<any>
   >();
 
   constructor(config: Config) {
     this.config = config;
     this.loop = new Loop(this.config);
-    this.registerHandlers();
+    // this.registerHandlers();
   }
 
-  private registerHandlers(): void {
-    let handlerKey: keyof GameEventMap;
+  // private registerHandlers(): void {
+  //   let handlerKey: keyof GameEventMap;
 
-    for (handlerKey in REQUEST_REGISTRY) {
-      const Handler = REQUEST_REGISTRY[handlerKey];
-      this.requestHandlers.set(handlerKey, new Handler(this));
-    }
-  }
+  //   for (handlerKey in REQUEST_REGISTRY) {
+  //     const Handler = REQUEST_REGISTRY[handlerKey];
+  //     this.requestHandlers.set(handlerKey, new Handler(this));
+  //   }
+  // }
 
   public start(worldPath: string): void {
     this.world = new World(worldPath);
@@ -73,8 +76,8 @@ export default class Game {
       this.handlePlayerJoin(playerConnection);
     });
 
-    this.server.events.on("route_requests", ({ request, characterId }) => {
-      this.routeRequests(request, characterId);
+    this.server.events.on("character_input", (request, characterId) => {
+      this.handleCharacterInput(request, characterId);
     });
   }
 
@@ -83,7 +86,7 @@ export default class Game {
     characterId,
     connection,
   }): Promise<void> {
-    const handler = this.requestHandlers.get("PLAYER_JOIN");
+    const handler = new PlayerJoinHandler(this);
     await handler.execute({ playerId, characterId, connection });
   }
 
@@ -95,38 +98,29 @@ export default class Game {
     this.tick(tick);
   }
 
-  public async routeRequests(
-    request: NetworkMessage,
+  public async handleCharacterInput(
+    request: Uint8Array,
     characterId: number,
   ): Promise<void> {
     if (!this.isReady) return;
-    if (!characterId) return;
+    if (!characterId || !request) return;
 
+    // 1. Grab the active character from the world engine
     const character = this.world.characters.get(characterId);
-    const handler = this.requestHandlers.get(
-      request.type as keyof GameEventMap,
-    );
+    if (!character) return;
 
-    if (!handler) {
-      // player.send({
-      //   type: "WARN",
-      //   data: `No message handler found for: ${request.type}`,
-      // });
-      Log.SYSTEM.WARN(`No message handler found for: ${request.type}`);
-      return;
-    }
+    // 3. Deserialize incoming client inputs
 
-    try {
-      await handler.execute({
-        character,
-        game: this,
-        data: request.data,
-        args: request.data?.args || [],
-      });
-    } catch (e) {
-      // player.send({ type: "ERROR", data: `Error executing handler: ${e}` });
-      Log.SYSTEM.ERROR(`Error executing handler: ${e}`);
-    }
+    const handler = new BatchInputRequest(this, character);
+
+    await handler.execute({
+      character,
+      game: this,
+      data: request,
+    } as any);
+
+    // 🟢 CRITICAL STEP: Track this character as active so they broadcast during the tick!
+    this.activeCharacters.set(character.id, character);
   }
 
   public update(tick: number): void {
@@ -141,7 +135,6 @@ export default class Game {
       // 2. Extract the completed MoveEvents your handler already calculated
       const events = character.pendingEvents;
 
-      console.log("bingo", events.length);
       for (const event of events) {
         if (event.type === GameEventType.MOVE) {
           // TypeScript is completely happy here because MoveEvent naturally has x, y, and characterId!
@@ -154,8 +147,14 @@ export default class Game {
 
       // 4. Phase 4: Pass the accumulated updates to your FlatBuffer broadcaster
       if (tickEventsToBroadcast.length > 0) {
+        console.log("bingo events to send", tickEventsToBroadcast);
         // this.broadcastTickUpdates(tickEventsToBroadcast);
-        const events = Serialize.worldState(tickEventsToBroadcast);
+        const serializationPayload = tickEventsToBroadcast.map((event) => ({
+          ...event,
+          type: "MOVE_VERIFIED", // 🟢 This safely overwrites event.type to what you want
+          lastSequence: event.lastProcessedId, // Explicitly map lastProcessedId to lastSequence
+        }));
+        const events: Uint8Array = Serialize.packet(serializationPayload);
         character.player.send(events);
       }
     }
