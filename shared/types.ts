@@ -19,7 +19,7 @@ export interface ICharacter {
   player: IPlayer;
   level: number;
   zone: IZone;
-  position: IPosition;
+  position: ICoords;
   stats: IStats;
 }
 
@@ -39,7 +39,7 @@ export interface IStats {
   maxHp: number;
 }
 
-export interface IPosition {
+export interface ICoords {
   x: number;
   y: number;
 }

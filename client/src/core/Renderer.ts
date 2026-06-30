@@ -1,5 +1,6 @@
 // client/src/core/render/Renderer.ts
 import type { IMapChunkData } from "~/shared/types";
+import type Character from "./character/Character";
 
 export default class Renderer {
   public canvas: HTMLCanvasElement | null = null;
@@ -94,7 +95,7 @@ export default class Renderer {
    * Draws an active character sprite onto the screen, relative to the camera viewport.
    */
   public renderCharacter(
-    character: any,
+    character: Character,
     cameraX: number,
     cameraY: number,
   ): void {
@@ -108,8 +109,8 @@ export default class Renderer {
     const renderY =
       "renderY" in character ? character.renderY : character.position.y;
 
-    const worldX = renderX * this.TILE_SIZE;
-    const worldY = renderY * this.TILE_SIZE;
+    const worldX = character.renderPosition.x * this.TILE_SIZE;
+    const worldY = character.renderPosition.y * this.TILE_SIZE;
 
     // 2. Translate world pixels into screen-space drawing coordinates
     const drawX = worldX - cameraX;

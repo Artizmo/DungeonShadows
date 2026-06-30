@@ -5,6 +5,7 @@
 export { AttackPayload } from './game-protocol/attack-payload.js';
 export { CharacterData } from './game-protocol/character-data.js';
 export { CharacterSpawnEvent } from './game-protocol/character-spawn-event.js';
+export { Coords } from './game-protocol/coords.js';
 export { DamageEvent } from './game-protocol/damage-event.js';
 export { GamePacket } from './game-protocol/game-packet.js';
 export { MapChunk } from './game-protocol/map-chunk.js';
@@ -13,6 +14,5 @@ export { MessagePayload } from './game-protocol/message-payload.js';
 export { MoveEvent } from './game-protocol/move-event.js';
 export { MovePayload } from './game-protocol/move-payload.js';
 export { Player } from './game-protocol/player.js';
-export { Position } from './game-protocol/position.js';
 export { Stats } from './game-protocol/stats.js';
 export { Zone } from './game-protocol/zone.js';

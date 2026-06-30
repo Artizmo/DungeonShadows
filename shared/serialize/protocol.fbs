@@ -35,7 +35,7 @@ root_type GamePacket;
 // 2. SUB-STRUCTS & BASE ENTITIES (From your character.fbs)
 // ============================================================================
 
-struct Position {
+struct Coords {
   x: float;
   y: float;
 }
@@ -66,7 +66,8 @@ table CharacterData {
   player: Player;
   name: string;
   level: int;
-  position: Position;
+  position: Coords;
+  renderPosition: Coords;
   stats: Stats;
   zone: Zone;
   is_alive: bool;

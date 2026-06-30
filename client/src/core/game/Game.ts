@@ -83,9 +83,7 @@ export default class Game {
       // 1. 🟢 Phase 1: Client prediction (updates character.position)
       character.handleInputMovement(input);
 
-      // 2. 🟢 Phase 6: Smooth Interpolation (updates character.renderX/Y toward character.position)
-      // Pass a standardized delta time frame slice (1/60s) for the LERP calculation
-      character.updateVisuals(1 / 60);
+      character.updateVisuals();
 
       // 3. Update the camera view target based on the smooth visual position
       camera.update(character, renderer.canvas!.width, renderer.canvas!.height);

@@ -4,7 +4,7 @@ import type {
   ICharacter,
   IPlayer,
   IZone,
-  IPosition,
+  ICoords,
   IStats,
 } from "~/shared/types";
 
@@ -14,21 +14,14 @@ export default class Character implements ICharacter {
   public name: string;
   public level: number;
   public zone: IZone;
-  public position: IPosition;
+  public position: ICoords;
+  public renderPosition: ICoords;
   public stats: IStats;
   public isAlive: boolean;
   public pendingActions: IPendingAction<any>[] = [];
-
-  // 🟢 FIXED VELOCITY: Define speed as units-per-second instead of units-per-frame.
-  // 3.6 units per second matches your previous baseline (0.06 * 60)
   public speed: number = 3.6;
-
   private sequenceId: number = 0;
-  public renderX: number;
-  public renderY: number;
-  private LERP_FACTOR: number = 0.65; // Speed of visual catch-up
-
-  // 🟢 TARGET TIME STEP: Set the static delta step to match your physics baseline (60Hz = ~0.0166s)
+  private LERP_FACTOR: number = 0.65;
   private readonly FIXED_DELTA_TIME: number = 1 / 60;
 
   constructor(character: ICharacter) {
@@ -40,9 +33,7 @@ export default class Character implements ICharacter {
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };
-
-    this.renderX = this.position.x;
-    this.renderY = this.position.y;
+    this.renderPosition = { ...this.position };
   }
 
   /**
@@ -104,16 +95,18 @@ export default class Character implements ICharacter {
   /**
    * 🟢 PHASE 6: SMOOTH RENDERING TICK
    */
-  public updateVisuals(deltaTime: number): void {
+  public updateVisuals(): void {
     // Smoothly slide visual coordinates toward the logical ground truth
-    this.renderX += (this.position.x - this.renderX) * this.LERP_FACTOR;
-    this.renderY += (this.position.y - this.renderY) * this.LERP_FACTOR;
+    this.renderPosition.x +=
+      (this.position.x - this.renderPosition.x) * this.LERP_FACTOR;
+    this.renderPosition.y +=
+      (this.position.y - this.renderPosition.y) * this.LERP_FACTOR;
 
     // Prevent micro-float precision decay
-    if (Math.abs(this.position.x - this.renderX) < 0.001)
-      this.renderX = this.position.x;
-    if (Math.abs(this.position.y - this.renderY) < 0.001)
-      this.renderY = this.position.y;
+    if (Math.abs(this.position.x - this.renderPosition.x) < 0.001)
+      this.renderPosition.x = this.position.x;
+    if (Math.abs(this.position.y - this.renderPosition.y) < 0.001)
+      this.renderPosition.y = this.position.y;
   }
 
   /**

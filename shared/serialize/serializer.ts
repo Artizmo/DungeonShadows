@@ -57,7 +57,7 @@ export class Serialize {
       // 🛑 CASE 3: CHARACTER ENTITY SPAWN
       else if (action.type === "SPAWN" || action.type === "CHARACTER_SPAWN") {
         const char: ICharacter = action.character;
-        const { Player, Zone, Position, CharacterData } = GameProtocol;
+        const { Player, Zone, Coords, CharacterData } = GameProtocol;
 
         const playerFirstName = builder.createString(char.player.firstName);
         const playerLastName = builder.createString(char.player.lastName);
@@ -90,7 +90,11 @@ export class Serialize {
         // 🟢 FIX: Position is a Struct, so it must be built directly INLINE here
         CharacterData.addPosition(
           builder,
-          Position.createPosition(builder, char.position.x, char.position.y),
+          Coords.createCoords(builder, char.position.x, char.position.y),
+        );
+        CharacterData.addRenderPosition(
+          builder,
+          Coords.createCoords(builder, char.position.x, char.position.y),
         );
 
         CharacterData.addIsAlive(builder, char.isAlive);

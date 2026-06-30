@@ -1,6 +1,4 @@
-// client/src/core/render/Camera.ts
 import type Character from "~/core/character/Character";
-import type Zone from "~/core/world/Zone";
 
 export default class Camera {
   public x = 0;
@@ -17,8 +15,8 @@ export default class Camera {
     canvasHeight: number,
   ): void {
     // 1. 🟢 FIX: Transform character smooth render positions into world space pixels
-    const playerWorldX = character.renderX * this.TILE_SIZE;
-    const playerWorldY = character.renderY * this.TILE_SIZE;
+    const playerWorldX = character.renderPosition.x * this.TILE_SIZE;
+    const playerWorldY = character.renderPosition.y * this.TILE_SIZE;
 
     // 2. Find total width and height boundaries of the active layout zone
     const maxZoneWidthPixels = 1920 * this.TILE_SIZE;
