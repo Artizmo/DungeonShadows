@@ -29,7 +29,7 @@ export const MoveAction = {
 
     // 🟢 2. Increment sequence index securely
     character.sequenceId!++;
-    console.log("deltaTime", deltaTime);
+
     // 🟢 3. Log history with the EXACT delta time utilized for this specific frame
     character.pendingActions.push({
       type: MoveAction.type,
