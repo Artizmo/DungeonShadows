@@ -1,5 +1,5 @@
 import type { IWorld, IArea } from "~/shared/types";
-import type Character from "~/core/character/Character";
+import type Character from "~/core/Character";
 
 export default class World implements IWorld {
   public character!: Character;

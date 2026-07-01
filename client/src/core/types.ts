@@ -1,5 +1,5 @@
-import type Game from "~/core/game/Game";
-import type Character from "~/core/character/Character";
+import type Game from "~/core/Game";
+import type Character from "~/core/Character";
 
 export interface ResponseContext {
   character?: Character;

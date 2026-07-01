@@ -42,8 +42,13 @@ d():boolean {
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
+deltaTime():number {
+  const offset = this.bb!.__offset(this.bb_pos, 12);
+  return offset ? this.bb!.readFloat32(this.bb_pos + offset) : 0.0;
+}
+
 static startMovePayload(builder:flatbuffers.Builder) {
-  builder.startObject(4);
+  builder.startObject(5);
 }
 
 static addW(builder:flatbuffers.Builder, w:boolean) {
@@ -62,17 +67,22 @@ static addD(builder:flatbuffers.Builder, d:boolean) {
   builder.addFieldInt8(3, +d, +false);
 }
 
+static addDeltaTime(builder:flatbuffers.Builder, deltaTime:number) {
+  builder.addFieldFloat32(4, deltaTime, 0.0);
+}
+
 static endMovePayload(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }
 
-static createMovePayload(builder:flatbuffers.Builder, w:boolean, s:boolean, a:boolean, d:boolean):flatbuffers.Offset {
+static createMovePayload(builder:flatbuffers.Builder, w:boolean, s:boolean, a:boolean, d:boolean, deltaTime:number):flatbuffers.Offset {
   MovePayload.startMovePayload(builder);
   MovePayload.addW(builder, w);
   MovePayload.addS(builder, s);
   MovePayload.addA(builder, a);
   MovePayload.addD(builder, d);
+  MovePayload.addDeltaTime(builder, deltaTime);
   return MovePayload.endMovePayload(builder);
 }
 }

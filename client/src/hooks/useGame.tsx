@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import gameEngine from "~/core";
-import type Game from "~/core/game/Game";
+import type Game from "~/core/Game";
 
 export function useGame<T>(selector: (game: Game) => T): T {
   return useSyncExternalStore(

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type Character from "~/core/character/Character";
+import type Character from "~/core/Character";
 import { AUTH_API_URL } from "~/_utils/constants";
 
 interface CredentialFormManagerProps {

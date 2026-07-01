@@ -83,6 +83,7 @@ table MovePayload {
   s: bool;
   a: bool;
   d: bool;
+  deltaTime: float;
 }
 
 table AttackPayload {

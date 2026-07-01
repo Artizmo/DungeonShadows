@@ -1,11 +1,11 @@
 import EventEmitter from "eventemitter3";
-import Client from "~/core/game/Client";
-import Loop from "~/core/game/Loop";
-import World from "~/core/world/World";
+import Client from "~/core/Client";
+import Loop from "~/core/Loop";
+import World from "~/core/World";
 import Renderer from "~/core/Renderer";
 import InputHandler from "~/core/InputHandler";
 import type { Config } from "~/shared/types";
-import Camera from "../Camera";
+import Camera from "./Camera";
 import { Serialize } from "~/shared/serialize/serializer";
 import WorldStateResponse from "~/_lib/responses/worldState";
 import { inputBindings } from "~/shared/actions/inputBindings";
@@ -68,7 +68,7 @@ export default class Game {
     });
   }
 
-  private processInputs(): void {
+  private processInputs(deltaTime: number): void {
     this.input.updateGamepadState();
 
     const activeKeys = this.input.keys;
@@ -88,11 +88,15 @@ export default class Game {
       const payload = action.getPayload(activeKeys);
       if (!payload) continue;
 
-      action.execute(payload, {
-        character: this.world.character,
-        world: this.world,
-        game: this,
-      });
+      action.execute(
+        payload,
+        {
+          character: this.world.character,
+          world: this.world,
+          game: this,
+        },
+        deltaTime,
+      );
     }
   }
 
@@ -100,7 +104,7 @@ export default class Game {
     if (!this.isReady || !this.world?.character) return;
 
     // 1. INPUT PROCESSING
-    this.processInputs();
+    this.processInputs(deltaTime);
 
     // 2. LOGIC / PHYSICS STEPS
     this.world.update(deltaTime);
@@ -125,7 +129,7 @@ export default class Game {
     }
 
     this.world.tick(tick);
-    this.world.character.pendingActions = [];
+    // this.world.character.pendingActions = [];
   }
 
   public draw(): void {

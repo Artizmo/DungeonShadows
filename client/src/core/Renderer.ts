@@ -1,5 +1,5 @@
 import type { IMapChunkData } from "~/shared/types";
-import type Character from "./character/Character";
+import type Character from "./Character";
 
 export interface ICamera {
   x: number;

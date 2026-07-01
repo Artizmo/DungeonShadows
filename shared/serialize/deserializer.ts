@@ -34,7 +34,13 @@ export class Deserialize {
           const data = new MovePayload();
           if (envelope.payload(data) && router.onMoveInput) {
             router.onMoveInput(
-              { w: data.w(), s: data.s(), a: data.a(), d: data.d() },
+              {
+                w: data.w(),
+                s: data.s(),
+                a: data.a(),
+                d: data.d(),
+                deltaTime: data.deltaTime(),
+              },
               sequenceId,
             );
           }

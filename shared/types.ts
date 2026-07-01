@@ -85,6 +85,7 @@ export interface IPendingAction<T = any> {
   type: ActionType;
   sequenceId: number;
   payload: T;
+  deltaTime?: number;
 }
 
 export interface IMovePayload {

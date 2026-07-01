@@ -32,6 +32,7 @@ export class Serialize {
         MovePayload.addS(builder, action.payload?.s ?? false);
         MovePayload.addA(builder, action.payload?.a ?? false);
         MovePayload.addD(builder, action.payload?.d ?? false);
+        MovePayload.addDeltaTime(builder, action.deltaTime);
 
         dataOffset = MovePayload.endMovePayload(builder);
         unionType = MessagePayload.MovePayload;

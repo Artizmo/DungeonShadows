@@ -1,7 +1,7 @@
 import { Deserialize } from "~/shared/serialize/deserializer";
-import Character from "~/core/character/Character";
+import Character from "~/core/Character";
 import type { IResponseHandler, ResponseContext } from "~/core/types";
-import type Game from "~/core/game/Game";
+import type Game from "~/core/Game";
 import { MoveAction } from "~/shared/actions/movement";
 
 []; // find a way to clean up this file.

@@ -13,10 +13,14 @@ export interface IAction<TPayload> {
   getPayload(keys: Record<string, boolean>): TPayload | null;
 
   // 2. TIMELINE ORCHESTRATOR (Increments sequence IDs, pushes to history)
-  execute(payload: TPayload, context: IActionContext): void;
+  execute(payload: TPayload, context: IActionContext, deltaTime: number): void;
 
   // 3. 🟢 STATE SIMULATOR (The raw math / logic slice)
-  updateState(payload: TPayload, context: IActionContext): void;
+  updateState(
+    payload: TPayload,
+    context: IActionContext,
+    deltaTime: number,
+  ): void;
   reconcile?(
     payload: ICoords,
     context: IActionContext,

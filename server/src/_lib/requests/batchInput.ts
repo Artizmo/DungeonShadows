@@ -23,17 +23,21 @@ export default class BatchInputRequest implements IRequestHandler {
 
     Deserialize.packet(data, {
       onMoveInput: async (data, sequenceId) => {
-        // 🟢 Revert to plain object destructuring since your Deserializer handles the getters!
-        const { w, s, a, d } = data;
-        console.log(
-          `📥 Server received keys -> W: ${w}, S: ${s}, A: ${a}, D: ${d}`,
-        );
-        const moveSpeed = this.character.speed ?? 0.06;
+        const { w, s, a, d, deltaTime } = data;
 
-        if (w) this.character.position.y -= moveSpeed;
-        if (s) this.character.position.y += moveSpeed;
-        if (a) this.character.position.x -= moveSpeed;
-        if (d) this.character.position.x += moveSpeed;
+        // 🟢 1. Use your character's actual base speed property (e.g., 100 or 5)
+        // Fall back to a standard baseline if undefined, NOT a pre-multiplied 0.06
+        const baseSpeed = this.character.speed ?? 3.6;
+
+        // 🟢 2. Calculate actual distance using the client's real frame duration slice!
+        // If deltaTime is somehow missing, fall back safely to 1/60
+        const distance = baseSpeed * (deltaTime ?? 1 / 60);
+
+        // 🟢 3. Apply the time-scaled distance
+        if (w) this.character.position.y -= distance;
+        if (s) this.character.position.y += distance;
+        if (a) this.character.position.x -= distance;
+        if (d) this.character.position.x += distance;
 
         // Phase 3.4: Sequence Acknowledgment
         this.character.lastProcessedId = sequenceId;
@@ -48,11 +52,8 @@ export default class BatchInputRequest implements IRequestHandler {
 
         this.character.addPendingEvent(moveEvent);
 
-        // 🟢 Keep this log active to watch the coordinates change!
         Log.SERVER.INFO(
-          `🟢 Phase 3 Complete | Player: ${this.character.id} | ` +
-            `Processed Input Sequence ID: ${sequenceId} | ` +
-            `Authoritative Position: (${this.character.position.x.toFixed(2)}, ${this.character.position.y.toFixed(2)})`,
+          `🟢 Player: ${this.character.id} | Seq: ${sequenceId} | Pos: (${this.character.position.x.toFixed(2)}, ${this.character.position.y.toFixed(2)})`,
         );
 
         this.game.activeCharacters.set(this.character.id, this.character);

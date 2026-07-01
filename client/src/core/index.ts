@@ -1,4 +1,4 @@
-import Game from "~/core/game/Game";
+import Game from "~/core/Game";
 import type { Config } from "~/shared/types";
 
 const loopConfig: Config = {
