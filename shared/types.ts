@@ -36,7 +36,8 @@ export interface IArea {
   id: number;
   name: string;
   description: string;
-  zones: Map<string, IZone>;
+  // zone: IZone;
+  tick(tick: number): void;
 }
 
 export interface IStats {
@@ -91,4 +92,10 @@ export interface IMovePayload {
   s: boolean;
   a: boolean;
   d: boolean;
+}
+
+export interface Config {
+  cycleRate: number; // e.g., 0.05 (time increment step per update frame)
+  tickRate: number; // e.g., 0.10 (time step per logical network tick)
+  cycleSize: number; // e.g., 100000 (maximum bound wrapping constraint for tick ID)
 }
