@@ -69,6 +69,8 @@ export default class Game {
   }
 
   private processInputs(): void {
+    this.input.updateGamepadState();
+
     const activeKeys = this.input.keys;
     const uniqueActionsToRun = new Set<string>();
     for (const key in activeKeys) {
@@ -95,7 +97,7 @@ export default class Game {
   }
 
   public update(tick: number): void {
-    const { world, renderer, camera, input } = this;
+    const { world, renderer, camera } = this;
     const { character } = world;
 
     this.processInputs();
