@@ -1,7 +1,7 @@
 import type World from "./World";
 import type Player from "../character/Player";
-import type { Position } from "~/core/character/@types";
-import type { Effect } from "~/_lib/effects/types";
+import type { Position } from "~/core/character/types";
+// import type { Effect } from "~/_lib/effects/types";
 
 export interface Locatable {
   position: Position;
@@ -9,7 +9,7 @@ export interface Locatable {
 }
 
 export interface Effectable {
-  effects: Map<string, Effect>;
+  // effects: Map<string, Effect>;
   hasEffects: boolean;
 }
 

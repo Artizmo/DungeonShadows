@@ -1,7 +1,10 @@
 import { Deserialize } from "~/shared/serialize/deserializer";
 import Character from "~/core/character/Character";
-import type { IResponseHandler, ResponseContext } from "~/core/game/@types";
+import type { IResponseHandler, ResponseContext } from "~/core/game/types";
 import type Game from "~/core/game/Game";
+import { MoveAction } from "~/shared/actions/movement";
+
+[]; // find a way to clean up this file.
 
 export default class WorldStateResponse implements IResponseHandler {
   private game: Game;
@@ -28,7 +31,11 @@ export default class WorldStateResponse implements IResponseHandler {
 
         if (payload.characterId === localChar.id) {
           // Trigger reconciliation
-          localChar.reconcile(payload.x, payload.y, lastSequence);
+          MoveAction.updateState(payload, {
+            character: localChar,
+            world: this.game.world,
+            game: this.game,
+          });
         }
       },
     });

@@ -1,18 +1,23 @@
 import EventEmitter from "eventemitter3";
-import { Client } from "~/core/game/Client";
-import { Loop } from "~/core/game/Loop";
-import { World } from "~/core/world/World";
+import Client from "~/core/game/Client";
+import Loop from "~/core/game/Loop";
+import World from "~/core/world/World";
 import Renderer from "~/core/Renderer";
 import InputHandler from "~/core/InputHandler";
-import type { Config, IResponseHandler } from "~/core/game/@types";
+import type { Config } from "~/core/game/types";
 import Camera from "../Camera";
 import { Serialize } from "~/shared/serialize/serializer";
 import WorldStateResponse from "~/_lib/responses/worldState";
+import { inputBindings } from "~/shared/actions/inputBindings";
+import {
+  actionsRegistry,
+  type ActionType,
+} from "~/shared/actions/actionRegistry";
 
 export default class Game {
-  public events: EventEmitter = new EventEmitter();
   public readonly config: Config;
   public readonly loop: Loop;
+  public events: EventEmitter;
   public client!: Client;
   public world!: World;
   public camera!: Camera;
@@ -22,6 +27,7 @@ export default class Game {
 
   constructor(config: Config) {
     this.config = config;
+    this.events = new EventEmitter();
     this.loop = new Loop(config);
   }
 
@@ -32,46 +38,59 @@ export default class Game {
     this.renderer = new Renderer();
     this.camera = new Camera();
     this.isReady = true;
+
     this.client.connect(ticket);
     this.loop.start();
 
-    this.loop.events.on("UPDATE", (deltaTime: number) =>
-      this.handleUpdate(deltaTime),
-    );
+    this.loop.events.on("update", (deltaTime: number) => {
+      if (!this.isReady) return;
 
-    this.loop.events.on("TICK", (tick: number) => this.handleTick(tick));
+      this.update(deltaTime);
+    });
 
-    this.client.events.on("world_state", (data: Uint8Array) => {
-      this.handleResponseHandler(data);
+    this.loop.events.on("tick", (tick: number) => {
+      if (!this.isReady) return;
+
+      this.tick(tick);
+    });
+
+    this.client.events.on("world_state", async (data: Uint8Array) => {
+      if (!this.isReady) return;
+      if (!data) return;
+
+      const handler = new WorldStateResponse(this);
+
+      try {
+        await handler.execute({ game: this, data });
+      } catch (error) {
+        console.log(`Error executing handler: ${error}`);
+      }
     });
   }
 
-  public handleResponseHandler(data: Uint8Array): void {
-    if (!this.isReady) return;
+  private processInputs(): void {
+    const activeKeys = this.input.keys;
+    const uniqueActionsToRun = new Set<string>();
+    for (const key in activeKeys) {
+      if (!activeKeys[key]) continue;
 
-    this.responseHandler(data);
-  }
+      const actionType: ActionType = inputBindings[key];
+      if (actionType) {
+        uniqueActionsToRun.add(actionType);
+      }
+    }
+    for (const actionType of uniqueActionsToRun) {
+      const action = actionsRegistry[actionType as ActionType];
+      if (!action) continue;
 
-  public handleUpdate(deltaTime: number): void {
-    if (!this.isReady || !this.world || !this.renderer) return;
+      const payload = action.getPayload(activeKeys);
+      if (!payload) continue;
 
-    this.update(deltaTime);
-  }
-
-  public handleTick(tick: number): void {
-    if (!this.world) return;
-    this.tick(tick);
-  }
-
-  public async responseHandler(data: Uint8Array): Promise<void> {
-    if (!data) return;
-
-    const handler = new WorldStateResponse(this);
-
-    try {
-      await handler.execute({ game: this, data });
-    } catch (error) {
-      console.log(`Error executing handler: ${error}`);
+      action.execute(payload, {
+        character: this.world.character,
+        world: this.world,
+        game: this,
+      });
     }
   }
 
@@ -79,21 +98,15 @@ export default class Game {
     const { world, renderer, camera, input } = this;
     const { character } = world;
 
+    this.processInputs();
+
     if (character) {
-      // 1. 🟢 Phase 1: Client prediction (updates character.position)
-      character.handleInputMovement(input);
-
-      character.updateVisuals();
-
-      // 3. Update the camera view target based on the smooth visual position
+      character.update();
       camera.update(character, renderer.canvas!.width, renderer.canvas!.height);
-
-      // 4. Draw the background and smooth entity models
       renderer.render(camera.x, camera.y);
       renderer.renderCharacter(character, camera.x, camera.y);
     }
 
-    // 5. 🟢 Update simulation world
     world.update(tick);
   }
 

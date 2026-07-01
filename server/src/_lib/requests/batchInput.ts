@@ -4,7 +4,7 @@ import {
   type IRequestHandler,
   type MoveEvent,
   type RequestContext,
-} from "~/core/game/@types";
+} from "~/core/game/types";
 import type Game from "~/core/game/Game";
 import { Log } from "~/shared/core/Logger";
 import { Deserialize } from "~/shared/serialize/deserializer";
@@ -28,11 +28,6 @@ export default class BatchInputRequest implements IRequestHandler {
         console.log(
           `📥 Server received keys -> W: ${w}, S: ${s}, A: ${a}, D: ${d}`,
         );
-
-        // 🔍 THE SHAKING CULPRIT: Speed Check
-        // Your client uses 0.06. If this.character.speed is undefined or 0 on the server,
-        // it falls back to 4. Moving 4 units on the server while moving 0.06 on the client
-        // causes violent rubber-banding/shaking.
         const moveSpeed = this.character.speed ?? 0.06;
 
         if (w) this.character.position.y -= moveSpeed;

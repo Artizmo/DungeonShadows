@@ -1,6 +1,6 @@
 import { EventEmitter } from "events";
-import { type PendingEvent } from "~/core/game/@types";
-import type { Position, Stats, Zone } from "~/core/character/@types";
+import { type PendingEvent } from "~/core/game/types";
+import type { Position, Stats, Zone } from "~/core/character/types";
 import type Player from "~/core/character/Player";
 
 export default class Character {

@@ -11,7 +11,7 @@ import {
   type MoveEvent,
   type NetworkMessage,
   type PendingEvent,
-} from "~/core/game/@types";
+} from "~/core/game/types";
 import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
 import type Character from "~/core/character/Character";

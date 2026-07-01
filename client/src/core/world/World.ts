@@ -1,9 +1,9 @@
-import type Area from "./Area";
+import type { IWorld, IArea } from "~/shared/types";
 import type Character from "~/core/character/Character";
 
-export class World {
+export default class World implements IWorld {
   public character!: Character;
-  public area!: Area;
+  public area!: IArea;
   public queueAction(type: string, payload: any): void {
     // add action to characters pending actions
   }

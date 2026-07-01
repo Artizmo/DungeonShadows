@@ -1,4 +1,4 @@
-import type { IConnection } from "~/core/game/@types";
+import type { IConnection } from "~/core/game/types";
 
 export class WebSocketConnection implements IConnection {
   constructor(private ws: any) {} // Your raw ws instance

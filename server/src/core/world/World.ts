@@ -4,7 +4,7 @@ import { Log } from "~/shared/core/Logger";
 import Area from "~/core/world/Area";
 import Character from "~/core/character/Character";
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
-import type { WorldConfig } from "./@types";
+import type { WorldConfig } from "./types";
 
 export default class World {
   public _name: string;
@@ -76,9 +76,9 @@ export default class World {
       // character.tick(tick);
 
       // 2. Process active effects
-      if (character.hasEffects) {
-        EffectsManager.tick(character, tick);
-      }
+      // if (character.hasEffects) {
+      //   EffectsManager.tick(character, tick);
+      // }
 
       // 3. Extract this specific character's isolated frame snapshot
       const snapshot = character.getCharacterSnapshot();
@@ -89,9 +89,9 @@ export default class World {
       }
 
       // 4. Clean up active loop tracking if their event/effect state has settled
-      if (!character.hasPendingEvents && !character.hasEffects) {
-        this.charactersWithEvents.delete(charId);
-      }
+      // if (!character.hasPendingEvents && !character.hasEffects) {
+      //   this.charactersWithEvents.delete(charId);
+      // }
     }
   }
 
