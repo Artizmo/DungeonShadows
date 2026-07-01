@@ -34,7 +34,7 @@ export default class Character implements ICharacter {
     this.renderPosition = { ...this.position };
   }
 
-  public update(): void {
+  public update(deltaTime: number): void {
     // Smoothly slide visual coordinates toward the logical ground truth
     this.renderPosition.x +=
       (this.position.x - this.renderPosition.x) * this.LERP_FACTOR;

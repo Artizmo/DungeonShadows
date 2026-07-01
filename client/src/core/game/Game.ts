@@ -4,7 +4,7 @@ import Loop from "~/core/game/Loop";
 import World from "~/core/world/World";
 import Renderer from "~/core/Renderer";
 import InputHandler from "~/core/InputHandler";
-import type { Config } from "~/core/game/types";
+import type { Config } from "~/shared/types";
 import Camera from "../Camera";
 import { Serialize } from "~/shared/serialize/serializer";
 import WorldStateResponse from "~/_lib/responses/worldState";
@@ -96,28 +96,25 @@ export default class Game {
     }
   }
 
-  public update(tick: number): void {
-    const { world, renderer, camera } = this;
-    const { character } = world;
+  public update(deltaTime: number): void {
+    if (!this.isReady || !this.world?.character) return;
 
+    // 1. INPUT PROCESSING
     this.processInputs();
 
-    if (character) {
-      character.update();
-      camera.update(character, renderer.canvas!.width, renderer.canvas!.height);
-      renderer.render(camera.x, camera.y);
-      renderer.renderCharacter(character, camera.x, camera.y);
-    }
+    // 2. LOGIC / PHYSICS STEPS
+    this.world.update(deltaTime);
+    this.world.character.update(deltaTime);
 
-    world.update(tick);
+    // 3. RENDER (Presentation)
+    this.draw();
   }
 
   public tick(tick: number): void {
-    if (!this.isReady || !this.world) return;
-    if (!this.world.character) return;
+    if (!this.isReady || !this.world?.character) return;
 
     // 🟢 Send character actions to server
-    if (this.world?.character?.pendingActions?.length > 0) {
+    if (this.world.character.pendingActions.length > 0) {
       // Pass the ENTIRE array to the serializer, not individual pieces!
       const data: Uint8Array = Serialize.packet(
         this.world.character.pendingActions,
@@ -131,8 +128,25 @@ export default class Game {
     this.world.character.pendingActions = [];
   }
 
+  public draw(): void {
+    if (!this.world.character) return;
+
+    // 1. Math Update
+    this.camera.update(
+      this.world.character,
+      this.renderer.width,
+      this.renderer.height,
+    );
+
+    // World background
+    this.renderer.render(this.camera);
+
+    // Character
+    this.renderer.renderCharacter(this.world.character, this.camera);
+  }
+
   public bindCanvas(canvas: HTMLCanvasElement): void {
-    this.renderer!.bind(canvas);
+    this.renderer.bind(canvas);
   }
 
   public shutdown(): void {

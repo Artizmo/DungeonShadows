@@ -1,5 +1,5 @@
 import { EventEmitter } from "eventemitter3";
-import type { Config } from "~/core/game/types";
+import type { Config } from "~/shared/types";
 
 export default class Loop {
   public events: EventEmitter = new EventEmitter();
@@ -12,7 +12,7 @@ export default class Loop {
   public tickCounter = 0;
 
   constructor(config: Config) {
-    this.cycleRate = config.cycleRate; // e.g., 1 / 60 = 0.016666
+    this.cycleRate = config.cycleRate;
     this.cycleSize = config.cycleSize;
     this.cyclesPerTick = Math.max(
       1,
