@@ -1,40 +1,34 @@
-// client/src/core/game/Game.ts
 import EventEmitter from "eventemitter3";
-import { Log } from "~/shared/core/Logger";
-import { Client } from "~/core/game/Client";
-import { Loop } from "~/core/game/Loop";
-import { World } from "~/core/world/World";
+import Client from "~/core/game/Client";
+import Loop from "~/core/game/Loop";
+import World from "~/core/world/World";
 import Renderer from "~/core/Renderer";
-import type Character from "~/core/character/Character";
 import InputHandler from "~/core/InputHandler";
-import type { Config, Response, IResponseHandler } from "~/core/game/@types";
-import { RESPONSE_REGISTRY } from "~/_lib/responses";
+import type { Config } from "~/shared/types";
 import Camera from "../Camera";
-import type { IMovePayload } from "~/shared/serialize/@types";
 import { Serialize } from "~/shared/serialize/serializer";
+import WorldStateResponse from "~/_lib/responses/worldState";
+import { inputBindings } from "~/shared/actions/inputBindings";
+import {
+  actionsRegistry,
+  type ActionType,
+} from "~/shared/actions/actionRegistry";
 
 export default class Game {
-  public events: EventEmitter = new EventEmitter();
   public readonly config: Config;
   public readonly loop: Loop;
+  public events: EventEmitter;
   public client!: Client;
   public world!: World;
   public camera!: Camera;
   public input!: InputHandler;
   public renderer!: Renderer;
   public isReady = false;
-  private readonly responseHandlers: Map<string, IResponseHandler> = new Map();
 
   constructor(config: Config) {
     this.config = config;
+    this.events = new EventEmitter();
     this.loop = new Loop(config);
-    this.registerResponseHandlers();
-  }
-
-  private registerResponseHandlers(): void {
-    for (const [trigger, ResponseClass] of Object.entries(RESPONSE_REGISTRY)) {
-      this.responseHandlers.set(trigger, new ResponseClass());
-    }
   }
 
   public async start(ticket: string): Promise<void> {
@@ -44,89 +38,85 @@ export default class Game {
     this.renderer = new Renderer();
     this.camera = new Camera();
     this.isReady = true;
+
     this.client.connect(ticket);
     this.loop.start();
 
-    this.loop.events.on("UPDATE", (deltaTime: number) =>
-      this.handleUpdate(deltaTime),
-    );
+    this.loop.events.on("update", (deltaTime: number) => {
+      if (!this.isReady) return;
 
-    this.loop.events.on("TICK", (tick: number) => this.handleTick(tick));
+      this.update(deltaTime);
+    });
 
-    this.client.events.on("ROUTE_RESPONSES", (message: any) => {
-      this.handleRouteResponses(message);
+    this.loop.events.on("tick", (tick: number) => {
+      if (!this.isReady) return;
+
+      this.tick(tick);
+    });
+
+    this.client.events.on("world_state", async (data: Uint8Array) => {
+      if (!this.isReady) return;
+      if (!data) return;
+
+      const handler = new WorldStateResponse(this);
+
+      try {
+        await handler.execute({ game: this, data });
+      } catch (error) {
+        console.log(`Error executing handler: ${error}`);
+      }
     });
   }
 
-  public handleRouteResponses(message: any): void {
-    if (!this.isReady) return;
-    this.routeResponses(message);
-  }
+  private processInputs(): void {
+    this.input.updateGamepadState();
 
-  /**
-   * Tracks matrix movements and forces rendering sequentially under a uniform loop
-   */
-  public handleUpdate(deltaTime: number): void {
-    if (!this.isReady || !this.world || !this.renderer) return;
+    const activeKeys = this.input.keys;
+    const uniqueActionsToRun = new Set<string>();
+    for (const key in activeKeys) {
+      if (!activeKeys[key]) continue;
 
-    this.update(deltaTime);
-  }
-
-  public handleTick(tick: number): void {
-    if (!this.world) return;
-    this.tick(tick);
-  }
-
-  public async routeResponses(response: Response): Promise<void> {
-    if (!response) return;
-    const { type, data } = response;
-
-    const handler = this.responseHandlers.get(type);
-
-    if (!handler) {
-      console.log(`No message handler found for: ${type}`);
-      return;
+      const actionType: ActionType = inputBindings[key];
+      if (actionType) {
+        uniqueActionsToRun.add(actionType);
+      }
     }
+    for (const actionType of uniqueActionsToRun) {
+      const action = actionsRegistry[actionType as ActionType];
+      if (!action) continue;
 
-    try {
-      await handler.execute({ game: this, data });
-    } catch (error) {
-      console.log(`Error executing handler: ${error}`);
+      const payload = action.getPayload(activeKeys);
+      if (!payload) continue;
+
+      action.execute(payload, {
+        character: this.world.character,
+        world: this.world,
+        game: this,
+      });
     }
   }
 
-  public update(tick: number): void {
-    const { world, renderer, camera, input } = this;
-    const { character } = world;
+  public update(deltaTime: number): void {
+    if (!this.isReady || !this.world?.character) return;
 
-    if (character) {
-      // 1. 🟢 Phase 1: Client prediction (updates character.position)
-      character.handleInputMovement(input);
+    // 1. INPUT PROCESSING
+    this.processInputs();
 
-      // 2. 🟢 Phase 6: Smooth Interpolation (updates character.renderX/Y toward character.position)
-      // Pass a standardized delta time frame slice (1/60s) for the LERP calculation
-      character.updateVisuals(1 / 60);
+    // 2. LOGIC / PHYSICS STEPS
+    this.world.update(deltaTime);
+    this.world.character.update(deltaTime);
 
-      // 3. Update the camera view target based on the smooth visual position
-      camera.update(character, renderer.canvas!.width, renderer.canvas!.height);
-
-      // 4. Draw the background and smooth entity models
-      renderer.render(camera.x, camera.y);
-      renderer.renderCharacter(character, camera.x, camera.y);
-    }
-
-    // 5. 🟢 Update simulation world
-    world.update(tick);
+    // 3. RENDER (Presentation)
+    this.draw();
   }
 
   public tick(tick: number): void {
-    if (!this.isReady || !this.world) return;
-    if (!this.world.character) return;
+    if (!this.isReady || !this.world?.character) return;
 
     // 🟢 Send character actions to server
-    if (this.world?.character?.pendingActions?.length > 0) {
+    if (this.world.character.pendingActions.length > 0) {
       // Pass the ENTIRE array to the serializer, not individual pieces!
-      const data: Uint8Array = Serialize.pendingActions(
+      const data: Uint8Array = Serialize.packet(
         this.world.character.pendingActions,
       );
 
@@ -138,8 +128,25 @@ export default class Game {
     this.world.character.pendingActions = [];
   }
 
+  public draw(): void {
+    if (!this.world.character) return;
+
+    // 1. Math Update
+    this.camera.update(
+      this.world.character,
+      this.renderer.width,
+      this.renderer.height,
+    );
+
+    // World background
+    this.renderer.render(this.camera);
+
+    // Character
+    this.renderer.renderCharacter(this.world.character, this.camera);
+  }
+
   public bindCanvas(canvas: HTMLCanvasElement): void {
-    this.renderer!.bind(canvas);
+    this.renderer.bind(canvas);
   }
 
   public shutdown(): void {

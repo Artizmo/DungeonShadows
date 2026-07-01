@@ -1,4 +1,4 @@
-import type { IConnection } from "~/core/game/@types";
+import type { IConnection } from "~/core/game/types";
 
 export default class Player {
   public id: number;

@@ -1,207 +1,157 @@
-// ~/core/network/GameSerializer.ts
 import * as flatbuffers from "flatbuffers";
-import { GameProtocol } from "~/shared/serialize/generated/index.js";
-import {
-  OpCode,
-  type ICharacter,
-  type IMovePayload,
-  type IPendingAction,
-} from "~/shared/serialize/@types.js";
+import { GamePacket } from "./generated/game-protocol/game-packet.js";
+import { MessageEnvelope } from "./generated/game-protocol/message-envelope.js";
+import { MessagePayload } from "./generated/game-protocol/message-payload.js";
 
-// 1. 🟢 IMPORT ALL WORLD STATE ELEMENTS FROM THEIR KEBAB-CASE FILES
-import { WorldStateUpdate } from "./generated/game-protocol/world-state-update.js";
-import { ComponentUpdate } from "./generated/game-protocol/component-update.js";
-import { MoveEvent as FbsMoveEvent } from "./generated/game-protocol/move-event.js";
-import { OutboundEvent } from "./generated/game-protocol/outbound-event.js";
-
-import { ActionPayload } from "./generated/game-protocol/action-payload.js";
+// Layout Payload File Targets
 import { MovePayload } from "./generated/game-protocol/move-payload.js";
-import { ActionData } from "./generated/game-protocol/action-data.js";
-import { ClientBatchPacket } from "./generated/game-protocol/client-batch-packet.js";
+import { MoveEvent } from "./generated/game-protocol/move-event.js";
+import { CharacterSpawnEvent } from "./generated/game-protocol/character-spawn-event.js";
+import { MapChunk } from "./generated/game-protocol/map-chunk.js";
+
+// Structural Entities
+import { GameProtocol } from "~/shared/serialize/generated/index.js";
+import type { ICharacter } from "~/shared/types.js";
 
 export class Serialize {
-  /**
-   * Translates a runtime Character entity into a flat binary Uint8Array
-   */
-  public static character(character: ICharacter): Uint8Array {
-    const builder = new flatbuffers.Builder(1024);
-    const { Character, Player, Zone, Position } = GameProtocol;
-
-    const playerFirstName = builder.createString(character.player.firstName);
-    const playerLastName = builder.createString(character.player.lastName);
-    const playerEmail = builder.createString(character.player.email);
-    Player.startPlayer(builder);
-    Player.addId(builder, character.player.id);
-    Player.addFirstName(builder, playerFirstName);
-    Player.addLastName(builder, playerLastName);
-    Player.addEmail(builder, playerEmail);
-    const playerOffset = Player.endPlayer(builder);
-
-    const zoneId = builder.createString(character.zone.id);
-    const areaId = builder.createString(character.zone.areaId);
-    const mapName = builder.createString(character.zone.mapPath);
-    Zone.startZone(builder);
-    Zone.addId(builder, zoneId);
-    Zone.addAreaId(builder, areaId);
-    Zone.addMapName(builder, mapName);
-    const ZoneOffset = Zone.endZone(builder);
-
-    const name = builder.createString(character.name);
-    Character.startCharacter(builder);
-    Character.addId(builder, character.id);
-    Character.addName(builder, name);
-    Character.addLevel(builder, character.level);
-    Character.addPlayer(builder, playerOffset);
-    Character.addZone(builder, ZoneOffset);
-    Character.addPosition(
-      builder,
-      Position.createPosition(
-        builder,
-        character.position.x,
-        character.position.y,
-      ),
-    );
-    Character.addIsAlive(builder, character.isAlive);
-    const characterOffset = Character.endCharacter(builder);
-
-    builder.finish(characterOffset);
-
-    return Serialize.prependedPacket(
-      OpCode.CHARACTER_SPAWN,
-      builder.asUint8Array(),
-    );
-  }
-
-  /**
-   * Translates map tile data segments into a flat binary packet with OpCode header
-   */
-  public static mapChunk(data: {
-    x: number;
-    y: number;
-    imageBytes: Uint8Array;
-  }): Uint8Array {
-    const builder = new flatbuffers.Builder(1024);
-    const { MapChunk } = GameProtocol;
-
-    const imgBytesOffset = MapChunk.createImageBytesVector(
-      builder,
-      data.imageBytes,
-    );
-
-    MapChunk.startMapChunk(builder);
-    MapChunk.addX(builder, data.x);
-    MapChunk.addY(builder, data.y);
-    MapChunk.addImageBytes(builder, imgBytesOffset);
-    const chunkOffset = MapChunk.endMapChunk(builder);
-
-    builder.finish(chunkOffset);
-
-    return Serialize.prependedPacket(OpCode.MAP_CHUNK, builder.asUint8Array());
-  }
-
-  public static pendingActions(actions: IPendingAction<any>[]): Uint8Array {
-    const builder = new flatbuffers.Builder(2048);
-    const actionOffsets: number[] = [];
+  public static packet(actions: any[]): Uint8Array {
+    const builder = new flatbuffers.Builder(4096);
+    const envelopeOffsets: number[] = [];
 
     for (const action of actions) {
-      let payloadOffset = 0;
-      let unionType = ActionPayload.NONE;
+      let dataOffset = 0;
+      let unionType = MessagePayload.NONE;
+      let sequenceId = action.sequenceId || 0;
 
-      if (action.type === "MOVE") {
-        const moveData = action.payload as IMovePayload;
-
+      // 🛑 CASE 1: CLIENT MOVE INPUT
+      if (action.type === "MOVE_INPUT" || action.type === "MOVE") {
         MovePayload.startMovePayload(builder);
-        MovePayload.addW(builder, moveData.w);
-        MovePayload.addS(builder, moveData.s);
-        MovePayload.addA(builder, moveData.a);
-        MovePayload.addD(builder, moveData.d);
 
-        payloadOffset = MovePayload.endMovePayload(builder);
-        unionType = ActionPayload.MovePayload;
+        // 🟢 FIX: Extract the values from the nested payload object!
+        MovePayload.addW(builder, action.payload?.w ?? false);
+        MovePayload.addS(builder, action.payload?.s ?? false);
+        MovePayload.addA(builder, action.payload?.a ?? false);
+        MovePayload.addD(builder, action.payload?.d ?? false);
+
+        dataOffset = MovePayload.endMovePayload(builder);
+        unionType = MessagePayload.MovePayload;
+
+        // Ensure your sequenceId assignment remains paired with the envelope header here
+        sequenceId = action.sequenceId;
       }
 
-      if (unionType === ActionPayload.NONE) continue;
+      // 🛑 CASE 2: SERVER MOVE VERIFIED (Reconciliation Update)
+      else if (action.type === "MOVE_VERIFIED") {
+        MoveEvent.startMoveEvent(builder);
+        MoveEvent.addCharacterId(builder, action.characterId);
+        MoveEvent.addX(builder, action.x);
+        MoveEvent.addY(builder, action.y);
+        dataOffset = MoveEvent.endMoveEvent(builder);
 
-      ActionData.startActionData(builder);
-      ActionData.addSequenceId(builder, action.sequenceId);
-      ActionData.addPayloadType(builder, unionType);
-      ActionData.addPayload(builder, payloadOffset);
+        // 🟢 FIX: Ensure this points to MoveEvent so it sends Index 3!
+        unionType = MessagePayload.MoveEvent;
 
-      actionOffsets.push(ActionData.endActionData(builder));
-    }
-
-    const actionsVectorOffset = ClientBatchPacket.createActionsVector(
-      builder,
-      actionOffsets,
-    );
-
-    ClientBatchPacket.startClientBatchPacket(builder);
-    ClientBatchPacket.addActions(builder, actionsVectorOffset);
-    const batchOffset = ClientBatchPacket.endClientBatchPacket(builder);
-
-    builder.finish(batchOffset);
-
-    return Serialize.prependedPacket(
-      OpCode.CLIENT_BATCH_INPUT,
-      builder.asUint8Array(),
-    );
-  }
-
-  /**
-   * Translates an array of server-calculated tick events into a flat binary packet
-   */
-  public static worldState(events: any[]): Uint8Array {
-    const builder = new flatbuffers.Builder(2048);
-    const updateOffsets: number[] = [];
-
-    for (const event of events) {
-      if (event.type === "MOVE") {
-        // Step A: Build the concrete MoveEvent table using the aliased FbsMoveEvent
-        FbsMoveEvent.startMoveEvent(builder);
-        FbsMoveEvent.addCharacterId(builder, event.characterId);
-        FbsMoveEvent.addX(builder, event.x);
-        FbsMoveEvent.addY(builder, event.y);
-        const moveEventOffset = FbsMoveEvent.endMoveEvent(builder);
-
-        // Step B: Build the ComponentUpdate wrapper pairing it with the sequence ID
-        ComponentUpdate.startComponentUpdate(builder);
-        ComponentUpdate.addLastProcessedId(builder, event.lastProcessedId);
-        ComponentUpdate.addPayloadType(builder, OutboundEvent.MoveEvent);
-        ComponentUpdate.addPayload(builder, moveEventOffset);
-
-        const componentOffset = ComponentUpdate.endComponentUpdate(builder);
-        updateOffsets.push(componentOffset);
+        sequenceId = action.lastSequence;
       }
+
+      // 🛑 CASE 3: CHARACTER ENTITY SPAWN
+      else if (action.type === "SPAWN" || action.type === "CHARACTER_SPAWN") {
+        const char: ICharacter = action.character;
+        const { Player, Zone, Coords, CharacterData } = GameProtocol;
+
+        const playerFirstName = builder.createString(char.player.firstName);
+        const playerLastName = builder.createString(char.player.lastName);
+        const playerEmail = builder.createString(char.player.email);
+        Player.startPlayer(builder);
+        Player.addId(builder, char.player.id);
+        Player.addFirstName(builder, playerFirstName);
+        Player.addLastName(builder, playerLastName);
+        Player.addEmail(builder, playerEmail);
+        const playerOffset = Player.endPlayer(builder);
+
+        const zoneId = builder.createString(char.zone.id);
+        const areaId = builder.createString(char.zone.areaId);
+        const mapName = builder.createString(char.zone.mapPath);
+        Zone.startZone(builder);
+        Zone.addId(builder, zoneId);
+        Zone.addAreaId(builder, areaId);
+        Zone.addMapName(builder, mapName);
+        const zoneOffset = Zone.endZone(builder);
+
+        const charName = builder.createString(char.name);
+
+        CharacterData.startCharacterData(builder);
+        CharacterData.addId(builder, char.id);
+        CharacterData.addName(builder, charName);
+        CharacterData.addLevel(builder, char.level);
+        CharacterData.addPlayer(builder, playerOffset);
+        CharacterData.addZone(builder, zoneOffset);
+
+        // 🟢 FIX: Position is a Struct, so it must be built directly INLINE here
+        CharacterData.addPosition(
+          builder,
+          Coords.createCoords(builder, char.position.x, char.position.y),
+        );
+        CharacterData.addRenderPosition(
+          builder,
+          Coords.createCoords(builder, char.position.x, char.position.y),
+        );
+
+        CharacterData.addIsAlive(builder, char.isAlive);
+        const charDataOffset = CharacterData.endCharacterData(builder);
+
+        CharacterSpawnEvent.startCharacterSpawnEvent(builder);
+        CharacterSpawnEvent.addCharacter(builder, charDataOffset);
+        dataOffset = CharacterSpawnEvent.endCharacterSpawnEvent(builder);
+        unionType = MessagePayload.CharacterSpawnEvent;
+      }
+
+      // 🛑 CASE 4: BINARY MAP CHUNK OVER THE WIRE
+      else if (action.type === "MAP_CHUNK") {
+        const { x, y, imageBytes } = action.data;
+
+        if (!imageBytes) {
+          throw new Error("Serialization failed: imageBytes is undefined!");
+        }
+
+        const imgBytesOffset = MapChunk.createImageBytesVector(
+          builder,
+          imageBytes,
+        );
+        MapChunk.startMapChunk(builder);
+        MapChunk.addX(builder, x);
+        MapChunk.addY(builder, y);
+        MapChunk.addImageBytes(builder, imgBytesOffset);
+        dataOffset = MapChunk.endMapChunk(builder);
+        unionType = MessagePayload.MapChunk;
+      }
+
+      if (unionType === MessagePayload.NONE) continue;
+
+      // Wrap inside standard message payload envelope
+      MessageEnvelope.startMessageEnvelope(builder);
+      MessageEnvelope.addSequenceId(builder, BigInt(sequenceId));
+      MessageEnvelope.addPayloadType(builder, unionType);
+      MessageEnvelope.addPayload(builder, dataOffset);
+      envelopeOffsets.push(MessageEnvelope.endMessageEnvelope(builder));
     }
 
-    // Step C: Create the vector array of updates and finish the root table
-    const updatesVectorOffset = WorldStateUpdate.createUpdatesVector(
+    // 1. Combine all structural envelopes into a Master Batch Vector
+    const messagesVectorOffset = GamePacket.createMessagesVector(
       builder,
-      updateOffsets,
+      envelopeOffsets,
     );
 
-    WorldStateUpdate.startWorldStateUpdate(builder);
-    WorldStateUpdate.addUpdates(builder, updatesVectorOffset);
-    const worldStateOffset = WorldStateUpdate.endWorldStateUpdate(builder);
+    // 2. 🟢 FIX: Keep the root object open loop intact
+    GamePacket.startGamePacket(builder);
+    GamePacket.addMessages(builder, messagesVectorOffset);
 
-    builder.finish(worldStateOffset);
+    // 3. 🟢 FIX: Calculate the offset cleanly separate from the finish call
+    const rootOffset = GamePacket.endGamePacket(builder);
+    builder.finish(rootOffset);
 
-    return Serialize.prependedPacket(
-      OpCode.WORLD_STATE_UPDATE,
-      builder.asUint8Array(),
-    );
-  }
-
-  /**
-   * Helper function to prepend a 1-byte opcode identifier onto the byte stream
-   */
-  private static prependedPacket(
-    opcode: OpCode,
-    fbsBytes: Uint8Array,
-  ): Uint8Array {
-    const packet = new Uint8Array(1 + fbsBytes.byteLength);
-    packet[0] = opcode;
-    packet.set(fbsBytes, 1);
-    return packet;
+    // 4. Extract the clean, sliced network window frame
+    const fullArray = builder.asUint8Array();
+    return fullArray.slice(fullArray.length - builder.offset());
   }
 }

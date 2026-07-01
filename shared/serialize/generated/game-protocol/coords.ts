@@ -4,10 +4,10 @@
 
 import * as flatbuffers from 'flatbuffers';
 
-export class Position {
+export class Coords {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):Position {
+  __init(i:number, bb:flatbuffers.ByteBuffer):Coords {
   this.bb_pos = i;
   this.bb = bb;
   return this;
@@ -25,7 +25,7 @@ static sizeOf():number {
   return 8;
 }
 
-static createPosition(builder:flatbuffers.Builder, x: number, y: number):flatbuffers.Offset {
+static createCoords(builder:flatbuffers.Builder, x: number, y: number):flatbuffers.Offset {
   builder.prep(4, 8);
   builder.writeFloat32(y);
   builder.writeFloat32(x);

@@ -4,28 +4,28 @@
 
 import * as flatbuffers from 'flatbuffers';
 
+import { Coords } from '../game-protocol/coords.js';
 import { Player } from '../game-protocol/player.js';
-import { Position } from '../game-protocol/position.js';
 import { Stats } from '../game-protocol/stats.js';
 import { Zone } from '../game-protocol/zone.js';
 
 
-export class Character {
+export class CharacterData {
   bb: flatbuffers.ByteBuffer|null = null;
   bb_pos = 0;
-  __init(i:number, bb:flatbuffers.ByteBuffer):Character {
+  __init(i:number, bb:flatbuffers.ByteBuffer):CharacterData {
   this.bb_pos = i;
   this.bb = bb;
   return this;
 }
 
-static getRootAsCharacter(bb:flatbuffers.ByteBuffer, obj?:Character):Character {
-  return (obj || new Character()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+static getRootAsCharacterData(bb:flatbuffers.ByteBuffer, obj?:CharacterData):CharacterData {
+  return (obj || new CharacterData()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-static getSizePrefixedRootAsCharacter(bb:flatbuffers.ByteBuffer, obj?:Character):Character {
+static getSizePrefixedRootAsCharacterData(bb:flatbuffers.ByteBuffer, obj?:CharacterData):CharacterData {
   bb.setPosition(bb.position() + flatbuffers.SIZE_PREFIX_LENGTH);
-  return (obj || new Character()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
+  return (obj || new CharacterData()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
 id():number {
@@ -50,28 +50,33 @@ level():number {
   return offset ? this.bb!.readInt32(this.bb_pos + offset) : 0;
 }
 
-position(obj?:Position):Position|null {
+position(obj?:Coords):Coords|null {
   const offset = this.bb!.__offset(this.bb_pos, 12);
-  return offset ? (obj || new Position()).__init(this.bb_pos + offset, this.bb!) : null;
+  return offset ? (obj || new Coords()).__init(this.bb_pos + offset, this.bb!) : null;
+}
+
+renderPosition(obj?:Coords):Coords|null {
+  const offset = this.bb!.__offset(this.bb_pos, 14);
+  return offset ? (obj || new Coords()).__init(this.bb_pos + offset, this.bb!) : null;
 }
 
 stats(obj?:Stats):Stats|null {
-  const offset = this.bb!.__offset(this.bb_pos, 14);
+  const offset = this.bb!.__offset(this.bb_pos, 16);
   return offset ? (obj || new Stats()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 zone(obj?:Zone):Zone|null {
-  const offset = this.bb!.__offset(this.bb_pos, 16);
+  const offset = this.bb!.__offset(this.bb_pos, 18);
   return offset ? (obj || new Zone()).__init(this.bb!.__indirect(this.bb_pos + offset), this.bb!) : null;
 }
 
 isAlive():boolean {
-  const offset = this.bb!.__offset(this.bb_pos, 18);
+  const offset = this.bb!.__offset(this.bb_pos, 20);
   return offset ? !!this.bb!.readInt8(this.bb_pos + offset) : false;
 }
 
-static startCharacter(builder:flatbuffers.Builder) {
-  builder.startObject(8);
+static startCharacterData(builder:flatbuffers.Builder) {
+  builder.startObject(9);
 }
 
 static addId(builder:flatbuffers.Builder, id:number) {
@@ -94,19 +99,23 @@ static addPosition(builder:flatbuffers.Builder, positionOffset:flatbuffers.Offse
   builder.addFieldStruct(4, positionOffset, 0);
 }
 
+static addRenderPosition(builder:flatbuffers.Builder, renderPositionOffset:flatbuffers.Offset) {
+  builder.addFieldStruct(5, renderPositionOffset, 0);
+}
+
 static addStats(builder:flatbuffers.Builder, statsOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(5, statsOffset, 0);
+  builder.addFieldOffset(6, statsOffset, 0);
 }
 
 static addZone(builder:flatbuffers.Builder, zoneOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(6, zoneOffset, 0);
+  builder.addFieldOffset(7, zoneOffset, 0);
 }
 
 static addIsAlive(builder:flatbuffers.Builder, isAlive:boolean) {
-  builder.addFieldInt8(7, +isAlive, +false);
+  builder.addFieldInt8(8, +isAlive, +false);
 }
 
-static endCharacter(builder:flatbuffers.Builder):flatbuffers.Offset {
+static endCharacterData(builder:flatbuffers.Builder):flatbuffers.Offset {
   const offset = builder.endObject();
   return offset;
 }

@@ -1,7 +1,7 @@
 import { EventEmitter } from "eventemitter3";
-import type { Config } from "~/core/game/@types";
+import type { Config } from "~/shared/types";
 
-export class Loop {
+export default class Loop {
   public events: EventEmitter = new EventEmitter();
   private cycleRate: number;
   private cyclesPerTick: number;
@@ -12,7 +12,7 @@ export class Loop {
   public tickCounter = 0;
 
   constructor(config: Config) {
-    this.cycleRate = config.cycleRate; // e.g., 1 / 60 = 0.016666
+    this.cycleRate = config.cycleRate;
     this.cycleSize = config.cycleSize;
     this.cyclesPerTick = Math.max(
       1,
@@ -56,11 +56,11 @@ export class Loop {
     // Fixed timestep accumulator execution
     while (this.frameTime >= this.cycleRate) {
       // 1. Fixed 60fps logic/physics update
-      this.events.emit("UPDATE", deltaTime);
+      this.events.emit("update", deltaTime);
 
       // 2. Slower fixed tick (e.g., Network synchronization)
       if (this.tickCounter % this.cyclesPerTick === 0) {
-        this.events.emit("TICK", this.tickCounter);
+        this.events.emit("tick", this.tickCounter);
       }
 
       this.frameTime -= this.cycleRate;

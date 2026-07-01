@@ -1,26 +1,21 @@
-import type Area from "./Area";
+import type { IWorld, IArea } from "~/shared/types";
 import type Character from "~/core/character/Character";
 
-export class World {
+export default class World implements IWorld {
   public character!: Character;
-  public area!: Area;
+  public area!: IArea;
   public queueAction(type: string, payload: any): void {
     // add action to characters pending actions
   }
 
-  public reconcile(): void {}
-
-  public update(tick: number): void {
-    // 🎯 Move the render call here so it updates fluidly every single frame
-    // this.game.renderer?.render();
-  }
+  public update(deltaTime: number): void {}
 
   public tick(tick: number): void {
-    // Leave this clear or restricted purely to fixed physics step network checks
-    // this.game.character?.tick();
-    if (this.character) {
-      this.character.tick(tick);
-    }
+    if (!this.character) return;
+    if (!this.area) return;
+
+    this.character.tick(tick);
+    this.area.tick(tick);
   }
 
   public clear(): void {}

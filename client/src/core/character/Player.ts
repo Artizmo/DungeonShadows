@@ -1,3 +1,5 @@
+import { IPlayer } from "~/shared/types";
+
 export default class Player implements IPlayer {
   public id: number;
   public firstName!: string;
