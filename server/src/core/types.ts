@@ -1,8 +1,23 @@
+export interface Position {
+  x: number;
+  y: number;
+}
+export interface Stats {
+  hp: number;
+  maxHp: number;
+}
+
+export interface Zone {
+  id: string;
+  areaId: string;
+  mapName: string;
+}
+
 import { WebSocket } from "ws";
-import type Player from "~/core/character/Player";
-import type Game from "~/core/game/Game";
-import type World from "~/core/world/World";
-import type Character from "~/core/character/Character";
+import type Player from "~/core/Player";
+import type Game from "~/core/Game";
+import type World from "~/core/World";
+import type Character from "~/core/Character";
 import type { IPendingAction } from "~/shared/types";
 
 declare module "ws" {
@@ -149,3 +164,79 @@ export type Config = {
   cycleRate: number;
   tickRate: number;
 };
+
+export interface Locatable {
+  position: Position;
+  zoneMap: string;
+}
+
+export interface Effectable {
+  // effects: Map<string, Effect>;
+  hasEffects: boolean;
+}
+
+export interface Actionable {
+  pendingEvents: Array<any>;
+  hasPendingEvents: boolean;
+  addPendingEvent(event: any): void;
+}
+
+export interface WorldConfig {
+  name: string;
+  areas: {
+    id: string;
+    areaPath: string;
+  }[];
+}
+
+export interface CommandContext {
+  world: World;
+  player: Player;
+  characterId: number;
+}
+
+export interface ColliderBase {
+  id?: string;
+  type: "POLYGON" | "CIRCLE";
+}
+
+export interface PolygonCollider extends ColliderBase {
+  type: "POLYGON";
+  vertices: [number, number][];
+}
+
+export interface CircleCollider extends ColliderBase {
+  type: "CIRCLE";
+  center: [number, number];
+  radius: number;
+}
+
+export type Collider = PolygonCollider | CircleCollider;
+
+export interface ZoneItem {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  colliders: Collider[];
+}
+
+export interface ZoneData {
+  id: string;
+  parentAreaId: string;
+  name: string;
+  map: {
+    width: number;
+    height: number;
+    file: string;
+  };
+  colliders: Collider[];
+  items: ZoneItem[];
+}
+
+export interface Area {
+  id: number;
+  name: string;
+  description: string;
+  zones: Map<string, ZoneData>;
+}

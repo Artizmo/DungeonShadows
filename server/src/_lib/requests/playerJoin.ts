@@ -1,9 +1,8 @@
-import { Serialize } from "~/shared/network/serializer";
 import { fetchCharacter, fetchPlayer } from "~/_utils/functions/fetchCharacter";
-import Character from "~/core/character/Character";
-import Player from "~/core/character/Player";
-import type { IConnectionHandler, ConnectionContext } from "~/core/game/types";
-import type Game from "~/core/game/Game";
+import Character from "~/core/Character";
+import Player from "~/core/Player";
+import type { IConnectionHandler, ConnectionContext } from "~/core/types";
+import type Game from "~/core/Game";
 import { Log } from "~/shared/core/Logger";
 
 export class PlayerJoinHandler implements IConnectionHandler {

@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
-import { type PendingEvent } from "~/core/game/types";
-import type { Position, Stats, Zone } from "~/core/character/types";
-import type Player from "~/core/character/Player";
+import { type PendingEvent } from "~/core/types";
+import type { Position, Stats, Zone } from "~/core/types";
+import type Player from "~/core/Player";
 
 export default class Character {
   public static events: EventEmitter = new EventEmitter();

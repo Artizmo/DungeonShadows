@@ -1,5 +1,5 @@
 import Game from "~/core/Game";
-import type { Config } from "~/shared/types";
+import type { Config } from "~/shared/core/types";
 
 const loopConfig: Config = {
   cycleRate: 0.016666667, // Now matching 60Hz processing chunks

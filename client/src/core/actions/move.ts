@@ -1,6 +1,6 @@
-import { GameProtocol } from "~/shared/network/generated/index.js";
-import type { ICoords } from "~/shared/core/types.js";
-import type { IActionContext, IMoveAction } from "~/core/actions/types.js";
+import { GameProtocol } from "~/shared/network/generated/index";
+import type { ICoords } from "~/shared/core/types";
+import type { IActionContext, IMoveAction } from "~/core/actions/types";
 
 export const Move = {
   getPayload(

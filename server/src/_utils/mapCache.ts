@@ -2,7 +2,7 @@
 import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import type { Zone } from "~/core/character/types";
+import type { Zone } from "~/core/types";
 
 export interface PreChunkedMap {
   x: number;

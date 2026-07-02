@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { Config } from "~/core/game/types";
+import { Config } from "~/core/types";
 
 export default class GameLoop {
   public tickCounter = 0;

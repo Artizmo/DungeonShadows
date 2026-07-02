@@ -1,7 +1,7 @@
 import { Log } from "~/shared/core/Logger";
-import Loop from "~/core/game/Loop";
-import Server from "~/core/game/Server";
-import World from "~/core/world/World";
+import Loop from "~/core/Loop";
+import Server from "~/core/Server";
+import World from "~/core/World";
 import {
   GameEventType,
   type Config,
@@ -11,10 +11,10 @@ import {
   type MoveEvent,
   type NetworkMessage,
   type PendingEvent,
-} from "~/core/game/types";
+} from "~/core/types";
 import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
-import type Character from "~/core/character/Character";
+import type Character from "~/core/Character";
 import { Serialize } from "~/shared/network/serializer";
 import { PlayerJoinHandler } from "~/_lib/requests/playerJoin";
 import { Deserialize } from "~/shared/network/deserializer";

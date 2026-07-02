@@ -1,11 +1,11 @@
-import type Character from "~/core/character/Character";
+import type Character from "~/core/Character";
 import {
   GameEventType,
   type IRequestHandler,
   type MoveEvent,
   type RequestContext,
-} from "~/core/game/types";
-import type Game from "~/core/game/Game";
+} from "~/core/types";
+import type Game from "~/core/Game";
 import { Log } from "~/shared/core/Logger";
 import { Deserialize } from "~/shared/network/deserializer";
 

@@ -1,6 +1,6 @@
 import path from "path";
 import { Log } from "~/shared/core/Logger";
-import Zone from "~/core/world/Zone";
+import Zone from "~/core/Zone";
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
 
 export default class Area {

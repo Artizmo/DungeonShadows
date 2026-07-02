@@ -1,4 +1,4 @@
-import type { IMapChunkData } from "~/shared/types";
+import type { IMapChunk } from "./actions/types";
 import type Character from "./Character";
 
 export interface ICamera {
@@ -55,7 +55,7 @@ export default class Renderer {
     }
   }
 
-  public loadMap(chunk: IMapChunkData) {
+  public loadMap(chunk: IMapChunk) {
     const chunkKey = `${chunk.x}_${chunk.y}`;
     if (this.chunkTextures.has(chunkKey)) return;
 

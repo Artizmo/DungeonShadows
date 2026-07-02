@@ -1,4 +1,4 @@
-import Game from "~/core/game/Game";
+import Game from "~/core/Game";
 import { Log } from "~/shared/core/Logger";
 import config from "~/shared/data/config.json";
 

@@ -1,6 +1,6 @@
 import Character from "~/core/Character";
-import { Spawn as SpawnLayout } from "~/shared/network/packet-structures/spawn.js";
-import type { IActionContext, IMoveAction } from "~/core/actions/types.js";
+import { Spawn as SpawnLayout } from "~/shared/network/packet-structures/spawn";
+import type { IActionContext, IMoveAction } from "~/core/actions/types";
 
 export const Spawn = {
   execute(payload: IMoveAction, { game }: IActionContext): void {

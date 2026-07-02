@@ -1,6 +1,6 @@
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
 import { Log } from "~/shared/core/Logger";
-import { Collider, ZoneItem } from "~/core/world/types";
+import { Collider, ZoneItem } from "~/core/types";
 
 export default class Zone {
   public id: string = "";

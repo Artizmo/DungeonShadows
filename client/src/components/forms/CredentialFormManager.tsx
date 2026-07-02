@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type Character from "~/core/Character";
-import { AUTH_API_URL } from "~/core/_utils/constants";
+import { AUTH_API_URL } from "~/core/utils/constants";
 
 interface CredentialFormManagerProps {
   onAuthSuccess: (playerId: number, characters: Character[]) => void;

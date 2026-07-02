@@ -1,8 +1,7 @@
 import path from "path";
-import EffectsManager from "~/core/game/EffectsManager";
 import { Log } from "~/shared/core/Logger";
-import Area from "~/core/world/Area";
-import Character from "~/core/character/Character";
+import Area from "~/core/Area";
+import Character from "~/core/Character";
 import { fetchConfigData } from "~/_utils/functions/fetchWorld";
 import type { WorldConfig } from "./types";
 

@@ -1,9 +1,9 @@
 import path from "path";
 import fs from "fs/promises";
 import { Log } from "~/shared/core/Logger";
-import type Character from "~/core/character/Character";
-import type Player from "~/core/character/Player";
-import type { Zone } from "~/core/character/types";
+import type Character from "~/core/Character";
+import type Player from "~/core/Player";
+import type { Zone } from "~/core/types";
 
 export async function fetchCharacter(characterId: number): Promise<Character> {
   if (!characterId) {

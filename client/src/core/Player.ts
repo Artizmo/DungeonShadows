@@ -1,4 +1,4 @@
-import { IPlayer } from "~/shared/types";
+import { IPlayer } from "~/shared/core/types";
 
 export default class Player implements IPlayer {
   public id: number;

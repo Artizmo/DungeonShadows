@@ -3,8 +3,8 @@ import dotenv from "dotenv";
 import { EventEmitter } from "events";
 import jwt from "jsonwebtoken";
 import { Log } from "~/shared/core/Logger";
-import type { Config } from "~/core/game/types";
-import type Game from "~/core/game/Game";
+import type { Config } from "~/core/types";
+import type Game from "~/core/Game";
 import { WebSocketConnection } from "~/_utils/messageBroker";
 
 dotenv.config();

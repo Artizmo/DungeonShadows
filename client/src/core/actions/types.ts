@@ -1,4 +1,4 @@
-import { GameProtocol } from "~/shared/network/generated/index.js";
+import { GameProtocol } from "~/shared/network/generated/index";
 import type Character from "~/core/Character";
 import type Game from "~/core/Game";
 
@@ -10,7 +10,7 @@ export interface IMoveAction {
   deltaTime: number;
 }
 
-export interface IMapChunkAction {
+export interface IMapChunk {
   x: number;
   y: number;
   imageBytes: Uint8Array;

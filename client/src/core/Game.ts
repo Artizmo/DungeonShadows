@@ -11,7 +11,7 @@ import { GameProtocol } from "~/shared/network/generated/index.js";
 import { Deserialize } from "~/shared/network/deserializer";
 import { PacketRegistry } from "~/shared/network/packet-structures";
 import { ActionRegistry } from "~/core/actions/actionRegistry";
-import { inputBindings } from "~/core/_utils/inputBindings";
+import { inputBindings } from "~/core/utils/inputBindings";
 
 // [ ] Move to DI for these classes.
 export default class Game {
