@@ -1,5 +1,5 @@
-import type { IArea } from "~/shared/types";
-import type Zone from "./world/Zone";
+import type { IArea } from "~/shared/core/types";
+import type Zone from "~/core/Zone";
 
 export default class Area implements IArea {
   public id!: number;

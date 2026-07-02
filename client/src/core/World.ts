@@ -1,11 +1,15 @@
-import type { IWorld, IArea } from "~/shared/types";
+import type { IWorld, IArea } from "~/shared/core/types";
 import type Character from "~/core/Character";
+import { c } from "node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf";
 
 export default class World implements IWorld {
   public character!: Character;
   public area!: IArea;
-  public queueAction(type: string, payload: any): void {
-    // add action to characters pending actions
+
+  public join(character: Character): void {
+    if (!character) return;
+
+    this.character = character;
   }
 
   public update(deltaTime: number): void {}

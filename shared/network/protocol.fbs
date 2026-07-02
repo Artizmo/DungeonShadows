@@ -1,0 +1,42 @@
+namespace GameProtocol;
+
+// ============================================================================
+// 1. IDENTIFIERS (The Three Core Message Types, (n) Action Types)
+// ============================================================================
+
+enum MessageType : ubyte {
+  ERROR = 0,
+  SYSTEM = 1,
+  GAME = 2,
+}
+
+enum ActionType : ubyte {
+  SPAWN = 0,
+  MAP_CHUNK = 1,
+  MOVE = 2,
+}
+
+// ============================================================================
+// 2. THE UNIFIED ENVELOPE & CONTAINER
+// ============================================================================
+
+table MessageEnvelope {
+  type: MessageType;
+  action_type: ActionType;      // Only used when type = 2 (GAME)
+  sequence_id: uint64;          // Tracked by client for local prediction/reconciliation matching
+  target_id: uint32;            // Entity ID performing the action or spawning
+  tick: uint64;                 // Master network tick timestamp frame marker
+  last_processed_id: uint64;    // Server-to-client confirmation sequence checkpoint
+
+  // Compact primitive vectors handling all contextual data layout allocations
+  ints: [int32];                // Pack keys as 1/0 [w, s, a, d] or map grid [x, y]
+  floats: [float32];            // Positions [x, y] or frame timing [deltaTime]
+  strings: [string];            // Meta fields like character name
+  bytes: [ubyte];               // Raw binary payload block allocation (WebP texture bytes)
+}
+
+table GamePacket {
+  messages: [MessageEnvelope];   // The batched transmission array pipeline
+}
+
+root_type GamePacket;

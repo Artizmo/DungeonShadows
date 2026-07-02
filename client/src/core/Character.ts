@@ -1,11 +1,11 @@
 import type {
-  IPendingAction,
   ICharacter,
   IPlayer,
   IZone,
   ICoords,
   IStats,
-} from "~/shared/types";
+} from "~/shared/core/types";
+import type { IPendingAction } from "~/shared/types";
 
 export default class Character implements ICharacter {
   public id: number;

@@ -25,31 +25,22 @@ static getSizePrefixedRootAsGamePacket(bb:flatbuffers.ByteBuffer, obj?:GamePacke
   return (obj || new GamePacket()).__init(bb.readInt32(bb.position()) + bb.position(), bb);
 }
 
-tick():bigint {
-  const offset = this.bb!.__offset(this.bb_pos, 4);
-  return offset ? this.bb!.readUint64(this.bb_pos + offset) : BigInt('0');
-}
-
 messages(index: number, obj?:MessageEnvelope):MessageEnvelope|null {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? (obj || new MessageEnvelope()).__init(this.bb!.__indirect(this.bb!.__vector(this.bb_pos + offset) + index * 4), this.bb!) : null;
 }
 
 messagesLength():number {
-  const offset = this.bb!.__offset(this.bb_pos, 6);
+  const offset = this.bb!.__offset(this.bb_pos, 4);
   return offset ? this.bb!.__vector_len(this.bb_pos + offset) : 0;
 }
 
 static startGamePacket(builder:flatbuffers.Builder) {
-  builder.startObject(2);
-}
-
-static addTick(builder:flatbuffers.Builder, tick:bigint) {
-  builder.addFieldInt64(0, tick, BigInt('0'));
+  builder.startObject(1);
 }
 
 static addMessages(builder:flatbuffers.Builder, messagesOffset:flatbuffers.Offset) {
-  builder.addFieldOffset(1, messagesOffset, 0);
+  builder.addFieldOffset(0, messagesOffset, 0);
 }
 
 static createMessagesVector(builder:flatbuffers.Builder, data:flatbuffers.Offset[]):flatbuffers.Offset {
@@ -69,9 +60,8 @@ static endGamePacket(builder:flatbuffers.Builder):flatbuffers.Offset {
   return offset;
 }
 
-static createGamePacket(builder:flatbuffers.Builder, tick:bigint, messagesOffset:flatbuffers.Offset):flatbuffers.Offset {
+static createGamePacket(builder:flatbuffers.Builder, messagesOffset:flatbuffers.Offset):flatbuffers.Offset {
   GamePacket.startGamePacket(builder);
-  GamePacket.addTick(builder, tick);
   GamePacket.addMessages(builder, messagesOffset);
   return GamePacket.endGamePacket(builder);
 }

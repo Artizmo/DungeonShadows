@@ -1,6 +1,6 @@
-import { GAME_SERVER_URL } from "~/_utils/constants";
 import EventEmitter from "eventemitter3";
 
+const GAME_SERVER_URL = import.meta.env.VITE_GAME_SERVER_URL;
 const WS_URL = `ws://${GAME_SERVER_URL || "localhost:8000"}`;
 
 interface ManagedWebSocket extends WebSocket {

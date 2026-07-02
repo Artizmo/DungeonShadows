@@ -17,6 +17,12 @@
   "ts-node": {
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["src/**/*", "data/mock", "../shared/**/*"],
+  "include": [
+    "src/**/*",
+    "data/mock",
+    "../shared/**/*",
+    "../client/src/core/_utils/inputBindings.ts",
+    "../client/src/core/actions"
+  ],
   "exclude": ["node_modules", "build", "src/data/saved"]
 }

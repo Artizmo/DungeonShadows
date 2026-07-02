@@ -4,15 +4,14 @@ import Loop from "~/core/Loop";
 import World from "~/core/World";
 import Renderer from "~/core/Renderer";
 import InputHandler from "~/core/InputHandler";
-import type { Config } from "~/shared/types";
+import type { Config } from "~/shared/core/types";
 import Camera from "./Camera";
-import { Serialize } from "~/shared/serialize/serializer";
-import WorldStateResponse from "~/_lib/responses/worldState";
-import { inputBindings } from "~/shared/actions/inputBindings";
-import {
-  actionsRegistry,
-  type ActionType,
-} from "~/shared/actions/actionRegistry";
+import { Serialize } from "~/shared/network/serializer";
+import { GameProtocol } from "~/shared/network/generated/index.js";
+import { Deserialize } from "~/shared/network/deserializer";
+import { PacketRegistry } from "~/shared/network/packet-structures";
+import { ActionRegistry } from "~/core/actions/actionRegistry";
+import { inputBindings } from "~/core/_utils/inputBindings";
 
 export default class Game {
   public readonly config: Config;
@@ -54,98 +53,158 @@ export default class Game {
       this.tick(tick);
     });
 
-    this.client.events.on("world_state", async (data: Uint8Array) => {
-      if (!this.isReady) return;
-      if (!data) return;
+    // 🟢 UNIFIED PIPELINE STREAM ENTRYPOINT
+    this.client.events.on("world_state", (data: Uint8Array) => {
+      if (!this.isReady || !data) return;
 
-      const handler = new WorldStateResponse(this);
-
-      try {
-        await handler.execute({ game: this, data });
-      } catch (error) {
-        console.log(`Error executing handler: ${error}`);
-      }
+      this.handleWorldState(data);
     });
+  }
+
+  /**
+   * Parses uniform server packets and dynamically passes messages to registered action handlers
+   */
+  private handleWorldState(binaryData: Uint8Array): void {
+    try {
+      const packet = Deserialize.packet(binaryData);
+
+      // 🟢 1. Extract the highest processed sequence ID embedded in the message stream
+      let highestProcessedId = 0;
+      for (const msg of packet.messages) {
+        if (!msg.sequenceId) continue;
+
+        if (msg.sequenceId! > highestProcessedId) {
+          highestProcessedId = msg.sequenceId;
+        }
+      }
+
+      // 🟢 2. Authoritative Eviction: Clean the client's predicted buffer using that extracted ID
+      if (this.world?.character && highestProcessedId > 0) {
+        this.world.character.pendingActions =
+          this.world.character.pendingActions.filter(
+            (action) => action.sequenceId > highestProcessedId,
+          );
+      }
+
+      // 3. Loop over the unified message payload and delegate routing
+      for (const msg of packet.messages) {
+        // Look up by msg.actionType or fallback to msg.type based on your layout rule
+        const handler = ActionRegistry.get(msg.actionType);
+
+        if (handler) {
+          // Execute the formal interface method contract (e.g., reconcile)
+          handler.execute(msg, {
+            character: this.world.character,
+            game: this,
+          });
+        } else {
+          console.warn(
+            `No client action handler registered for ActionType: ${msg.actionType}`,
+          );
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Error parsing uniform packet stream in handleWorldState: ${error}`,
+      );
+    }
   }
 
   private processInputs(deltaTime: number): void {
     this.input.updateGamepadState();
 
     const activeKeys = this.input.keys;
-    const uniqueActionsToRun = new Set<string>();
+    const uniqueActionsToRun = new Set<GameProtocol.ActionType>();
     for (const key in activeKeys) {
       if (!activeKeys[key]) continue;
 
-      const actionType: ActionType = inputBindings[key];
+      const actionType: GameProtocol.ActionType = inputBindings[key];
       if (actionType) {
         uniqueActionsToRun.add(actionType);
       }
     }
     for (const actionType of uniqueActionsToRun) {
-      const action = actionsRegistry[actionType as ActionType];
+      const { character } = this.world;
+      const action = ActionRegistry.get(actionType);
       if (!action) continue;
 
-      const payload = action.getPayload(activeKeys);
+      const payload = action.getPayload!(activeKeys, deltaTime);
       if (!payload) continue;
 
-      action.execute(
-        payload,
-        {
-          character: this.world.character,
-          world: this.world,
-          game: this,
-        },
-        deltaTime,
-      );
+      action.execute(payload, {
+        character,
+        game: this,
+      });
     }
   }
 
   public update(deltaTime: number): void {
     if (!this.isReady || !this.world?.character) return;
 
-    // 1. INPUT PROCESSING
     this.processInputs(deltaTime);
-
-    // 2. LOGIC / PHYSICS STEPS
     this.world.update(deltaTime);
     this.world.character.update(deltaTime);
-
-    // 3. RENDER (Presentation)
     this.draw();
   }
 
   public tick(tick: number): void {
     if (!this.isReady || !this.world?.character) return;
+    const { character } = this.world;
+    const pendingActions = this.world.character.pendingActions;
 
-    // 🟢 Send character actions to server
-    if (this.world.character.pendingActions.length > 0) {
-      // Pass the ENTIRE array to the serializer, not individual pieces!
-      const data: Uint8Array = Serialize.packet(
-        this.world.character.pendingActions,
-      );
+    // 🟢 Dynamic Serialization Loop using the PacketRegistry Map
+    if (pendingActions.length > 0) {
+      const requests = [];
 
-      // Blast the single, efficient batch packet over the wire
-      this.client.sendBinary(data);
+      for (const action of pendingActions) {
+        const { sequenceId, type } = action;
+        const packetLayout = PacketRegistry.get(type);
+
+        if (packetLayout) {
+          const packet = packetLayout.structure(
+            action,
+            sequenceId,
+            character.id,
+          );
+          requests.push(packet);
+        } else {
+          console.warn(
+            `No packet registry encoder found for action type: ${type}`,
+          );
+        }
+      }
+
+      if (requests.length > 0) {
+        const data = Serialize.packet(
+          requests.map((req) => ({
+            type: req.type,
+            actionType: req.actionType,
+            sequenceId: req.sequenceId,
+            targetId: req.targetId,
+            ints: req.ints ?? [],
+            floats: req.floats ?? [],
+            strings: req.strings ?? [],
+            bytes: req.bytes ?? undefined,
+          })),
+        );
+        // const data = Serialize.packet(requests);
+        this.client.sendBinary(data);
+      }
     }
 
     this.world.tick(tick);
-    // this.world.character.pendingActions = [];
   }
 
   public draw(): void {
     if (!this.world.character) return;
 
-    // 1. Math Update
     this.camera.update(
       this.world.character,
       this.renderer.width,
       this.renderer.height,
     );
 
-    // World background
     this.renderer.render(this.camera);
-
-    // Character
     this.renderer.renderCharacter(this.world.character, this.camera);
   }
 

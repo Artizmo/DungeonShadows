@@ -1,5 +1,5 @@
 import { EventEmitter } from "eventemitter3";
-import type { Config } from "~/shared/types";
+import type { Config } from "~/shared/core/types";
 
 export default class Loop {
   public events: EventEmitter = new EventEmitter();

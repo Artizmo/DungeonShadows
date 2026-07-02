@@ -100,7 +100,7 @@ export default class Server {
       this.connections.set(formatedPlayerId, socket);
       const connection = new WebSocketConnection(socket);
 
-      this.events.emit("player_join", {
+      this.events.emit("process_connection", {
         characterId: formatedCharacterId,
         playerId: formatedPlayerId,
         connection,
@@ -118,7 +118,7 @@ export default class Server {
           // 1. Route Binary Packets (FlatBuffers)
           if (isBinary) {
             const data = new Uint8Array(rawData);
-            this.events.emit("character_input", data, formatedCharacterId);
+            this.events.emit("process_input", data, formatedCharacterId);
             return;
           } else {
             // 2. Fallback JSON Packets
@@ -149,7 +149,7 @@ export default class Server {
 
   private handleSocketClose(playerId: number, closingSocket: WebSocket): void {
     if (this.connections.get(playerId) === closingSocket) {
-      this.events.emit("player_disconnect", playerId);
+      this.events.emit("process_disconnection", playerId);
       this.connections.delete(playerId);
     }
   }

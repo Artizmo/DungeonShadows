@@ -15,10 +15,11 @@ import {
 import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
 import type Character from "~/core/character/Character";
-import { Serialize } from "~/shared/serialize/serializer";
+import { Serialize } from "~/shared/network/serializer";
 import { PlayerJoinHandler } from "~/_lib/requests/playerJoin";
-import { Deserialize } from "~/shared/serialize/deserializer";
+import { Deserialize } from "~/shared/network/deserializer";
 import BatchInputRequest from "~/_lib/requests/batchInput";
+import { ConnectHandler } from "~/network-handlers/connect";
 
 export default class Game {
   readonly config: Config;
@@ -28,33 +29,17 @@ export default class Game {
   public mapCache: MapCache = new MapCache();
   public activeCharacters: Map<number, Character> = new Map();
   public isReady = false;
-  private readonly requestHandlers = new Map<
-    keyof GameEventType,
-    IGameHandler<any>
-  >();
 
   constructor(config: Config) {
     this.config = config;
     this.loop = new Loop(this.config);
-    // this.registerHandlers();
   }
-
-  // private registerHandlers(): void {
-  //   let handlerKey: keyof GameEventMap;
-
-  //   for (handlerKey in REQUEST_REGISTRY) {
-  //     const Handler = REQUEST_REGISTRY[handlerKey];
-  //     this.requestHandlers.set(handlerKey, new Handler(this));
-  //   }
-  // }
 
   public start(worldPath: string): void {
     this.world = new World(worldPath);
     this.server = new Server(this.config);
     this.isReady = true;
     this.loop.start();
-
-    // [ ] implement the same events registry as World has
 
     this.loop.events.on("UPDATE", (deltaTime: number) => {
       if (!this.isReady) return;
@@ -68,34 +53,41 @@ export default class Game {
       this.handleTick(tick);
     });
 
-    this.server.events.on("player_disconnect", (playerId: number) => {
-      this.bootPlayer(playerId);
+    this.server.events.on("process_connection", (playerConnection) => {
+      this.handlePlayerConnection(playerConnection);
     });
 
-    this.server.events.on("player_join", (playerConnection) => {
-      this.handlePlayerJoin(playerConnection);
+    this.server.events.on("process_disconnection", (playerId: number) => {
+      this.handlePlayerDisconnection(playerId);
     });
 
-    this.server.events.on("character_input", (request, characterId) => {
+    this.server.events.on("process_input", (request, characterId) => {
       this.handleCharacterInput(request, characterId);
     });
   }
 
-  public async handlePlayerJoin({
+  public async handlePlayerConnection({
     playerId,
     characterId,
     connection,
   }): Promise<void> {
-    const handler = new PlayerJoinHandler(this);
+    const handler = new ConnectHandler(this);
     await handler.execute({ playerId, characterId, connection });
   }
 
-  public handleUpdate(deltaTime: number): void {
-    this.update(deltaTime);
-  }
+  public handlePlayerDisconnection(playerId: number): void {
+    if (!playerId) return;
 
-  public handleTick(tick: number): void {
-    this.tick(tick);
+    try {
+      for (const character of this.world.characters.values()) {
+        if (character.player.id === playerId) {
+          this.world.leave(character);
+          Log.SERVER.INFO(`${character.player.fullName} has disconnected!`);
+        }
+      }
+    } catch (e) {
+      Log.SYSTEM.ERROR(e);
+    }
   }
 
   public async handleCharacterInput(
@@ -123,6 +115,14 @@ export default class Game {
     this.activeCharacters.set(character.id, character);
   }
 
+  public handleUpdate(deltaTime: number): void {
+    this.update(deltaTime);
+  }
+
+  public handleTick(tick: number): void {
+    this.tick(tick);
+  }
+
   public update(tick: number): void {
     this.world.update(tick);
   }
@@ -135,6 +135,7 @@ export default class Game {
       // 2. Extract the completed MoveEvents your handler already calculated
       const events = character.pendingEvents;
 
+      []; // Refactor the tick so it uses actionRegistry
       for (const event of events) {
         if (event.type === GameEventType.MOVE) {
           // TypeScript is completely happy here because MoveEvent naturally has x, y, and characterId!
@@ -153,28 +154,13 @@ export default class Game {
           type: "MOVE_VERIFIED", // 🟢 This safely overwrites event.type to what you want
           lastSequence: event.lastProcessedId, // Explicitly map lastProcessedId to lastSequence
         }));
-        const events: Uint8Array = Serialize.packet(serializationPayload);
-        character.player.send(events);
+        // const events: Uint8Array = Serialize.packet(serializationPayload);
+        // character.player.send(events);
       }
     }
 
     // 5. Clean the active set tracking for the next frame window
     this.activeCharacters.clear();
     this.world.tick(tick);
-  }
-
-  public bootPlayer(playerId: number): void {
-    if (!playerId) return;
-
-    try {
-      for (const character of this.world.characters.values()) {
-        if (character.player.id === playerId) {
-          this.world.leave(character);
-          Log.SERVER.INFO(`${character.player.fullName} has disconnected!`);
-        }
-      }
-    } catch (e) {
-      Log.SYSTEM.ERROR(e);
-    }
   }
 }
