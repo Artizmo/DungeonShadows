@@ -13,6 +13,7 @@ import { PacketRegistry } from "~/shared/network/packet-structures";
 import { ActionRegistry } from "~/core/actions/actionRegistry";
 import { inputBindings } from "~/core/_utils/inputBindings";
 
+// [ ] Move to DI for these classes.
 export default class Game {
   public readonly config: Config;
   public readonly loop: Loop;
