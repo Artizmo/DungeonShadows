@@ -1,25 +1,25 @@
-import type Character from "~/core/Character";
+import type { IWorld } from "~/shared/core/types";
 import type Area from "~/core/Area";
+import type Character from "~/core/Character";
 
-export default class World {
-  public character!: Character;
-  public area!: Area;
+export default class World implements IWorld {
+  public areas = new Map<string, Area>();
+  public characters = new Map<string, Character>();
+  public dirtyEntities = new Set<string>();
 
-  public join(character: Character): void {
-    if (!character) return;
-
-    this.character = character;
+  addArea(area: Area): void {
+    this.areas.set(area.id, area);
   }
-
-  public update(deltaTime: number): void {}
-
-  public tick(tick: number): void {
-    if (!this.character) return;
-    if (!this.area) return;
-
-    this.character.tick(tick);
-    this.area.tick(tick);
+  add(char: Character, areaId: string, zoneId: string): void {
+    char.areaId = areaId;
+    char.zoneId = zoneId;
+    this.characters.set(char.id, char);
+    this.areas.get(areaId)?.getZone(zoneId)?.addCharacter(char.id);
   }
-
-  public clear(): void {}
+  get(id: string): Character | undefined {
+    return this.characters.get(id);
+  }
+  markDirty(id: string): void {
+    this.dirtyEntities.add(id);
+  }
 }

@@ -1,4 +1,4 @@
-export default class KeyboarController {
+export default class KeyboardController {
   public activeKeys = new Set<string>();
   public justPressedKeys = new Set<string>();
 

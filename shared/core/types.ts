@@ -1,87 +1,10 @@
-import type { IPendingAction } from "~/shared/types.js";
 import type { GameProtocol } from "../network/generated/index.js";
 
-export interface ICharacter {
-  id: number;
-  name: string;
-  isAlive: boolean;
-  player: IPlayer;
-  level: number;
-  zone: IZone;
-  position: ICoords;
-  stats: IStats;
-  sequenceId?: number;
-  pendingActions?: IPendingAction<any>[];
-  speed?: number;
-}
-
-export interface IWorld {
-  character?: ICharacter;
-  area?: IArea;
-  _name?: string;
-  areas?: Map<number, IArea>;
-  charactersWithEvents?: Set<number>;
-  _characters?: Map<number, ICharacter>;
-}
-
-export interface IGame {
-  world: IWorld;
-}
-
-export interface IPlayer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-export interface IArea {
-  id: number;
-  name: string;
-  description: string;
-  // zone: IZone;
-  tick(tick: number): void;
-}
-
-export interface IStats {
-  hp: number;
-  maxHp: number;
-}
-
-export interface ICoords {
-  x: number;
-  y: number;
-}
-
-export interface IZone {
-  id: string;
-  areaId: string;
-  mapName: string;
-}
-
-export interface Config {
-  cycleRate: number; // e.g., 0.05 (time increment step per update frame)
-  tickRate: number; // e.g., 0.10 (time step per logical network tick)
-  cycleSize: number; // e.g., 100000 (maximum bound wrapping constraint for tick ID)
-}
-
-interface GameConfig {
+export interface GameConfig {
   readonly SPEED: number;
   readonly SERVER_TICK_RATE: number;
   readonly CLIENT_TICK_RATE: number;
   readonly INTERPOLATION_DELAY: number;
-}
-
-const GAME_CONFIG: GameConfig = {
-  SPEED: 200,
-  SERVER_TICK_RATE: 1000 / 20, // 20Hz
-  CLIENT_TICK_RATE: 1000 / 60, // 60Hz fixed
-  INTERPOLATION_DELAY: 100,
-};
-
-enum ActionType {
-  MOVE = 1,
-  CAST = 2,
 }
 
 export interface ActionPayload {
@@ -110,5 +33,73 @@ export interface Snapshot {
   type: string;
   serverTime: number;
   entitiesDelta: Record<string, EntityState>;
-  lastProcessedId: number;
+  lastProcessedIds: Record<string, number>; // Maps character ID to their last processed sequence ID
+}
+
+export interface NetworkEnvelope {
+  connectionId: string;
+  packet: ActionRecord;
+}
+
+export interface ClientTransport {
+  send(packet: ActionRecord): void;
+  onReceive(handler: (snapshot: Snapshot) => void): void;
+}
+
+export interface ServerTransport {
+  broadcast(snapshot: Snapshot): void;
+  onReceive(
+    handler: (connectionId: string, packet: ActionRecord) => void,
+  ): void;
+}
+
+export interface GameEntity {
+  id: string;
+  x: number;
+  y: number;
+  health: number;
+  mana: number;
+  areaId: string | null;
+  zoneId: string | null;
+  angle?: number;
+  lastCastTimestamp?: number;
+}
+
+export interface IWorld {
+  get(id: string): GameEntity | undefined;
+  markDirty(id: string): void;
+}
+
+export interface ActionHandler {
+  validate?(
+    entity: GameEntity,
+    payload: ActionPayload,
+    dt: number,
+    world: IWorld,
+  ): boolean;
+  execute(
+    entity: GameEntity,
+    payload: ActionPayload,
+    dt: number,
+    world: IWorld,
+  ): void;
+  update(
+    entity: GameEntity,
+    payload: ActionPayload,
+    dt: number,
+    world: IWorld,
+  ): void;
+  reconcile(
+    entity: GameEntity,
+    payload: ActionPayload,
+    dt: number,
+    world: IWorld,
+  ): void;
+}
+
+export interface CommandResult<T = any> {
+  isLocal: boolean;
+  type?: GameProtocol.ActionType;
+  payload?: ActionPayload;
+  execute?: (game: T) => void;
 }

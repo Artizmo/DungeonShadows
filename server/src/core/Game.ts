@@ -1,187 +1,147 @@
-import { Log } from "~/shared/core/Logger";
-import Loop from "~/core/Loop";
-import Network from "~/core/Network";
+import { GAME_CONFIG } from "~/shared/constants";
 import World from "~/core/World";
-import {
-  GameEventType,
-  type Config,
-  type GameEventMap,
-  type IGameHandler,
-  type MoveCommandEvent,
-  type MoveEvent,
-  type NetworkMessage,
-  type PendingEvent,
-} from "~/core/types";
-import { MapCache } from "~/_utils/mapCache";
-import type Character from "~/core/Character";
-import { Serialize } from "~/shared/network/serializer";
-import { Deserialize } from "~/shared/network/deserializer";
-import { ConnectHandler } from "~/network-handlers/connect";
-import { ActionRegistry } from "~/core/actions/actionRegistry";
-import { ActionType } from "~/shared/constants";
-import { GameProtocol } from "~/shared/network/generated";
+import Network from "~/core/Network";
+import Area from "~/core/Area";
+import Zone from "~/core/Zone";
+import Character from "~/core/Character";
+import type { EntityState, ServerTransport } from "~/shared/core/types";
+import { ActionRegistry } from "~/shared/core/actions";
 
 export default class Game {
-  readonly config: Config;
-  readonly loop: Loop;
-  public network!: Network;
-  public world!: World;
-  public mapCache: MapCache = new MapCache();
-  public activeCharacters: Map<number, Character> = new Map();
-  public isReady = false;
-  lastProcessedId: number;
-  lastBroadcastState: Map<any, any>;
+  public world = new World();
+  public network: Network;
+  public clientSequences: Record<string, number> = {};
+  public connectionToCharId = new Map<string, string>();
 
-  constructor(config: Config) {
-    this.config = config;
-    this.loop = new Loop(this.config);
-    this.lastProcessedId = 0;
-    this.lastBroadcastState = new Map();
+  private nextTick = performance.now();
+  private lastBroadcastState = new Map<string, EntityState>();
+
+  constructor(transport: ServerTransport) {
+    this.network = new Network(transport);
+
+    const startingArea = new Area("starting_area");
+    startingArea.addZone(new Zone("forest_zone", "forest_bg.webp"));
+    this.world.addArea(startingArea);
+
+    this.world.add(
+      new Character("localPlayer", 300, 200),
+      "starting_area",
+      "forest_zone",
+    );
+    this.world.add(
+      new Character("dummy", 300, 200),
+      "starting_area",
+      "forest_zone",
+    );
+
+    // MOCK AUTHENTICATION: Associate the generic connection ID with the game entity
+    this.connectionToCharId.set("client_conn_01", "localPlayer");
   }
 
-  public start(worldPath: string): void {
-    this.world = new World(worldPath);
-    this.network = new Network(this.config);
-    this.isReady = true;
-    this.loop.start();
-
-    this.loop.events.on("UPDATE", (deltaTime: number) => {
-      if (!this.isReady) return;
-
-      this.handleUpdate(deltaTime);
-    });
-
-    this.loop.events.on("TICK", (tick: number) => {
-      if (!this.isReady) return;
-
-      this.handleTick(tick);
-    });
-
-    this.network.events.on("process_connection", (playerConnection) => {
-      this.handlePlayerConnection(playerConnection);
-    });
-
-    this.network.events.on("process_disconnection", (playerId: number) => {
-      this.handlePlayerDisconnection(playerId);
-    });
-
-    this.network.events.on("process_input", (request, characterId) => {
-      this.handleCharacterInput(request, characterId);
-    });
+  start(): void {
+    const _loop = () => {
+      const now = performance.now();
+      if (now >= this.nextTick) {
+        this.tick();
+        this.nextTick += GAME_CONFIG.SERVER_TICK_RATE;
+      }
+      setTimeout(_loop, Math.max(0, this.nextTick - performance.now()));
+    };
+    _loop();
   }
 
-  public async handlePlayerConnection({
-    playerId,
-    characterId,
-    connection,
-  }): Promise<void> {
-    const handler = ActionRegistry.get(GameProtocol.ActionType.SPAWN);
-    handler.execute({ playerId, characterId, connection }, { game: this });
+  resetState(): void {
+    const lp = this.world.get("localPlayer");
+    const dummy = this.world.get("dummy");
+    if (lp) {
+      lp.health = 100;
+      lp.mana = 100;
+      this.world.markDirty(lp.id);
+    }
+    if (dummy) {
+      dummy.health = 100;
+      dummy.mana = 100;
+      this.world.markDirty(dummy.id);
+    }
   }
 
-  public handlePlayerDisconnection(playerId: number): void {
-    if (!playerId) return;
+  tick(): void {
+    const dt = GAME_CONFIG.SERVER_TICK_RATE / 1000;
+    const dummy = this.world.get("dummy");
 
-    try {
-      for (const character of this.world.characters.values()) {
-        if (character.player.id === playerId) {
-          this.world.leave(character);
-          Log.NETWORK.INFO(`${character.player.fullName} has disconnected!`);
+    if (dummy) {
+      dummy.angle += 1.5 * dt;
+      dummy.x = Math.round((300 + Math.cos(dummy.angle) * 150) * 1000) / 1000;
+      dummy.y = Math.round((200 + Math.sin(dummy.angle) * 100) * 1000) / 1000;
+      this.world.markDirty("dummy");
+    }
+
+    while (this.network.actionQueue.length > 0) {
+      const envelope = this.network.actionQueue.shift()!;
+
+      // Look up the character assigned to this specific socket connection
+      const charId = this.connectionToCharId.get(envelope.connectionId);
+      if (!charId) continue;
+
+      const char = this.world.get(charId);
+      if (!char) continue;
+
+      const handler = ActionRegistry.get(envelope.packet.type);
+      if (handler) {
+        if (
+          !handler.validate ||
+          handler.validate(
+            char,
+            envelope.packet.payload,
+            envelope.packet.dt,
+            this.world,
+          )
+        ) {
+          handler.update(
+            char,
+            envelope.packet.payload,
+            Math.min(envelope.packet.dt, 0.1),
+            this.world,
+          );
         }
       }
-    } catch (e) {
-      Log.SYSTEM.ERROR(e);
-    }
-  }
 
-  public async handleCharacterInput(
-    request: Uint8Array,
-    characterId: number,
-  ): Promise<void> {
-    if (!this.isReady) return;
-    if (!characterId || !request) return;
-
-    // 1. Grab the active character from the world engine
-    const character = this.world.characters.get(characterId);
-    if (!character) return;
-
-    // 3. Deserialize incoming client inputs
-
-    // const handler = new BatchInputRequest(this, character);
-
-    // await handler.execute({
-    //   character,
-    //   game: this,
-    //   data: request,
-    // } as any);
-
-    // 🟢 CRITICAL STEP: Track this character as active so they broadcast during the tick!
-    this.activeCharacters.set(character.id, character);
-  }
-
-  public handleUpdate(deltaTime: number): void {
-    this.update(deltaTime);
-  }
-
-  public handleTick(tick: number): void {
-    this.tick(tick);
-  }
-
-  public update(tick: number): void {
-    this.world.update(tick);
-  }
-
-  tick(tick: number) {
-    while (this.network.actionQueue.length > 0) {
-      const actionRecord = this.network.actionQueue.shift();
-      const action = ActionRegistry.get(actionRecord.type);
-
-      action.execute(actionRecord.data, { game: this });
-
-      this.lastProcessedId = actionRecord.sequenceId;
+      // Record the last sequence processed specifically for this character
+      this.clientSequences[charId] = envelope.packet.sequenceId;
     }
 
-    const entitiesDelta = {};
-
+    const entitiesDelta: Record<string, EntityState> = {};
     for (const id of this.world.dirtyEntities) {
-      const character = this.world.characters.get(id);
-      if (!character) continue;
+      const char = this.world.get(id);
+      if (!char) continue;
 
       const last = this.lastBroadcastState.get(id);
       if (
         !last ||
-        last.x !== character.position.x ||
-        last.y !== character.position.y ||
-        // last.mana !== character.stats. ||
-        last.health !== character.stats.hp
+        last.x !== char.x ||
+        last.y !== char.y ||
+        last.mana !== char.mana ||
+        last.health !== char.health
       ) {
-        entitiesDelta[id] = {
-          x: character.position.x,
-          y: character.position.y,
-          // mana: character.mana,
-          health: character.stats.hp,
-          // areaId: character.areaId,
-          // zoneId: character.zoneId,
+        const state = {
+          x: char.x,
+          y: char.y,
+          mana: char.mana,
+          health: char.health,
+          areaId: char.areaId,
+          zoneId: char.zoneId,
         };
-        this.lastBroadcastState.set(id, {
-          x: character.position.x,
-          y: character.position.y,
-          // mana: character.mana,
-          health: character.stats.hp,
-          // areaId: character.areaId,
-          // zoneId: character.zoneId,
-        });
+        entitiesDelta[id] = state;
+        this.lastBroadcastState.set(id, state);
       }
     }
     this.world.clearDirty();
 
-    const snapshot = {
+    this.network.broadcast({
       type: "STATE_UPDATE",
       serverTime: performance.now(),
-      entitiesDelta: entitiesDelta,
-      lastProcessedId: this.lastProcessedId,
-    };
-    // console.log("bingo broadcast snapshot");
-    // this.network.broadcast(snapshot);
+      entitiesDelta,
+      lastProcessedIds: this.clientSequences,
+    });
   }
 }

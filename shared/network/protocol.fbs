@@ -11,9 +11,11 @@ enum MessageType : ubyte {
 }
 
 enum ActionType : ubyte {
-  SPAWN = 0,
-  MAP_CHUNK = 1,
-  MOVE = 2,
+  UPDATE = 0,
+  SPAWN = 1,
+  MAP_CHUNK = 2,
+  MOVE = 3,
+  CAST = 4
 }
 
 // ============================================================================

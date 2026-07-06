@@ -1,12 +1,6 @@
-import type { Config } from "./core/types.js";
+import type { GameConfig } from "./core/types.js";
 
-export const LOOP_CONFIG: Config = {
-  cycleRate: 0.016666667, // Now matching 60Hz processing chunks
-  tickRate: 0.05, // Sync window updates every 50ms (20 network updates a sec)
-  cycleSize: 600, // Unified reset index timeline maximum boundary
-};
-
-export const GAME_CONFIG = {
+export const GAME_CONFIG: GameConfig = {
   SPEED: 200,
   SERVER_TICK_RATE: 1000 / 20, // 20Hz
   CLIENT_TICK_RATE: 1000 / 60, // 60Hz fixed

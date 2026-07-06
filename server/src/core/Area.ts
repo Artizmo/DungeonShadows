@@ -1,50 +1,17 @@
-import path from "path";
-import { Log } from "~/shared/core/Logger";
-import Zone from "~/core/Zone";
-import { fetchConfigData } from "~/_utils/functions/fetchWorld";
+import type Zone from "~/core/Zone";
 
 export default class Area {
-  public id: number;
-  public name: string;
-  public description: string;
-  public zones: Map<string, Zone> = new Map();
+  public id: string;
+  public zones: Map<string, Zone>;
 
-  constructor(areaPath: string) {
-    this.load(areaPath);
+  constructor(id: string) {
+    this.id = id;
+    this.zones = new Map();
   }
-
-  private load(areaPath: string): void {
-    try {
-      const area = fetchConfigData<any>(
-        path.join("../shared/data/world", areaPath),
-      );
-
-      this.id = area.id;
-      this.name = area.name;
-      this.description = area.description;
-
-      Log.WORLD.INFO(`└─Area: ${this.name}`);
-
-      if (area.zones) {
-        for (const { zonePath } of area.zones) {
-          const finalAreaPath = path.resolve(
-            process.cwd(),
-            "../shared/data/world",
-            areaPath,
-          );
-          const absoluteZonePath = path.join(
-            path.dirname(finalAreaPath),
-            zonePath,
-          );
-
-          const zone = new Zone(absoluteZonePath);
-          this.zones.set(zone.id, zone);
-        }
-      }
-    } catch (error: any) {
-      Log.WORLD.ERROR(
-        `Failed loading area manifest from [${areaPath}]: ${error.message}`,
-      );
-    }
+  addZone(zone: Zone): void {
+    this.zones.set(zone.id, zone);
+  }
+  getZone(zoneId: string): Zone | undefined {
+    return this.zones.get(zoneId);
   }
 }

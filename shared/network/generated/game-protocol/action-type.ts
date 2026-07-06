@@ -3,9 +3,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/no-non-null-assertion */
 
 export enum ActionType {
-  UNKNOWN = 0,
+  UPDATE = 0,
   SPAWN = 1,
   MAP_CHUNK = 2,
   MOVE = 3,
-  CAST = 4,
+  CAST = 4
 }

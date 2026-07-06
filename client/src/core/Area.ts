@@ -1,23 +1,17 @@
-import type { IArea } from "~/shared/core/types";
 import type Zone from "~/core/Zone";
 
-export default class Area implements IArea {
-  public id!: number;
-  public name!: string;
-  public description!: string;
-  public _zone!: Zone;
+export default class Area {
+  public id: string;
+  public zones: Map<string, Zone>;
 
-  constructor(id: number, name: string, description: string) {
+  constructor(id: string) {
     this.id = id;
-    this.name = name;
-    this.description = description;
+    this.zones = new Map();
   }
-
-  public set zone(zone: Zone) {
-    this._zone = zone;
+  addZone(zone: Zone): void {
+    this.zones.set(zone.id, zone);
   }
-
-  public tick(tick: number): void {
-    this._zone.tick(tick);
+  getZone(zoneId: string): Zone | undefined {
+    return this.zones.get(zoneId);
   }
 }

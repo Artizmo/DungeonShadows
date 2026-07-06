@@ -33,7 +33,7 @@ type():MessageType {
 
 actionType():ActionType {
   const offset = this.bb!.__offset(this.bb_pos, 6);
-  return offset ? this.bb!.readUint8(this.bb_pos + offset) : ActionType.SPAWN;
+  return offset ? this.bb!.readUint8(this.bb_pos + offset) : ActionType.UPDATE;
 }
 
 sequenceId():bigint {
@@ -122,7 +122,7 @@ static addType(builder:flatbuffers.Builder, type:MessageType) {
 }
 
 static addActionType(builder:flatbuffers.Builder, actionType:ActionType) {
-  builder.addFieldInt8(1, actionType, ActionType.SPAWN);
+  builder.addFieldInt8(1, actionType, ActionType.UPDATE);
 }
 
 static addSequenceId(builder:flatbuffers.Builder, sequenceId:bigint) {

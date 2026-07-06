@@ -1,20 +1,6 @@
+import type Game from "~/core/Game";
+import type { CommandResult } from "~/shared/core/types";
 import { GameProtocol } from "~/shared/network/generated";
-import type Game from "../Game";
-
-interface MoveAction {
-  x?: number;
-  y?: number;
-  targetId?: string;
-}
-
-type ActionPayload = MoveAction;
-
-interface CommandResult {
-  isLocal: boolean;
-  type?: GameProtocol.ActionType;
-  payload?: ActionPayload;
-  execute?: (game: Game) => void;
-}
 
 export const CommandRegistry = new Map<
   string,
