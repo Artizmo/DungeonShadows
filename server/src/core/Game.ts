@@ -1,6 +1,6 @@
 import { Log } from "~/shared/core/Logger";
 import Loop from "~/core/Loop";
-import Server from "~/core/Server";
+import Network from "~/core/Network";
 import World from "~/core/World";
 import {
   GameEventType,
@@ -12,32 +12,36 @@ import {
   type NetworkMessage,
   type PendingEvent,
 } from "~/core/types";
-import { REQUEST_REGISTRY } from "~/_lib/requests";
 import { MapCache } from "~/_utils/mapCache";
 import type Character from "~/core/Character";
 import { Serialize } from "~/shared/network/serializer";
-import { PlayerJoinHandler } from "~/_lib/requests/playerJoin";
 import { Deserialize } from "~/shared/network/deserializer";
-import BatchInputRequest from "~/_lib/requests/batchInput";
 import { ConnectHandler } from "~/network-handlers/connect";
+import { ActionRegistry } from "~/core/actions/actionRegistry";
+import { ActionType } from "~/shared/constants";
+import { GameProtocol } from "~/shared/network/generated";
 
 export default class Game {
   readonly config: Config;
   readonly loop: Loop;
-  public server!: Server;
+  public network!: Network;
   public world!: World;
   public mapCache: MapCache = new MapCache();
   public activeCharacters: Map<number, Character> = new Map();
   public isReady = false;
+  lastProcessedId: number;
+  lastBroadcastState: Map<any, any>;
 
   constructor(config: Config) {
     this.config = config;
     this.loop = new Loop(this.config);
+    this.lastProcessedId = 0;
+    this.lastBroadcastState = new Map();
   }
 
   public start(worldPath: string): void {
     this.world = new World(worldPath);
-    this.server = new Server(this.config);
+    this.network = new Network(this.config);
     this.isReady = true;
     this.loop.start();
 
@@ -53,15 +57,15 @@ export default class Game {
       this.handleTick(tick);
     });
 
-    this.server.events.on("process_connection", (playerConnection) => {
+    this.network.events.on("process_connection", (playerConnection) => {
       this.handlePlayerConnection(playerConnection);
     });
 
-    this.server.events.on("process_disconnection", (playerId: number) => {
+    this.network.events.on("process_disconnection", (playerId: number) => {
       this.handlePlayerDisconnection(playerId);
     });
 
-    this.server.events.on("process_input", (request, characterId) => {
+    this.network.events.on("process_input", (request, characterId) => {
       this.handleCharacterInput(request, characterId);
     });
   }
@@ -71,8 +75,8 @@ export default class Game {
     characterId,
     connection,
   }): Promise<void> {
-    const handler = new ConnectHandler(this);
-    await handler.execute({ playerId, characterId, connection });
+    const handler = ActionRegistry.get(GameProtocol.ActionType.SPAWN);
+    handler.execute({ playerId, characterId, connection }, { game: this });
   }
 
   public handlePlayerDisconnection(playerId: number): void {
@@ -82,7 +86,7 @@ export default class Game {
       for (const character of this.world.characters.values()) {
         if (character.player.id === playerId) {
           this.world.leave(character);
-          Log.SERVER.INFO(`${character.player.fullName} has disconnected!`);
+          Log.NETWORK.INFO(`${character.player.fullName} has disconnected!`);
         }
       }
     } catch (e) {
@@ -103,13 +107,13 @@ export default class Game {
 
     // 3. Deserialize incoming client inputs
 
-    const handler = new BatchInputRequest(this, character);
+    // const handler = new BatchInputRequest(this, character);
 
-    await handler.execute({
-      character,
-      game: this,
-      data: request,
-    } as any);
+    // await handler.execute({
+    //   character,
+    //   game: this,
+    //   data: request,
+    // } as any);
 
     // 🟢 CRITICAL STEP: Track this character as active so they broadcast during the tick!
     this.activeCharacters.set(character.id, character);
@@ -127,40 +131,57 @@ export default class Game {
     this.world.update(tick);
   }
 
-  // Inside Game.ts (Your Fixed Server Tick Loop)
-  public tick(tick: number): void {
-    // 1. Loop through characters who received packets during this frame window
-    for (const [characterId, character] of this.activeCharacters) {
-      const tickEventsToBroadcast: MoveEvent[] = [];
-      // 2. Extract the completed MoveEvents your handler already calculated
-      const events = character.pendingEvents;
+  tick(tick: number) {
+    while (this.network.actionQueue.length > 0) {
+      const actionRecord = this.network.actionQueue.shift();
+      const action = ActionRegistry.get(actionRecord.type);
 
-      []; // Refactor the tick so it uses actionRegistry
-      for (const event of events) {
-        if (event.type === GameEventType.MOVE) {
-          // TypeScript is completely happy here because MoveEvent naturally has x, y, and characterId!
-          tickEventsToBroadcast.push(event);
-        }
-      }
+      action.execute(actionRecord.data, { game: this });
 
-      // 3. Wipe the character queue clean so they don't double-broadcast next tick
-      character.pendingEvents = [];
-
-      // 4. Phase 4: Pass the accumulated updates to your FlatBuffer broadcaster
-      if (tickEventsToBroadcast.length > 0) {
-        // this.broadcastTickUpdates(tickEventsToBroadcast);
-        const serializationPayload = tickEventsToBroadcast.map((event) => ({
-          ...event,
-          type: "MOVE_VERIFIED", // 🟢 This safely overwrites event.type to what you want
-          lastSequence: event.lastProcessedId, // Explicitly map lastProcessedId to lastSequence
-        }));
-        // const events: Uint8Array = Serialize.packet(serializationPayload);
-        // character.player.send(events);
-      }
+      this.lastProcessedId = actionRecord.sequenceId;
     }
 
-    // 5. Clean the active set tracking for the next frame window
-    this.activeCharacters.clear();
-    this.world.tick(tick);
+    const entitiesDelta = {};
+
+    for (const id of this.world.dirtyEntities) {
+      const character = this.world.characters.get(id);
+      if (!character) continue;
+
+      const last = this.lastBroadcastState.get(id);
+      if (
+        !last ||
+        last.x !== character.position.x ||
+        last.y !== character.position.y ||
+        // last.mana !== character.stats. ||
+        last.health !== character.stats.hp
+      ) {
+        entitiesDelta[id] = {
+          x: character.position.x,
+          y: character.position.y,
+          // mana: character.mana,
+          health: character.stats.hp,
+          // areaId: character.areaId,
+          // zoneId: character.zoneId,
+        };
+        this.lastBroadcastState.set(id, {
+          x: character.position.x,
+          y: character.position.y,
+          // mana: character.mana,
+          health: character.stats.hp,
+          // areaId: character.areaId,
+          // zoneId: character.zoneId,
+        });
+      }
+    }
+    this.world.clearDirty();
+
+    const snapshot = {
+      type: "STATE_UPDATE",
+      serverTime: performance.now(),
+      entitiesDelta: entitiesDelta,
+      lastProcessedId: this.lastProcessedId,
+    };
+    // console.log("bingo broadcast snapshot");
+    // this.network.broadcast(snapshot);
   }
 }

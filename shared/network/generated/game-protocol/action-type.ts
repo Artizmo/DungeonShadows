@@ -7,4 +7,5 @@ export enum ActionType {
   SPAWN = 1,
   MAP_CHUNK = 2,
   MOVE = 3,
+  CAST = 4,
 }

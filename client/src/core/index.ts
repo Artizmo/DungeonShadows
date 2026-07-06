@@ -1,13 +1,22 @@
+import EventEmitter from "eventemitter3";
 import Game from "~/core/Game";
-import type { Config } from "~/shared/core/types";
+// import KeyboardController from "./KeyboardController";
+// import GamepadController from "./GamepadController";
+// import MenuManager from "./MenuManager";
+import Renderer from "~/core/Renderer";
+import Loop from "~/core/Loop";
+import { LOOP_CONFIG } from "~/shared/constants";
+import World from "~/core/World";
+import Network from "~/core/Network";
 
-const loopConfig: Config = {
-  cycleRate: 0.016666667, // Now matching 60Hz processing chunks
-  tickRate: 0.05, // Sync window updates every 50ms (20 network updates a sec)
-  cycleSize: 600, // Unified reset index timeline maximum boundary
-};
-
-// Instantiate the single monolithic game controller context for the UI layer
-const gameEngine = new Game(loopConfig);
+const events = new EventEmitter();
+// const keyboardController = new KeyboardController();
+// const gamepadController = new GamepadController();
+// const menuManager = new MenuManager();
+const renderer = new Renderer();
+const loop = new Loop(LOOP_CONFIG);
+const world = new World();
+const network = new Network();
+const gameEngine = new Game(world, renderer, loop, network, events);
 
 export default gameEngine;

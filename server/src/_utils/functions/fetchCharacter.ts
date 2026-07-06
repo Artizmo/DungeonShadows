@@ -20,7 +20,7 @@ export async function fetchCharacter(characterId: number): Promise<Character> {
     const characterRecord = JSON.parse(fileContent);
 
     if (!characterRecord) {
-      Log.SERVER.ERROR(
+      Log.NETWORK.ERROR(
         `Character file empty or corrupt for characterId: ${characterId}`,
       );
       throw new Error("Character data corrupt.");
@@ -28,7 +28,7 @@ export async function fetchCharacter(characterId: number): Promise<Character> {
 
     return characterRecord;
   } catch (error: any) {
-    Log.SERVER.ERROR(
+    Log.NETWORK.ERROR(
       `Failed to fetch data for characterId ${characterId}: ${error.message}`,
     );
     throw new Error(`Character data not found for ID: ${characterId}`);
@@ -50,7 +50,7 @@ export async function fetchPlayer(playerId: number): Promise<Player> {
     const playerRecord = JSON.parse(fileContent);
 
     if (!playerRecord) {
-      Log.SERVER.ERROR(
+      Log.NETWORK.ERROR(
         `Player file empty or corrupt for playerId: ${playerId}`,
       );
       throw new Error("Player data corrupt.");
@@ -58,7 +58,7 @@ export async function fetchPlayer(playerId: number): Promise<Player> {
 
     return playerRecord;
   } catch (error: any) {
-    Log.SERVER.ERROR(
+    Log.NETWORK.ERROR(
       `Failed to fetch data for playerId ${playerId}: ${error.message}`,
     );
     throw new Error(`Player data not found for ID: ${playerId}`);

@@ -2,8 +2,9 @@ import { EventEmitter } from "events";
 import { Config } from "~/core/types";
 
 export default class GameLoop {
-  public tickCounter = 0;
-  public events: EventEmitter = new EventEmitter();
+  tickCounter = 0;
+  events: EventEmitter = new EventEmitter();
+  deltaTime: number;
   private cycleRate: number;
   private cyclesPerTick: number;
   private cycleSize: number;
@@ -49,20 +50,20 @@ export default class GameLoop {
    */
   private runLoopPass(): void {
     const currentTime = performance.now();
-    let deltaTime = (currentTime - this.lastTime) / 1000;
+    this.deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
     // Spiral of Death Protection: Clamp max delta to 250ms (prevents freezing catch-up cascades)
-    if (deltaTime > 0.25) {
-      deltaTime = 0.25;
+    if (this.deltaTime > 0.25) {
+      this.deltaTime = 0.25;
     }
 
-    this.frameTime += deltaTime;
+    this.frameTime += this.deltaTime;
 
     // Fixed timestep accumulator execution
     while (this.frameTime >= this.cycleRate) {
       // 1. Fixed 60fps logic/physics update
-      this.events.emit("UPDATE", deltaTime);
+      this.events.emit("UPDATE", this.deltaTime);
 
       // 2. Slower fixed tick (e.g., Network synchronization)
       if (this.tickCounter % this.cyclesPerTick === 0) {

@@ -6,14 +6,16 @@ import { Log } from "~/shared/core/Logger";
 import type { Config } from "~/core/types";
 import type Game from "~/core/Game";
 import { WebSocketConnection } from "~/_utils/messageBroker";
+import { GameProtocol } from "~/shared/network/generated";
 
 dotenv.config();
 
-export default class Server {
+export default class Network {
   public events: EventEmitter = new EventEmitter();
   public readonly socketServer: WebSocketServer;
   public readonly connections: Map<number, WebSocket> = new Map();
   public readonly game: Game;
+  actionQueue: any[] = [];
 
   constructor(config: Config) {
     this.socketServer = new WebSocketServer({ port: config.port });
@@ -22,7 +24,7 @@ export default class Server {
       for (const [id, socket] of this.connections.entries()) {
         if (socket && socket.readyState === WebSocket.OPEN) {
           if (!socket.isAlive) {
-            Log.SERVER.WARN(`Player ${id} timed out.`);
+            Log.NETWORK.WARN(`Player ${id} timed out.`);
             socket.terminate();
             continue;
           }
@@ -46,14 +48,14 @@ export default class Server {
       if (origin !== undefined) {
         const isDevelopment = process.env.NODE_ENV !== "production";
         if (!isDevelopment && origin !== process.env.ALLOWED_ORIGIN) {
-          Log.SERVER.WARN(`Blocked unauthorized connection from: ${origin}`);
+          Log.NETWORK.WARN(`Blocked unauthorized connection from: ${origin}`);
           socket.close(4003, "Forbidden Origin");
           return;
         }
       }
 
       if (!ticket || ticket === "undefined" || ticket === "[object Object]") {
-        Log.SERVER.WARN(
+        Log.NETWORK.WARN(
           `Connection rejected: Malformed ticket. Received: "${ticket}"`,
         );
         socket.close(4001, "Unauthorized: Ticket Missing");
@@ -80,7 +82,7 @@ export default class Server {
             data: "You do not have a valid ticket.",
           }),
         );
-        Log.SERVER.WARN(
+        Log.NETWORK.WARN(
           `Connection rejected: Invalid ticket signature. ${err}`,
         );
         socket.close(4001, "Unauthorized: Invalid Ticket");
@@ -100,15 +102,24 @@ export default class Server {
       this.connections.set(formatedPlayerId, socket);
       const connection = new WebSocketConnection(socket);
 
-      this.events.emit("process_connection", {
-        characterId: formatedCharacterId,
-        playerId: formatedPlayerId,
-        connection,
+      // this.events.emit("process_connection", {
+      //   characterId: formatedCharacterId,
+      //   playerId: formatedPlayerId,
+      //   connection,
+      // });
+
+      this.actionQueue.push({
+        type: GameProtocol.ActionType.SPAWN,
+        data: {
+          characterId: formatedCharacterId,
+          playerId: formatedPlayerId,
+          connection,
+        },
       });
 
       socket.on("pong", () => {
         socket.isAlive = true;
-        Log.SERVER.INFO(`Received PONG from PID ${formatedPlayerId}`);
+        Log.NETWORK.INFO(`Received PONG from PID ${formatedPlayerId}`);
       });
 
       socket.on("message", (rawData: Buffer, isBinary: boolean) => {
@@ -117,8 +128,9 @@ export default class Server {
 
           // 1. Route Binary Packets (FlatBuffers)
           if (isBinary) {
-            const data = new Uint8Array(rawData);
-            this.events.emit("process_input", data, formatedCharacterId);
+            // const data = new Uint8Array(rawData);
+            this.actionQueue.push(rawData);
+            // this.events.emit("process_input", data, formatedCharacterId);
             return;
           } else {
             // 2. Fallback JSON Packets
@@ -129,7 +141,7 @@ export default class Server {
             // );
           }
         } catch (err) {
-          Log.SERVER.ERROR(`Failed to handle incoming packet: ${err}`);
+          Log.NETWORK.ERROR(`Failed to handle incoming packet: ${err}`);
         }
       });
 
@@ -138,13 +150,13 @@ export default class Server {
       });
 
       socket.on("error", (error) =>
-        Log.SERVER.ERROR(
+        Log.NETWORK.ERROR(
           `Socket error for PID ${formatedPlayerId}: ${error.message}`,
         ),
       );
     });
 
-    Log.SERVER.INFO(`Server listening on port ${config.port}.`);
+    Log.NETWORK.INFO(`Server listening on port ${config.port}.`);
   }
 
   private handleSocketClose(playerId: number, closingSocket: WebSocket): void {

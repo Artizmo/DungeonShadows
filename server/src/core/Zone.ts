@@ -4,13 +4,12 @@ import { Collider, ZoneItem } from "~/core/types";
 
 export default class Zone {
   public id: string = "";
-  public parentAreaId: string = "";
+  public areaId: string = "";
   public name: string = "";
-  public mapWidth: number = 0;
-  public mapHeight: number = 0;
-  public mapFile: string = "";
+  public mapName: string = "";
   public colliders: Collider[] = [];
   public items: ZoneItem[] = [];
+  public characterIds: Set<number>;
 
   constructor(zonePath: string) {
     this.load(zonePath);
@@ -22,10 +21,8 @@ export default class Zone {
 
       this.id = zone.id;
       this.name = zone.name;
-      this.parentAreaId = zone.parentAreaId;
-      this.mapWidth = zone.map.width;
-      this.mapHeight = zone.map.height;
-      this.mapFile = zone.map.file;
+      this.areaId = zone.areaId;
+      this.mapName = zone.map.file;
       this.colliders = zone.colliders;
       this.items = zone.items;
 
@@ -35,5 +32,15 @@ export default class Zone {
         `Failed loading area manifest from [${zonePath}]: ${error.message}`,
       );
     }
+  }
+
+  addCharacter(id: number): void {
+    this.characterIds.add(id);
+  }
+  removeCharacter(id: number): void {
+    this.characterIds.delete(id);
+  }
+  get characterCount(): number {
+    return this.characterIds.size;
   }
 }

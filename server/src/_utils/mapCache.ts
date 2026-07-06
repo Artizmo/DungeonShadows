@@ -3,6 +3,7 @@ import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import type { Zone } from "~/core/types";
+import { Log } from "~/shared/core/Logger";
 
 export interface PreChunkedMap {
   x: number;
@@ -35,10 +36,12 @@ export class MapCache {
   public async getZoneMapChunks(zone: Zone): Promise<PreChunkedMap[]> {
     let entry = this.cache.get(zone.id);
 
+    if (entry) Log.DATA.INFO(`💾 Fetching Zone ${zone.id} from MapCache!`);
+
     // 🟢 Cache Miss: Load from hard drive seamlessly if not present or expired
     if (!entry) {
-      console.log(
-        `🔍 MapCache miss for zone "${zone.id}". Fetching from disk...`,
+      Log.DATA.INFO(
+        `🔍 Zone ${zone.id} not found in MapCache. Fetching from disk.`,
       );
       await this.fetchZone(zone);
       entry = this.cache.get(zone.id);
@@ -95,9 +98,11 @@ export class MapCache {
         fileName: mapPath,
       });
 
-      console.log(`💾 Zone "${zone.id}" successfully cached.`);
+      Log.DATA.INFO(`💾 Zone "${zone.id}" successfully cached.`);
     } catch (error) {
-      console.error(`❌ Failed loading map for zone: ${zone.id}`, error);
+      Log.DATA.ERROR(
+        `❌ Failed loading map for zone ${zone.id}. Error: ${error}`,
+      );
     }
   }
 
@@ -107,7 +112,7 @@ export class MapCache {
   public forceStale(zoneId: string) {
     if (this.cache.has(zoneId)) {
       this.cache.delete(zoneId);
-      console.log(`♻️ Zone "${zoneId}" manually purged (marked stale).`);
+      Log.DATA.INFO(`♻️ Zone "${zoneId}" manually purged (marked stale).`);
     }
   }
 
@@ -122,7 +127,7 @@ export class MapCache {
         for (const [zoneId, entry] of this.cache.entries()) {
           if (now - entry.lastAccessed > this.ttlMs) {
             this.cache.delete(zoneId);
-            console.log(`🧹 Zone "${zoneId}" evicted due to inactivity.`);
+            Log.DATA.INFO(`🧹 Zone "${zoneId}" evicted due to inactivity.`);
           }
         }
       },

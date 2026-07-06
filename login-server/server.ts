@@ -133,7 +133,7 @@ app.post(
         path: "/",
       });
 
-      Log.SERVER.INFO(
+      Log.NETWORK.INFO(
         `Player ID (${matchedPlayer.id}) authenticated successfully.`,
       );
 
@@ -143,7 +143,7 @@ app.post(
         characters: associatedCharacters,
       });
     } catch (error) {
-      console.error("Auth Server Failure Context:", error);
+      Log.NETWORK.ERROR(`Auth Server Failure Context: ${error}.`);
       return res
         .status(500)
         .json({ message: "Internal server authentication exception." });
@@ -167,5 +167,5 @@ app.post("/api/logout", (req: Express.Request, res: Express.Response) => {
 });
 
 app.listen(Number(PORT), "0.0.0.0", () => {
-  Log.SERVER.INFO(`⚔️ Auth Server listening on port ${PORT}.`);
+  Log.NETWORK.INFO(`⚔️ Auth Server listening on port ${PORT}.`);
 });

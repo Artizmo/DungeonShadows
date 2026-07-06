@@ -20,3 +20,22 @@ export const fetchGameTicket = async (
     return null;
   }
 };
+
+export function decodeTicket(
+  ticket: string,
+): { playerId: number; characterId: number } | null {
+  try {
+    const base64Url = ticket.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    return JSON.parse(jsonPayload);
+  } catch (err) {
+    console.error("Failed to decode token locally on client:", err);
+    return null;
+  }
+}

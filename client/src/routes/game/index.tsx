@@ -30,7 +30,7 @@ export const Route = createFileRoute("/game/")({
     await gameEngine.start(ticket);
 
     // Catch hooks up to fresh data on refresh
-    gameEngine.events.emit("CHARACTER_UPDATED");
+    gameEngine.events.emit("character_update");
   },
 
   component: GameComponent,

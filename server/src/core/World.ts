@@ -10,6 +10,7 @@ export default class World {
   public areas: Map<number, Area> = new Map();
   public charactersWithEvents: Set<number> = new Set();
   private _characters: Map<number, Character> = new Map();
+  dirtyEntities: Set<number> = new Set();
 
   constructor(worldPath: string) {
     Log.WORLD.INFO("Loading world...");
@@ -31,6 +32,13 @@ export default class World {
 
   public get characters(): Map<number, Character> {
     return this._characters;
+  }
+
+  markDirty(id) {
+    this.dirtyEntities.add(id);
+  }
+  clearDirty() {
+    this.dirtyEntities.clear();
   }
 
   private load(worldPath: string): void {

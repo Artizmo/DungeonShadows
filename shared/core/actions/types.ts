@@ -10,12 +10,6 @@ export interface IMoveAction {
   deltaTime: number;
 }
 
-export interface IMapChunk {
-  x: number;
-  y: number;
-  imageBytes: Uint8Array;
-}
-
 export interface IPendingAction<T = any> {
   type: GameProtocol.ActionType;
   sequenceId: number;
@@ -23,8 +17,8 @@ export interface IPendingAction<T = any> {
 }
 
 export interface IActionContext {
-  character: Character; // 🟢 Directly matches your true ICharacter model type
-  game: Game; // 🟢 Directly matches your true IGame model type
+  character?: Character; // 🟢 Directly matches your true ICharacter model type
+  game?: Game; // 🟢 Directly matches your true IGame model type
 }
 
 // Loose structure used specifically to build the ActionRegistry collection type signature

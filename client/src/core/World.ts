@@ -1,10 +1,9 @@
-import type { IWorld, IArea } from "~/shared/core/types";
 import type Character from "~/core/Character";
-import { c } from "node_modules/vite/dist/node/moduleRunnerTransport.d-DJ_mE5sf";
+import type Area from "~/core/Area";
 
-export default class World implements IWorld {
+export default class World {
   public character!: Character;
-  public area!: IArea;
+  public area!: Area;
 
   public join(character: Character): void {
     if (!character) return;

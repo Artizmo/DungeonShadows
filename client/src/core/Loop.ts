@@ -1,15 +1,16 @@
-import { EventEmitter } from "eventemitter3";
 import type { Config } from "~/shared/core/types";
 
-export default class Loop {
-  public events: EventEmitter = new EventEmitter();
+export default class cycle {
+  tick = 0;
+  deltaTime = 0;
+  _onUpdate!: (deltaTime: number) => void;
+  _onTick!: (tick: number) => void;
   private cycleRate: number;
   private cyclesPerTick: number;
   private cycleSize: number;
   private animationFrameId: number | null = null;
   private lastTime = 0;
   private frameTime = 0;
-  public tickCounter = 0;
 
   constructor(config: Config) {
     this.cycleRate = config.cycleRate;
@@ -20,12 +21,20 @@ export default class Loop {
     );
   }
 
+  set onUpdate(callback: (deltaTime: number) => void) {
+    this._onUpdate = callback;
+  }
+
+  set onTick(callback: (tick: number) => void) {
+    this._onTick = callback;
+  }
+
   public start(): void {
     if (this.animationFrameId !== null) return;
 
     this.lastTime = performance.now();
     this.frameTime = 0;
-    this.animationFrameId = requestAnimationFrame(() => this.tick());
+    this.animationFrameId = requestAnimationFrame(() => this.processCycle());
   }
 
   public stop(): void {
@@ -35,36 +44,36 @@ export default class Loop {
     }
   }
 
-  private tick(): void {
-    this.runLoopPass();
+  private processCycle(): void {
+    this.cycle();
 
-    this.animationFrameId = requestAnimationFrame(() => this.tick());
+    this.animationFrameId = requestAnimationFrame(() => this.processCycle());
   }
 
-  private runLoopPass(): void {
+  private cycle(): void {
     const currentTime = performance.now();
-    let deltaTime = (currentTime - this.lastTime) / 1000;
+    this.deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
     // Spiral of Death Protection: Clamp max delta to 250ms
-    if (deltaTime > 0.25) {
-      deltaTime = 0.25;
+    if (this.deltaTime > 0.25) {
+      this.deltaTime = 0.25;
     }
 
-    this.frameTime += deltaTime;
+    this.frameTime += this.deltaTime;
 
     // Fixed timestep accumulator execution
     while (this.frameTime >= this.cycleRate) {
       // 1. Fixed 60fps logic/physics update
-      this.events.emit("update", deltaTime);
+      this._onUpdate(this.deltaTime);
 
       // 2. Slower fixed tick (e.g., Network synchronization)
-      if (this.tickCounter % this.cyclesPerTick === 0) {
-        this.events.emit("tick", this.tickCounter);
+      if (this.tick % this.cyclesPerTick === 0) {
+        this._onTick(this.tick);
       }
 
       this.frameTime -= this.cycleRate;
-      this.tickCounter = (this.tickCounter + 1) % this.cycleSize;
+      this.tick = (this.tick + 1) % this.cycleSize;
     }
   }
 }

@@ -1,20 +1,20 @@
 type LogLevel = "INFO" | "WARN" | "FAIL" | "DBUG";
-type LogSystem = "SYST" | "SRVR" | "DATA" | "TEST" | "WRLD" | "CHAR";
+type LogSystem = "SYST" | "NWRK" | "DATA" | "TEST" | "WRLD" | "CHAR";
 
 class Logger {
   private readonly system: LogSystem;
 
   public static readonly hexConfig = {
     levels: {
-      INFO: "#F5D77F",
+      INFO: "#CCCCCC",
       WARN: "#F39C12",
       FAIL: "#E74C3C", // Exactly 4 characters
       DBUG: "#2ECC71", // Industry standard 4-char debug
     },
     systems: {
-      SYST: "#BBBBBB",
-      SRVR: "#2BC2FC",
-      DATA: "#E91E63",
+      SYST: "#FFFFFF",
+      NWRK: "#2BC2FC",
+      DATA: "#F5D77F",
       TEST: "#b2d128",
       WRLD: "#7AE6B5",
       CHAR: "#d6ac11",
@@ -106,12 +106,12 @@ type LogMethods = {
 };
 
 const Log = {} as {
-  [K in "SYSTEM" | "SERVER" | "DATA" | "TEST" | "WORLD" | "CHAR"]: LogMethods;
+  [K in "SYSTEM" | "NETWORK" | "DATA" | "TEST" | "WORLD" | "CHAR"]: LogMethods;
 };
 
 const systemMapping: Record<keyof typeof Log, LogSystem> = {
   SYSTEM: "SYST",
-  SERVER: "SRVR",
+  NETWORK: "NWRK",
   DATA: "DATA",
   TEST: "TEST",
   WORLD: "WRLD",

@@ -1,5 +1,10 @@
-import type { IMapChunk } from "./actions/types";
 import type Character from "./Character";
+
+export interface IMapChunk {
+  x: number;
+  y: number;
+  imageBytes: Uint8Array;
+}
 
 export interface ICamera {
   x: number;
@@ -77,7 +82,7 @@ export default class Renderer {
     };
   }
 
-  public render(camera: ICamera): void {
+  public render(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
     this.ctx.fillStyle = "#11111b";
@@ -105,6 +110,8 @@ export default class Renderer {
 
       this.ctx.drawImage(chunk.img, drawX, drawY);
     }
+
+    this.renderCharacter(character, camera);
   }
 
   public renderCharacter(character: Character, camera: ICamera): void {
