@@ -1,83 +1,72 @@
 import type { GameConfig } from "~/shared/core/types";
 
-export default class Loop {
-  tick = 0;
-  deltaTime = 0;
-  onUpdate!: (deltaTime: number) => void;
-  onTick!: (tick: number) => void;
-
-  private frameRate: number; // e.g., 60
-  private fixedStep: number; // 🟢 The discrete time step size in seconds (e.g., 1/60 = 0.01666)
-  private framesPerTick: number; // 🟢 Number of physics updates that happen before a network broadcast
-  private frameSize: number; // e.g., Max tick overflow boundary
+export default class ServerLoop {
+  public tick = 0;
+  public onUpdate!: (deltaTime: number) => void;
+  public onTick!: (tick: number) => void;
+  private frameRate: number;
+  private fixedStep: number;
+  private framesPerTick: number;
+  private frameSize: number;
   private frameTime = 0;
-  private loopTimeout: NodeJS.Timeout | null = null;
   private lastTime = 0;
+  private isRunning = false;
+  private intervalId: any = null; // 🟢 Track the interval ID
 
   constructor(config: GameConfig) {
     this.frameRate = config.frameRate;
     this.frameSize = config.frameSize;
-
-    // 🟢 Convert frame rate into seconds per frame
     this.fixedStep = 1 / this.frameRate;
 
-    // 🟢 Calculate how many frames make up a single network tick
-    // Example: 60 FPS / 20 Network Ticks per second = 3 frames per tick
     const framesPerTick = Math.round(this.frameRate / config.tickRate);
     this.framesPerTick = Math.max(1, framesPerTick);
   }
 
   public start(): void {
-    if (this.loopTimeout !== null) return;
+    if (this.isRunning) return;
 
+    this.isRunning = true;
     this.lastTime = performance.now();
     this.frameTime = 0;
-    this.loop();
+
+    // 🟢 Call processLoop directly and save the interval ID
+    this.intervalId = setInterval(() => this.processLoop(), 0);
   }
 
   public stop(): void {
-    if (this.loopTimeout !== null) {
-      clearTimeout(this.loopTimeout);
-      this.loopTimeout = null;
+    this.isRunning = false;
+
+    // 🟢 Clean up the background timer properly
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
     }
-  }
-
-  private loop(): void {
-    this.processLoop();
-
-    // Run the scheduler as fast as safely possible to pump the accumulator
-    // without pegging a CPU core to 100%
-    this.loopTimeout = setTimeout(() => this.loop(), 4);
   }
 
   /**
-   * Core deterministic execution logic
+   * Core deterministic execution logic (Mirrors client exactly)
    */
   private processLoop(): void {
+    if (!this.isRunning) return; // Guard clause moved here
+
     const currentTime = performance.now();
-    this.deltaTime = (currentTime - this.lastTime) / 1000;
+    let deltaTime = (currentTime - this.lastTime) / 1000;
     this.lastTime = currentTime;
 
-    // Spiral of Death Protection: Clamp max delta to 250ms
-    if (this.deltaTime > 0.25) {
-      this.deltaTime = 0.25;
+    if (deltaTime > 0.25) {
+      deltaTime = 0.25;
     }
 
-    this.frameTime += this.deltaTime;
+    this.frameTime += deltaTime;
 
-    // 🟢 Accumulator executes updates using the calculated fixed step size
     while (this.frameTime >= this.fixedStep) {
-      // 1. Fixed logic/physics update using absolute constant time step size
       this.onUpdate(this.fixedStep);
 
-      // 2. Slower fixed tick (Network synchronization)
       if (this.tick % this.framesPerTick === 0) {
         this.onTick(this.tick);
       }
 
       this.frameTime -= this.fixedStep;
-
-      // Keep ticks within your configured boundary safely
       this.tick = (this.tick + 1) % this.frameSize;
     }
   }

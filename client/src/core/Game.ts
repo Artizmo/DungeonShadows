@@ -120,6 +120,10 @@ export default class Game {
     this.network.connect(ticket);
   }
 
+  stop(): void {
+    // this.loop.stop();
+  }
+
   handleBindCanvas(canvas: HTMLCanvasElement): void {
     if (!canvas) return;
 
