@@ -1,33 +1,37 @@
-import type {
-  ActionRecord,
-  GameEntity,
-  ICoords,
-  IPlayer,
-  IStats,
-  IZone,
-} from "~/shared/core/types";
+import type { ActionRecord } from "~/shared/core/types";
+import Zone from "~/core/Zone";
 
-export default class Character implements GameEntity {
+export default class Character {
   id: number;
-  player: IPlayer;
+  playerId: number;
   name: string;
   level: number;
-  zone: IZone;
-  position: ICoords;
-  renderPosition: ICoords;
-  stats: IStats;
+  zone: Zone;
+  position: {
+    x: number;
+    y: number;
+  };
+  renderPosition: {
+    x: number;
+    y: number;
+  };
+  stats: {
+    hp: number;
+    maxHp: number;
+    mana: number;
+    maxMana: number;
+  };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
   speed: number = 3.6;
   sequenceId: number = 0;
-  private LERP_FACTOR: number = 0.65;
 
   constructor(character: Character) {
     this.id = character.id;
-    this.player = { ...character.player };
+    this.playerId = character.playerId;
     this.name = character.name;
     this.level = character.level;
-    this.zone = { ...character.zone };
+    this.zone = character.zone;
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };

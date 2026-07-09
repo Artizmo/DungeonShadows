@@ -2,9 +2,9 @@ import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/actions/types";
 
 export const Join: ActionHandler = {
-  execute: ({ character }, game): void => {
+  execute: ({ data, game }): void => {
     try {
-      console.log("bingo", character);
+      const { character } = data;
       game.world.add(character);
       game.events.emit("game_update");
     } catch (error) {

@@ -2,8 +2,9 @@ import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/actions/types";
 
 export const LoadMap: ActionHandler = {
-  execute: ({ chunk }, game): void => {
+  execute: ({ data, game }): void => {
     try {
+      const { chunk } = data;
       if (!chunk) return;
 
       game.renderer.loadMap(chunk);

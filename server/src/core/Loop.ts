@@ -1,9 +1,7 @@
-import { EventEmitter } from "events";
 import type { GameConfig } from "~/shared/core/types";
 
 export default class Loop {
   tick = 0;
-  events: EventEmitter = new EventEmitter();
   deltaTime = 0;
   onUpdate!: (deltaTime: number) => void;
   onTick!: (tick: number) => void;

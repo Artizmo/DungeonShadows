@@ -6,33 +6,21 @@ export default class Camera {
 
   private readonly TILE_SIZE = 32;
 
-  public update(
-    character: Character,
-    canvasWidth: number,
-    canvasHeight: number,
-  ): void {
+  public update(character: Character, canvas: HTMLCanvasElement): void {
     const playerWorldX = character.renderPosition.x * this.TILE_SIZE;
     const playerWorldY = character.renderPosition.y * this.TILE_SIZE;
 
-    // Define zone limits (Ideally, these should be passed in via the Zone/World object)
     const zoneWidth = 1920 * this.TILE_SIZE;
     const zoneHeight = 896 * this.TILE_SIZE;
 
-    // Calculate raw target
-    let targetX = playerWorldX - canvasWidth / 2;
-    let targetY = playerWorldY - canvasHeight / 2;
+    let targetX = playerWorldX - canvas.width / 2;
+    let targetY = playerWorldY - canvas.height / 2;
 
-    // 🟢 CLAMPING LOGIC:
-    // If zone is smaller than screen, center the camera, don't allow negative offsets.
-    const maxX = Math.max(0, zoneWidth - canvasWidth);
-    const maxY = Math.max(0, zoneHeight - canvasHeight);
+    const maxX = Math.max(0, zoneWidth - canvas.width);
+    const maxY = Math.max(0, zoneHeight - canvas.height);
 
-    targetX = Math.max(0, Math.min(targetX, maxX));
-    targetY = Math.max(0, Math.min(targetY, maxY));
-
-    // 🟢 STABILITY FIX: Rounding to integer pixels prevents
-    // the "shimmering" effect of rendering images at partial pixel offsets.
-    this.x = Math.round(targetX);
-    this.y = Math.round(targetY);
+    // Keep these as floats!
+    this.x = Math.max(0, Math.min(targetX, maxX));
+    this.y = Math.max(0, Math.min(targetY, maxY));
   }
 }
