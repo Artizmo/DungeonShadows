@@ -1,105 +1,40 @@
-import type { GameProtocol } from "../network/generated/index.js";
+export interface QueueItem {
+  tick: number;
+  bytes: Uint8Array;
+}
 
-export interface GameConfig {
-  readonly SPEED: number;
-  readonly SERVER_TICK_RATE: number;
-  readonly CLIENT_TICK_RATE: number;
-  readonly INTERPOLATION_DELAY: number;
+export enum PacketCategory {
+  SYSTEM = 0,
+  ACTION = 1,
+  SNAPSHOT = 2,
+  COMM = 3,
+}
+
+export enum ActionType {
+  GAME = 0,
+  MOVE = 1,
+  CAST = 2,
+  JOIN = 3,
+  LOAD_MAP = 4,
 }
 
 export interface ActionPayload {
-  x?: number;
-  y?: number;
-  targetId?: string;
+  characterId: number;
+  sequenceId: number;
+  data: any;
 }
 
 export interface ActionRecord {
   sequenceId: number;
-  type: GameProtocol.ActionType;
+  type: ActionType;
   payload: ActionPayload;
   dt: number;
 }
 
-export interface EntityState {
-  x: number;
-  y: number;
-  mana: number;
-  health: number;
-  areaId: string | null;
-  zoneId: string | null;
-}
-
-export interface Snapshot {
-  type: string;
-  serverTime: number;
-  entitiesDelta: Record<string, EntityState>;
-  lastProcessedIds: Record<string, number>; // Maps character ID to their last processed sequence ID
-}
-
-export interface NetworkEnvelope {
-  connectionId: string;
-  packet: ActionRecord;
-}
-
-export interface ClientTransport {
-  send(packet: ActionRecord): void;
-  onReceive(handler: (snapshot: Snapshot) => void): void;
-}
-
-export interface ServerTransport {
-  broadcast(snapshot: Snapshot): void;
-  onReceive(
-    handler: (connectionId: string, packet: ActionRecord) => void,
-  ): void;
-}
-
-export interface GameEntity {
-  id: string;
-  x: number;
-  y: number;
-  health: number;
-  mana: number;
-  areaId: string | null;
-  zoneId: string | null;
-  angle?: number;
-  lastCastTimestamp?: number;
-}
-
-export interface IWorld {
-  get(id: string): GameEntity | undefined;
-  markDirty(id: string): void;
-}
-
-export interface ActionHandler {
-  validate?(
-    entity: GameEntity,
-    payload: ActionPayload,
-    dt: number,
-    world: IWorld,
-  ): boolean;
-  execute(
-    entity: GameEntity,
-    payload: ActionPayload,
-    dt: number,
-    world: IWorld,
-  ): void;
-  update(
-    entity: GameEntity,
-    payload: ActionPayload,
-    dt: number,
-    world: IWorld,
-  ): void;
-  reconcile(
-    entity: GameEntity,
-    payload: ActionPayload,
-    dt: number,
-    world: IWorld,
-  ): void;
-}
-
-export interface CommandResult<T = any> {
-  isLocal: boolean;
-  type?: GameProtocol.ActionType;
-  payload?: ActionPayload;
-  execute?: (game: T) => void;
+export interface GameConfig {
+  frameRate: number;
+  frameSize: number;
+  interpolationDelay: number;
+  speed: number;
+  tickRate: number;
 }

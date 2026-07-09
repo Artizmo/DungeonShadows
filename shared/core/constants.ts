@@ -1,16 +1,13 @@
-import type { GameConfig } from "./core/types.js";
+import type { GameConfig } from "./types.js";
 
-export const GAME_CONFIG: GameConfig = {
-  SPEED: 200,
-  SERVER_TICK_RATE: 1000 / 20, // 20Hz
-  CLIENT_TICK_RATE: 1000 / 60, // 60Hz fixed
-  INTERPOLATION_DELAY: 100,
-};
+const FPS = 60;
 
-export const ActionType = {
-  SYSTEM: 0,
-  MOVE: 1,
-  CAST: 2,
+export const LoopConfig: GameConfig = {
+  speed: 200,
+  tickRate: 1000 / 20, // 20Hz
+  frameRate: 1000 / FPS, // 60Hz fixed
+  frameSize: 600,
+  interpolationDelay: 100,
 };
 
 export const INPUT_DICTIONARY: Record<

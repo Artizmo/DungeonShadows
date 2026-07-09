@@ -1,26 +1,30 @@
-import type { IWorld } from "~/shared/core/types";
 import type Area from "~/core/Area";
 import type Character from "~/core/Character";
+import MapCache from "~/core/MapCache";
 
-export default class World implements IWorld {
-  public areas = new Map<string, Area>();
-  public characters = new Map<string, Character>();
-  public dirtyEntities = new Set<string>();
+export default class World {
+  areas = new Map<string, Area>();
+  characters = new Map<number, Character>();
+  dirtyEntities = new Set<number>();
+  mapCache: MapCache = new MapCache();
+
+  constructor(worldPath: string) {
+    // load world data
+  }
 
   addArea(area: Area): void {
     this.areas.set(area.id, area);
   }
-  add(char: Character, areaId: string, zoneId: string): void {
-    char.areaId = areaId;
-    char.zoneId = zoneId;
-    this.characters.set(char.id, char);
-    this.areas.get(areaId)?.getZone(zoneId)?.addCharacter(char.id);
-    this.markDirty(char.id);
+  add(character: Character): void {
+    if (!this.characters.has(character.id)) return;
+
+    this.characters.set(character.id, character);
+    this.markDirty(character.id);
   }
-  get(id: string): Character | undefined {
+  get(id: number): Character | undefined {
     return this.characters.get(id);
   }
-  markDirty(id: string): void {
+  markDirty(id: number): void {
     this.dirtyEntities.add(id);
   }
   clearDirty(): void {

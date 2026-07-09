@@ -1,8 +1,0 @@
-{
-  "scripts": {
-    "codegen": "flatc --ts --gen-all -o shared/network/generated shared/network/index.fbs"
-	},
-	"devDependencies": {
-		"typescript": "^6.0.3"
-	}
-}

@@ -2,9 +2,5 @@
   "name": "DungeonShadows",
   "version": "0.0.1-beta",
   "port": 8000,
-  "worldPath": "./data/world/world.json",
-  "fps": 60,
-  "cycleRate": 0.016666667,
-  "tickRate": 0.050,
-  "cycleSize": 600
+  "worldPath": "./data/world/world.json"
 }

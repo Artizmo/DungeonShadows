@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMO Netcode: Cast Action & State Reconciliation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        canvas {
+            background-color: #1e293b;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-900 text-slate-200 h-screen flex flex-col font-sans overflow-hidden">
+
+    <div class="p-4 bg-slate-800 shadow-md flex justify-between items-center z-10">
+        <div>
+            <h1 class="text-xl font-bold text-emerald-400">Netcode Sandbox: Cast Action</h1>
+            <p class="text-sm text-slate-400">Features: Binary Serialization, LoS Targeting, Server Verification</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <button id="btn-connect"
+                class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-1.5 px-4 rounded text-sm transition">
+                Connect (ID: 457)
+            </button>
+            <button id="btn-reset"
+                class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-4 rounded text-sm transition">
+                Reset Pools
+            </button>
+            <div class="flex flex-col">
+                <label class="text-xs text-slate-400 mb-1">Simulated Latency: <span id="pingValue"
+                        class="text-white font-mono">38ms</span></label>
+                <input type="range" id="latencySlider" min="10" max="1000" value="38" class="w-48">
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Game Canvas Wrapper -->
+        <div class="flex-1 relative flex items-center justify-center p-4 border-r border-slate-700">
+            <!-- UI Overlay for Menus -->
+            <div id="menu-overlay"
+                class="hidden absolute inset-0 bg-slate-900/80 z-20 flex flex-col items-center justify-center backdrop-blur-sm m-4 rounded-lg">
+                <div class="bg-slate-800 p-8 rounded-xl border border-slate-600 text-center shadow-2xl">
+                    <h2 class="text-2xl font-bold text-emerald-400 mb-4">PAUSE MENU</h2>
+                    <p class="text-slate-300 mb-6">Game is currently ignoring movement and cast inputs.</p>
+                    <p class="text-xs font-mono text-slate-500 bg-slate-900 p-2 rounded">Press [ESC] or [Gamepad B] to
+                        Resume</p>
+                </div>
+            </div>
+
+            <canvas id="gameCanvas"
+                class="w-full h-full max-w-[1920px] max-h-[896px] rounded-lg shadow-2xl border border-slate-600"></canvas>
+        </div>
+
+        <!-- Debug / Data Flow Panel -->
+        <div class="w-96 bg-slate-800 p-4 flex flex-col gap-4 overflow-y-auto">
+
+            <!-- Cast Spell Actions Panel -->
+            <div class="bg-slate-900 p-4 rounded-md border border-purple-900/50 flex flex-col gap-3">
+                <h3 class="text-purple-400 font-semibold text-sm border-b border-purple-900/50 pb-1">Spellbook (Action:
+                    CAST)</h3>
+                <button id="btn-cast"
+                    class="bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 px-4 rounded text-sm transition flex justify-between items-center">
+                    <span>⚡ Cast Arcane Beam</span>
+                    <span class="bg-purple-800 text-purple-200 text-xs px-2 py-0.5 rounded">20 MP [E]</span>
+                </button>
+                <div class="text-[11px] text-slate-400 leading-relaxed">
+                    Target must be alive and within line-of-sight to cast. Press <b>[T]</b> or Gamepad
+                    <b>[Y/Triangle]</b> to toggle proximity range tiles. Press <b>[R]</b> to toggle Torch.
+                </div>
+            </div>
+
+            <!-- Client State & Stats -->
+            <div class="bg-slate-900 p-3 rounded-md border border-emerald-900/50">
+                <h3 class="text-emerald-400 font-semibold mb-2 text-sm border-b border-emerald-900/50 pb-1">Client State
+                </h3>
+                <div class="font-mono text-xs text-slate-300 flex flex-col gap-2">
+                    <!-- Client Status Bars -->
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[11px]">
+                            <span>Local Player HP:</span>
+                            <span id="ui-client-hp-text">0/0</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-2 rounded overflow-hidden">
+                            <div id="ui-client-hp-bar" class="bg-emerald-500 h-full transition-all duration-75"
+                                style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[11px]">
+                            <span>Local Player Mana:</span>
+                            <span id="ui-client-mp-text">0/0</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-2 rounded overflow-hidden">
+                            <div id="ui-client-mp-bar" class="bg-blue-500 h-full transition-all duration-75"
+                                style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1 mt-1">
+                        <div class="flex justify-between text-[11px]">
+                            <span>Current Zone:</span>
+                            <span id="ui-client-zone" class="text-emerald-300">Not Connected</span>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-800 mt-2 pt-2 flex flex-col gap-1">
+                        <div>Current Seq ID: <span id="ui-client-seq" class="text-emerald-300">0</span></div>
+                        <div>Logical Pos: <span id="ui-client-pos">X: 0, Y: 0</span></div>
+                        <div class="mt-2 text-slate-400">Pending Actions Queue: <span id="ui-queue-size"
+                                class="text-amber-400">0</span></div>
+                        <ul id="ui-queue-list"
+                            class="h-24 overflow-y-auto text-[10px] text-slate-500 flex flex-col gap-1 mt-1 bg-slate-950 p-1 rounded">
+                            <!-- Queue items injected here -->
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target / Other Player State -->
+            <div class="bg-slate-900 p-3 rounded-md border border-cyan-950">
+                <h3 class="text-cyan-400 font-semibold mb-2 text-sm border-b border-cyan-900/50 pb-1">Target State</h3>
+                <div class="font-mono text-xs text-slate-300 flex flex-col gap-2">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex justify-between text-[11px]">
+                            <span>Target HP:</span>
+                            <span id="ui-target-hp-text">0/0</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-2 rounded overflow-hidden">
+                            <div id="ui-target-hp-bar" class="bg-cyan-500 h-full transition-all duration-75"
+                                style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div id="ui-target-status" class="text-[11px] text-slate-500 font-bold">NO TARGET</div>
+                </div>
+            </div>
+
+            <!-- Server State -->
+            <div class="bg-slate-900 p-3 rounded-md border border-rose-900/50">
+                <h3 class="text-rose-500 font-semibold mb-2 text-sm border-b border-rose-900/50 pb-1">Server State
+                    (Tick: 20Hz)</h3>
+                <div class="font-mono text-xs text-slate-300 flex flex-col gap-1">
+                    <div>Last Processed ID: <span id="ui-server-seq" class="text-rose-300">0</span></div>
+                    <div>Authoritative Pos: <span id="ui-server-pos">X: 0, Y: 0</span></div>
+                    <div>Delta Sync Active (Binary Format)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/plain" id="typescript-code">
+/**
+ * ==========================================================================
+ * FLATBUFFER SCHEMA (For Your Build Pipeline)
+ * ==========================================================================
+ * * namespace GameNet;
+ * * enum PacketCategory : byte { ACTION = 1, SNAPSHOT = 2, CHAT = 3, SYSTEM = 4, EFFECT = 5, MAP_CHUNK = 6 }
+ * enum ActionType : byte { MOVE = 1, CAST = 2, JOIN = 3 }
+ * * table ActionPayload {
+ * x: float;
+ * y: float;
+ * target_id: string;
+ * character_id: string;
+ * player_id: string;
+ * }
+ * * table ActionRecord {
+ * sequence_id: uint;
+ * type: ActionType;
+ * payload: ActionPayload;
+ * dt: float;
+ * }
+ * * table EntityState {
+ * id: string;
+ * x: float;
+ * y: float;
+ * health: float;
+ * mana: float;
+ * area_id: string;
+ * zone_id: string;
+ * }
+ * * table SnapshotRecord {
+ * server_time: float;
+ * entities: [EntityState];
+ * // We map parallel arrays for dictionary serialization
+ * ack_char_ids: [string];
+ * ack_sequence_ids: [uint];
+ * }
+ * * table MapChunkRecord {
+ * x: float;
+ * y: float;
+ * image_bytes: [ubyte];
+ * }
+ * * union PacketPayload { ActionRecord, SnapshotRecord, MapChunkRecord }
+ * * table Packet {
+ * category: PacketCategory;
+ * payload: PacketPayload;
+ * }
+ * * root_type Packet;
+ */
+
+/* ==========================================================================
+   BINARY PROTOCOL IMPLEMENTATION (Mimicking FlatBuffers natively)
+   ========================================================================== */
+
+enum PacketCategory {
+    ACTION = 1,
+    SNAPSHOT = 2,
+    CHAT = 3,
+    SYSTEM = 4,
+    EFFECT = 5,
+    MAP_CHUNK = 6
+}
+
+// Low-level buffer reader/writer for max performance
+class ByteBuffer {
+    buffer: ArrayBuffer;
+    view: DataView;
+    offset = 0;
+    private encoder = new TextEncoder();
+    private decoder = new TextDecoder();
+
+    constructor(sizeOrBuffer: number | ArrayBuffer) {
+        if (typeof sizeOrBuffer === 'number') {
+            this.buffer = new ArrayBuffer(sizeOrBuffer);
+        } else {
+            this.buffer = sizeOrBuffer;
+        }
+        this.view = new DataView(this.buffer);
+    }
+
+    writeUint8(v: number) { this.view.setUint8(this.offset, v); this.offset += 1; }
+    readUint8() { const v = this.view.getUint8(this.offset); this.offset += 1; return v; }
+
+    writeUint16(v: number) { this.view.setUint16(this.offset, v, true); this.offset += 2; }
+    readUint16() { const v = this.view.getUint16(this.offset, true); this.offset += 2; return v; }
+
+    writeUint32(v: number) { this.view.setUint32(this.offset, v, true); this.offset += 4; }
+    readUint32() { const v = this.view.getUint32(this.offset, true); this.offset += 4; return v; }
+
+    writeFloat32(v: number) { this.view.setFloat32(this.offset, v, true); this.offset += 4; }
+    readFloat32() { const v = this.view.getFloat32(this.offset, true); this.offset += 4; return v; }
+
+    writeFloat64(v: number) { this.view.setFloat64(this.offset, v, true); this.offset += 8; }
+    readFloat64() { const v = this.view.getFloat64(this.offset, true); this.offset += 8; return v; }
+
+    writeBytes(bytes: Uint8Array) {
+        new Uint8Array(this.buffer).set(bytes, this.offset);
+        this.offset += bytes.length;
+    }
+
+    readBytes(len: number): Uint8Array {
+        const bytes = new Uint8Array(this.buffer, this.offset, len);
+        this.offset += len;
+        return bytes;
+    }
+
+    writeString(s: string | null | undefined) {
+        if (!s) { this.writeUint16(0); return; }
+        const encoded = this.encoder.encode(s);
+        this.writeUint16(encoded.length);
+        new Uint8Array(this.buffer).set(encoded, this.offset);
+        this.offset += encoded.length;
+    }
+
+    readString(): string | null {
+        const len = this.readUint16();
+        if (len === 0) return null;
+        const s = this.decoder.decode(new Uint8Array(this.buffer, this.offset, len));
+        this.offset += len;
+        return s;
+    }
+
+    getBytes(): Uint8Array { return new Uint8Array(this.buffer, 0, this.offset); }
+}
+
+const NetSerializer = {
+    serialize(packet: { packetType: PacketCategory; data: any }): Uint8Array {
+        const bb = new ByteBuffer(1024 * 128); // Pre-allocate buffer (larger buffer for potential map image binary payload)
+        bb.writeUint8(packet.packetType);
+
+        if (packet.packetType === PacketCategory.ACTION) {
+            const data = packet.data as ActionRecord;
+            bb.writeUint32(data.sequenceId);
+            bb.writeUint8(data.type);
+            bb.writeFloat32(data.dt);
+
+            // Mask flags for optional payload properties to save bandwidth
+            let mask = 0;
+            if (data.payload.x !== undefined) mask |= 1;
+            if (data.payload.targetId) mask |= 2;
+            if (data.payload.characterId) mask |= 4;
+            if (data.payload.playerId) mask |= 8;
+            bb.writeUint8(mask);
+
+            if (mask & 1) { bb.writeFloat32(data.payload.x!); bb.writeFloat32(data.payload.y!); }
+            if (mask & 2) bb.writeString(data.payload.targetId);
+            if (mask & 4) bb.writeString(data.payload.characterId);
+            if (mask & 8) bb.writeString(data.payload.playerId);
+        }
+        else if (packet.packetType === PacketCategory.SNAPSHOT) {
+            const data = packet.data as Snapshot;
+            bb.writeFloat64(data.serverTime);
+
+            const entries = Object.entries(data.entitiesDelta);
+            bb.writeUint16(entries.length);
+            for (const [id, state] of entries) {
+                bb.writeString(id);
+                bb.writeFloat32(state.x);
+                bb.writeFloat32(state.y);
+                bb.writeFloat32(state.health);
+                bb.writeFloat32(state.mana);
+                bb.writeString(state.areaId);
+                bb.writeString(state.zoneId);
+            }
+
+            const acks = Object.entries(data.lastProcessedIds);
+            bb.writeUint16(acks.length);
+            for (const [charId, seqId] of acks) {
+                bb.writeString(charId);
+                bb.writeUint32(seqId);
+            }
+        }
+        else if (packet.packetType === PacketCategory.MAP_CHUNK) {
+            const data = packet.data as MapChunkRecord;
+            bb.writeFloat32(data.x);
+            bb.writeFloat32(data.y);
+            bb.writeUint32(data.imageBytes.length);
+            bb.writeBytes(data.imageBytes);
+        }
+        return bb.getBytes();
+    },
+
+    deserialize(bytes: Uint8Array): { packetType: PacketCategory; data: any } {
+        const bb = new ByteBuffer(bytes.buffer);
+        const packetType = bb.readUint8() as PacketCategory;
+
+        if (packetType === PacketCategory.ACTION) {
+            const seqId = bb.readUint32();
+            const type = bb.readUint8() as ActionType;
+            const dt = bb.readFloat32();
+            const mask = bb.readUint8();
+
+            const payload: ActionPayload = {};
+            if (mask & 1) { payload.x = bb.readFloat32(); payload.y = bb.readFloat32(); }
+            if (mask & 2) payload.targetId = bb.readString() || undefined;
+            if (mask & 4) payload.characterId = bb.readString() || undefined;
+            if (mask & 8) payload.playerId = bb.readString() || undefined;
+
+            return { packetType, data: { sequenceId: seqId, type, dt, payload } as ActionRecord };
+        }
+        else if (packetType === PacketCategory.SNAPSHOT) {
+            const serverTime = bb.readFloat64();
+            const entitiesCount = bb.readUint16();
+            const entitiesDelta: Record<string, EntityState> = {};
+
+            for (let i = 0; i < entitiesCount; i++) {
+                const id = bb.readString()!;
+                entitiesDelta[id] = {
+                    x: bb.readFloat32(),
+                    y: bb.readFloat32(),
+                    health: bb.readFloat32(),
+                    mana: bb.readFloat32(),
+                    areaId: bb.readString(),
+                    zoneId: bb.readString()
+                };
+            }
+
+            const acksCount = bb.readUint16();
+            const lastProcessedIds: Record<string, number> = {};
+            for (let i = 0; i < acksCount; i++) {
+                lastProcessedIds[bb.readString()!] = bb.readUint32();
+            }
+
+            return { packetType, data: { type: 'STATE_UPDATE', serverTime, entitiesDelta, lastProcessedIds } as Snapshot };
+        }
+        else if (packetType === PacketCategory.MAP_CHUNK) {
+            const x = bb.readFloat32();
+            const y = bb.readFloat32();
+            const len = bb.readUint32();
+            const imageBytes = bb.readBytes(len);
+
+            return { packetType, data: { x, y, imageBytes } as MapChunkRecord };
+        }
+
+        throw new Error("Unknown packet type");
+    }
+};
+
+/* ==========================================================================
+   GAME CONFIG & TYPES
+   ========================================================================== */
+
+interface GameConfig {
+    readonly SPEED: number;
+    readonly SERVER_TICK_RATE: number;
+    readonly CLIENT_TICK_RATE: number;
+    readonly INTERPOLATION_DELAY: number;
+    readonly WORLD_WIDTH: number;
+    readonly WORLD_HEIGHT: number;
+    readonly CAST_RANGE: number;
+}
+
+const GAME_CONFIG: GameConfig = {
+    SPEED: 200,
+    SERVER_TICK_RATE: 1000 / 20, // 20Hz
+    CLIENT_TICK_RATE: 1000 / 60, // 60Hz fixed
+    INTERPOLATION_DELAY: 100,
+    WORLD_WIDTH: 1920,
+    WORLD_HEIGHT: 896,
+    CAST_RANGE: 150
+};
+
+enum ActionType { MOVE = 1, CAST = 2, JOIN = 3 }
+
+interface ActionPayload { x?: number; y?: number; targetId?: string; characterId?: string; playerId?: string; }
+interface ActionRecord { sequenceId: number; type: ActionType; payload: ActionPayload; dt: number; }
+interface EntityState { x: number; y: number; mana: number; health: number; areaId: string | null; zoneId: string | null; }
+
+interface MapChunkRecord {
+    x: number;
+    y: number;
+    imageBytes: Uint8Array;
+}
+
+interface Rect {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+}
+
+interface Snapshot {
+    type: string;
+    serverTime: number;
+    entitiesDelta: Record<string, EntityState>;
+    lastProcessedIds: Record<string, number>;
+}
+
+/* --- NETWORK DECOUPLING INTERFACES --- */
+
+interface NetworkEnvelope {
+    connectionId: string;
+    packetBytes: Uint8Array;
+}
+
+// Transports now only deal in raw bytes (Uint8Array)
+interface ClientTransport {
+    send(bytes: Uint8Array): void;
+    onReceive(handler: (bytes: Uint8Array) => void): void;
+}
+
+interface ServerTransport {
+    broadcast(bytes: Uint8Array): void;
+    onReceive(handler: (connectionId: string, bytes: Uint8Array) => void): void;
+}
+
+/* ==========================================================================
+   DOM CACHE & GLOBALS
+   ========================================================================== */
+const DOM = {
+    clientHpText: document.getElementById('ui-client-hp-text') as HTMLElement,
+    clientHpBar: document.getElementById('ui-client-hp-bar') as HTMLElement,
+    clientMpText: document.getElementById('ui-client-mp-text') as HTMLElement,
+    clientMpBar: document.getElementById('ui-client-mp-bar') as HTMLElement,
+    clientZone: document.getElementById('ui-client-zone') as HTMLElement,
+    targetHpText: document.getElementById('ui-target-hp-text') as HTMLElement,
+    targetHpBar: document.getElementById('ui-target-hp-bar') as HTMLElement,
+    targetStatus: document.getElementById('ui-target-status') as HTMLElement,
+    clientSeq: document.getElementById('ui-client-seq') as HTMLElement,
+    clientPos: document.getElementById('ui-client-pos') as HTMLElement,
+    serverSeq: document.getElementById('ui-server-seq') as HTMLElement,
+    serverPos: document.getElementById('ui-server-pos') as HTMLElement,
+    queueSize: document.getElementById('ui-queue-size') as HTMLElement,
+    queueList: document.getElementById('ui-queue-list') as HTMLElement,
+    pingValue: document.getElementById('pingValue') as HTMLElement,
+    latencySlider: document.getElementById('latencySlider') as HTMLInputElement,
+    btnCast: document.getElementById('btn-cast') as HTMLButtonElement,
+    btnReset: document.getElementById('btn-reset') as HTMLButtonElement,
+    btnConnect: document.getElementById('btn-connect') as HTMLButtonElement,
+    canvas: document.getElementById('gameCanvas') as HTMLCanvasElement,
+    menuOverlay: document.getElementById('menu-overlay') as HTMLElement,
+};
+
+let bytesTransmitted = 0; // Tracks bytes purely for UI display
+setInterval(() => { DOM.netBytes.innerText = bytesTransmitted.toString(); bytesTransmitted = 0; }, 1000);
+
+const ctx = DOM.canvas.getContext('2d') as CanvasRenderingContext2D;
+
+// Keep canvas internal resolution strictly matched to its CSS display dimensions
+class Camera {
+    public x = 0;
+    public y = 0;
+    public width = 0;
+    public height = 0;
+
+    update(targetX: number, targetY: number, worldWidth: number, worldHeight: number, dt: number) {
+        const targetCamX = Math.max(0, Math.min(targetX - this.width / 2, worldWidth - this.width));
+        const targetCamY = Math.max(0, Math.min(targetY - this.height / 2, worldHeight - this.height));
+
+        if (Math.abs(targetCamX - this.x) > 200 || Math.abs(targetCamY - this.y) > 200) {
+            this.x = targetCamX;
+            this.y = targetCamY;
+        } else {
+            this.x += (targetCamX - this.x) * 12 * dt;
+            this.y += (targetCamY - this.y) * 12 * dt;
+        }
+    }
+}
+const camera = new Camera();
+
+const resizeObserver = new ResizeObserver(entries => {
+    for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        DOM.canvas.width = width;
+        DOM.canvas.height = height;
+        camera.width = width;
+        camera.height = height;
+    }
+});
+resizeObserver.observe(DOM.canvas);
+
+// Global map image dictionary
+const MapImages = new Map<string, HTMLImageElement>();
+const villageImg = new Image();
+villageImg.src = 'https://pro2-bar-s3-cdn-cf6.myportfolio.com/b6995f0dd8973d41d32271aa7bc4c60a/a7cd17d69bfd30a54244239c_rw_1200.jpg?h=45ebc48b14352d6da0f165a8df2c280e';
+MapImages.set('village_map', villageImg);
+
+/* ==========================================================================
+   AREA & ZONE SPATIAL HIERARCHY
+   ========================================================================== */
+
+class Zone {
+    public id: string;
+    public mapName: string;
+    public characterIds: Set<string>;
+    public obstacles: Rect[];
+
+    constructor(id: string, mapName: string, obstacles: Rect[] = []) {
+        this.id = id;
+        this.mapName = mapName;
+        this.obstacles = obstacles;
+        this.characterIds = new Set();
+    }
+    addCharacter(charId: string): void { this.characterIds.add(charId); }
+    removeCharacter(charId: string): void { this.characterIds.delete(charId); }
+    get characterCount(): number { return this.characterIds.size; }
+}
+
+class Area {
+    public id: string;
+    public zones: Map<string, Zone>;
+
+    constructor(id: string) {
+        this.id = id;
+        this.zones = new Map();
+    }
+    addZone(zone: Zone): void { this.zones.set(zone.id, zone); }
+    getZone(zoneId: string): Zone | undefined { return this.zones.get(zoneId); }
+}
+
+// Generate an identical starting area across client and server
+function buildStartingArea(): Area {
+    const startingArea = new Area('starting_area');
+    // Estimated building locations to roughly align with the walls of the map image
+    const obstacles: Rect[] = [
+        { x: 195, y: 135, w: 290, h: 220 }, // Top-left structure
+        { x: 1360, y: 140, w: 330, h: 280 }, // Top-right structure
+        { x: 740, y: 390, w: 420, h: 320 }, // Main center keep/building
+        { x: 230, y: 580, w: 250, h: 190 }, // Bottom-left structure
+        { x: 1420, y: 660, w: 290, h: 160 }, // Bottom-right structure
+        // Border walls
+        { x: 0, y: 0, w: GAME_CONFIG.WORLD_WIDTH, h: 40 }, // Top wall
+        { x: 0, y: 0, w: 40, h: GAME_CONFIG.WORLD_HEIGHT }, // Left wall
+        { x: GAME_CONFIG.WORLD_WIDTH - 40, y: 0, w: 40, h: GAME_CONFIG.WORLD_HEIGHT }, // Right wall
+        { x: 0, y: GAME_CONFIG.WORLD_HEIGHT - 40, w: GAME_CONFIG.WORLD_WIDTH, h: 40 } // Bottom wall
+    ];
+    startingArea.addZone(new Zone('forest_zone', 'village_map', obstacles));
+    return startingArea;
+}
+
+/* ==========================================================================
+   LINE OF SIGHT ALGORITHM
+   ========================================================================== */
+
+function checkLineOfSight(x1: number, y1: number, x2: number, y2: number, obstacles: Rect[]): boolean {
+    const lineIntersectsLine = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number, x4: number, y4: number) => {
+        const denom = (y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1);
+        if (denom === 0) return false;
+        const uA = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denom;
+        const uB = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denom;
+        return (uA >= 0 && uA <= 1 && uB >= 0 && uB <= 1);
+    };
+
+    for (const obs of obstacles) {
+        const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+        if (maxX < obs.x || minX > obs.x + obs.w || maxY < obs.y || minY > obs.y + obs.h) continue;
+
+        if ((x1 >= obs.x && x1 <= obs.x + obs.w && y1 >= obs.y && y1 <= obs.y + obs.h) ||
+            (x2 >= obs.x && x2 <= obs.x + obs.w && y2 >= obs.y && y2 <= obs.y + obs.h)) return false;
+
+        if (lineIntersectsLine(x1, y1, x2, y2, obs.x, obs.y, obs.x + obs.w, obs.y) ||
+            lineIntersectsLine(x1, y1, x2, y2, obs.x + obs.w, obs.y, obs.x + obs.w, obs.y + obs.h) ||
+            lineIntersectsLine(x1, y1, x2, y2, obs.x + obs.w, obs.y + obs.h, obs.x, obs.y + obs.h) ||
+            lineIntersectsLine(x1, y1, x2, y2, obs.x, obs.y + obs.h, obs.x, obs.y)) return false;
+    }
+    return true;
+}
+
+/* ==========================================================================
+   ACTION REGISTRY
+   ========================================================================== */
+
+interface GameEntity {
+    id: string;
+    x: number;
+    y: number;
+    health: number;
+    mana: number;
+    areaId: string | null;
+    zoneId: string | null;
+    angle?: number;
+    lastCastTimestamp?: number;
+    lastTargetId?: string | null;
+}
+
+interface WorldBase {
+    get(id: string): GameEntity | undefined;
+    markDirty(id: string): void;
+    getObstacles(areaId: string, zoneId: string): Rect[];
+}
+
+interface ActionHandler {
+    validate?(entity: GameEntity, payload: ActionPayload, dt: number, world: WorldBase): boolean;
+    execute(entity: GameEntity, payload: ActionPayload, dt: number, world: WorldBase): void;
+    update(entity: GameEntity, payload: ActionPayload, dt: number, world: WorldBase): void;
+    reconcile(entity: GameEntity, payload: ActionPayload, dt: number, world: WorldBase): void;
+}
+
+const ActionRegistry = new Map<ActionType, ActionHandler>();
+
+ActionRegistry.set(ActionType.MOVE, {
+    validate(entity, payload, dt, world) {
+        if (dt <= 0 || dt > 0.2) return false;
+        if (typeof payload.x !== 'number' || typeof payload.y !== 'number') return false;
+        return true;
+    },
+    execute(entity, payload, dt, world) {
+        this.update(entity, payload, dt, world);
+    },
+    update(entity, payload, dt, world) {
+        const px = payload.x || 0;
+        const py = payload.y || 0;
+        if (px === 0 && py === 0) return;
+
+        const length = Math.sqrt(px * px + py * py);
+        const dx = px / length;
+        const dy = py / length;
+
+        const moveDist = GAME_CONFIG.SPEED * dt;
+        const newX = entity.x + dx * moveDist;
+        const newY = entity.y + dy * moveDist;
+        const radius = 16;
+
+        const checkCollision = (cx: number, cy: number) => {
+            if (cx - radius < 0 || cx + radius > GAME_CONFIG.WORLD_WIDTH ||
+                cy - radius < 0 || cy + radius > GAME_CONFIG.WORLD_HEIGHT) {
+                return true;
+            }
+            const obstacles = world.getObstacles(entity.areaId!, entity.zoneId!);
+            for (const obs of obstacles) {
+                if (cx + radius > obs.x && cx - radius < obs.x + obs.w &&
+                    cy + radius > obs.y && cy - radius < obs.y + obs.h) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        if (!checkCollision(newX, entity.y)) entity.x = newX;
+        if (!checkCollision(entity.x, newY)) entity.y = newY;
+
+        entity.x = Math.round(entity.x * 1000) / 1000;
+        entity.y = Math.round(entity.y * 1000) / 1000;
+
+        world.markDirty(entity.id);
+    },
+    reconcile(entity, payload, dt, world) {
+        this.update(entity, payload, dt, world);
+    }
+});
+
+ActionRegistry.set(ActionType.CAST, {
+    validate(entity, payload, dt, world) {
+        if (entity.mana < 20 || !payload.targetId) return false;
+        const target = world.get(payload.targetId);
+        if (!target || target.health <= 0) return false;
+        if (entity.areaId !== target.areaId || entity.zoneId !== target.zoneId) return false;
+
+        const dx = target.x - entity.x;
+        const dy = target.y - entity.y;
+        const distSq = dx * dx + dy * dy;
+        if (distSq > GAME_CONFIG.CAST_RANGE * GAME_CONFIG.CAST_RANGE) return false;
+
+        const obstacles = world.getObstacles(entity.areaId || '', entity.zoneId || '');
+        if (!checkLineOfSight(entity.x, entity.y, target.x, target.y, obstacles)) return false;
+
+        return true;
+    },
+    execute(entity, payload, dt, world) {
+        entity.lastCastTimestamp = performance.now();
+        entity.lastTargetId = payload.targetId || null;
+        this.update(entity, payload, dt, world);
+    },
+    update(entity, payload, dt, world) {
+        if (entity.mana < 20 || !payload.targetId) return;
+        const target = world.get(payload.targetId);
+        if (!target || target.health <= 0) return;
+
+        entity.mana -= 20;
+        target.health = Math.max(0, target.health - 25);
+        entity.mana = Math.max(0, entity.mana);
+
+        world.markDirty(entity.id);
+        world.markDirty(target.id);
+    },
+    reconcile(entity, payload, dt, world) {
+        this.update(entity, payload, dt, world);
+    }
+});
+
+/* ==========================================================================
+   INPUT ARCHITECTURE
+   ========================================================================== */
+
+const INPUT_DICTIONARY: Record<string, Record<string, Record<string, string>>> = {
+    'DEFAULT': {
+        'keyboard': { 'w': 'MOVE_UP', 'a': 'MOVE_LEFT', 's': 'MOVE_DOWN', 'd': 'MOVE_RIGHT', 'e': 'CAST_SPELL', 'escape': 'MENU_TOGGLE', 't': 'TOGGLE_TARGET_RANGE', 'r': 'TOGGLE_TORCH' },
+        'gamepad': { 'b12': 'MOVE_UP', 'b14': 'MOVE_LEFT', 'b13': 'MOVE_DOWN', 'b15': 'MOVE_RIGHT', 'b0': 'CAST_SPELL', 'b9': 'MENU_TOGGLE', 'b1': 'MENU_TOGGLE', 'b3': 'TOGGLE_TARGET_RANGE', 'b2': 'TOGGLE_TORCH', 'a1_neg': 'MOVE_UP', 'a1_pos': 'MOVE_DOWN', 'a0_neg': 'MOVE_LEFT', 'a0_pos': 'MOVE_RIGHT' }
+    },
+    'PAUSE_MENU': {
+        'keyboard': { 'escape': 'MENU_TOGGLE', 'w': 'UI_UP', 's': 'UI_DOWN', 'enter': 'UI_SELECT' },
+        'gamepad': { 'b1': 'MENU_TOGGLE', 'b9': 'MENU_TOGGLE', 'b12': 'UI_UP', 'b13': 'UI_DOWN', 'b0': 'UI_SELECT' }
+    }
+};
+
+class KeyboardController {
+    public activeKeys = new Set<string>();
+    public justPressedKeys = new Set<string>();
+
+    constructor() {
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (!this.activeKeys.has(key)) {
+                this.activeKeys.add(key);
+                this.justPressedKeys.add(key);
+            }
+        });
+        window.addEventListener('keyup', (e) => this.activeKeys.delete(e.key.toLowerCase()));
+    }
+    clearJustPressed(): void { this.justPressedKeys.clear(); }
+}
+
+class GamepadController {
+    public activeKeys = new Set<string>();
+    public justPressedKeys = new Set<string>();
+    private lastState = new Set<string>();
+
+    update(): void {
+        this.justPressedKeys.clear();
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gp = gamepads[0];
+        if (!gp) {
+            this.activeKeys.clear();
+            this.lastState.clear();
+            return;
+        }
+
+        const currentState = new Set<string>();
+        const deadzone = 0.3;
+
+        gp.buttons.forEach((b, index) => { if (b.pressed) currentState.add(`b${index}`); });
+        gp.axes.forEach((val, index) => {
+            if (val < -deadzone) currentState.add(`a${index}_neg`);
+            else if (val > deadzone) currentState.add(`a${index}_pos`);
+        });
+
+        currentState.forEach(key => { if (!this.lastState.has(key)) this.justPressedKeys.add(key); });
+        this.lastState = currentState;
+        this.activeKeys = currentState;
+    }
+}
+
+class MenuManager {
+    public currentMenu: string | null = null;
+    toggleMenu(): void {
+        if (this.currentMenu === 'PAUSE_MENU') {
+            this.currentMenu = null;
+            DOM.menuOverlay.classList.add('hidden');
+        } else {
+            this.currentMenu = 'PAUSE_MENU';
+            DOM.menuOverlay.classList.remove('hidden');
+        }
+    }
+}
+
+interface CommandResult {
+    isLocal: boolean;
+    type?: ActionType;
+    payload?: ActionPayload;
+    execute?: (g: ClientGame) => void;
+}
+
+const CommandRegistry = new Map<string, (isActive: (i: string) => boolean, consume: (i: string) => boolean, game: ClientGame) => CommandResult | null>();
+
+CommandRegistry.set('COMMAND_MOVE', (isActive) => {
+    let dx = 0, dy = 0;
+    if (isActive('MOVE_UP')) dy -= 1;
+    if (isActive('MOVE_DOWN')) dy += 1;
+    if (isActive('MOVE_LEFT')) dx -= 1;
+    if (isActive('MOVE_RIGHT')) dx += 1;
+    if (dx !== 0 || dy !== 0) return { isLocal: false, type: ActionType.MOVE, payload: { x: dx, y: dy } };
+    return null;
+});
+
+CommandRegistry.set('COMMAND_CAST', (isActive, consumeJustPressed, game) => {
+    if (consumeJustPressed('CAST_SPELL')) {
+        if (!game.localPlayerId) return null;
+        const lp = game.world.get(game.localPlayerId);
+        if (!lp) return null;
+
+        const obstacles = game.world.getObstacles(lp.areaId || '', lp.zoneId || '');
+        let bestTargetId = null;
+        let minTargetDistSq = GAME_CONFIG.CAST_RANGE * GAME_CONFIG.CAST_RANGE;
+
+        const minX = lp.x - GAME_CONFIG.CAST_RANGE;
+        const maxX = lp.x + GAME_CONFIG.CAST_RANGE;
+        const minY = lp.y - GAME_CONFIG.CAST_RANGE;
+        const maxY = lp.y + GAME_CONFIG.CAST_RANGE;
+
+        for (const char of game.world.characters.values()) {
+            if (char.id === game.localPlayerId || char.health <= 0) continue;
+
+            if (char.x < minX || char.x > maxX || char.y < minY || char.y > maxY) continue;
+
+            const dx = char.x - lp.x;
+            const dy = char.y - lp.y;
+            const distSq = dx * dx + dy * dy;
+
+            if (distSq <= minTargetDistSq) {
+                if (checkLineOfSight(lp.x, lp.y, char.x, char.y, obstacles)) {
+                    minTargetDistSq = distSq;
+                    bestTargetId = char.id;
+                }
+            }
+        }
+
+        if (bestTargetId) {
+            return { isLocal: false, type: ActionType.CAST, payload: { targetId: bestTargetId } };
+        }
+    }
+    return null;
+});
+
+CommandRegistry.set('COMMAND_UI', (isActive, consumeJustPressed) => {
+    if (consumeJustPressed('MENU_TOGGLE')) return { isLocal: true, execute: (g) => g.menuManager.toggleMenu() };
+    if (consumeJustPressed('TOGGLE_TARGET_RANGE')) return { isLocal: true, execute: (g) => g.showTargetRange = !g.showTargetRange };
+    if (consumeJustPressed('TOGGLE_TORCH')) return { isLocal: true, execute: (g) => g.showTorch = !g.showTorch };
+    return null;
+});
+
+/* ==========================================================================
+   SERVER ARCHITECTURE
+   ========================================================================== */
+
+class ServerCharacter implements GameEntity {
+    public angle = 0;
+    constructor(public id: string, public x: number, public y: number, public health = 100, public mana = 100, public areaId: string | null = null, public zoneId: string | null = null) {}
+}
+
+class ServerWorld implements WorldBase {
+    public areas = new Map<string, Area>();
+    public characters = new Map<string, ServerCharacter>();
+    public dirtyEntities = new Set<string>();
+
+    addArea(area: Area): void { this.areas.set(area.id, area); }
+    add(char: ServerCharacter, areaId: string, zoneId: string): void {
+        char.areaId = areaId;
+        char.zoneId = zoneId;
+        this.characters.set(char.id, char);
+        this.areas.get(areaId)?.getZone(zoneId)?.addCharacter(char.id);
+        this.markDirty(char.id);
+    }
+    get(id: string): ServerCharacter | undefined { return this.characters.get(id); }
+    markDirty(id: string): void { this.dirtyEntities.add(id); }
+    clearDirty(): void { this.dirtyEntities.clear(); }
+    getObstacles(areaId: string, zoneId: string): Rect[] {
+        return this.areas.get(areaId)?.getZone(zoneId)?.obstacles || [];
+    }
+}
+
+class ServerNetwork {
+    public actionQueue: { connectionId: string, packet: ActionRecord }[] = [];
+
+    constructor(private transport: ServerTransport) {
+        this.transport.onReceive((connectionId, bytes) => {
+            bytesTransmitted += bytes.byteLength;
+            const parsed = NetSerializer.deserialize(bytes);
+            if (parsed.packetType === PacketCategory.ACTION) {
+                this.actionQueue.push({ connectionId, packet: parsed.data });
+            }
+        });
+    }
+
+    broadcast(snapshot: Snapshot): void {
+        const bytes = NetSerializer.serialize({ packetType: PacketCategory.SNAPSHOT, data: snapshot });
+        this.transport.broadcast(bytes);
+    }
+}
+
+class ServerGame {
+    public world = new ServerWorld();
+    public network: ServerNetwork;
+    public clientSequences: Record<string, number> = {};
+    public connectionToCharId = new Map<string, string>();
+
+    private nextTick = performance.now();
+    private lastBroadcastState = new Map<string, EntityState>();
+
+    constructor(transport: ServerTransport) {
+        this.network = new ServerNetwork(transport);
+        this.world.addArea(buildStartingArea());
+
+        // Spawn dummy target in an open area
+        this.world.add(new ServerCharacter('dummy', 1250, 500), 'starting_area', 'forest_zone');
+    }
+
+    start(): void {
+        const _loop = () => {
+            const now = performance.now();
+            if (now >= this.nextTick) {
+                this.tick();
+                this.nextTick += GAME_CONFIG.SERVER_TICK_RATE;
+            }
+            setTimeout(_loop, Math.max(0, this.nextTick - performance.now()));
+        };
+        _loop();
+    }
+
+    resetState(): void {
+        for (const char of this.world.characters.values()) {
+            char.health = 100;
+            char.mana = 100;
+            this.world.markDirty(char.id);
+        }
+    }
+
+    tick(): void {
+        while (this.network.actionQueue.length > 0) {
+            const envelope = this.network.actionQueue.shift()!;
+
+            if (envelope.packet.type === ActionType.JOIN) {
+                const charId = envelope.packet.payload.characterId;
+                if (charId) {
+                    this.connectionToCharId.set(envelope.connectionId, charId);
+                    if (!this.world.get(charId)) {
+                        // FIX: Spawn player outside of the top-left building bounds!
+                        this.world.add(new ServerCharacter(charId, 600, 250), 'starting_area', 'forest_zone');
+                    }
+                }
+                continue;
+            }
+
+            const charId = this.connectionToCharId.get(envelope.connectionId);
+            if (!charId) continue;
+
+            const char = this.world.get(charId);
+            if (!char) continue;
+
+            const handler = ActionRegistry.get(envelope.packet.type);
+            if (handler) {
+                if (!handler.validate || handler.validate(char, envelope.packet.payload, envelope.packet.dt, this.world)) {
+                    handler.update(char, envelope.packet.payload, Math.min(envelope.packet.dt, 0.1), this.world);
+                }
+            }
+
+            this.clientSequences[charId] = envelope.packet.sequenceId;
+        }
+
+        const entitiesDelta: Record<string, EntityState> = {};
+        for (const id of this.world.dirtyEntities) {
+            const char = this.world.get(id);
+            if (!char) continue;
+
+            const last = this.lastBroadcastState.get(id);
+            if (!last || last.x !== char.x || last.y !== char.y || last.mana !== char.mana || last.health !== char.health) {
+                const state = { x: char.x, y: char.y, mana: char.mana, health: char.health, areaId: char.areaId, zoneId: char.zoneId };
+                entitiesDelta[id] = state;
+                this.lastBroadcastState.set(id, state);
+            }
+        }
+        this.world.clearDirty();
+
+        this.network.broadcast({
+            type: 'STATE_UPDATE',
+            serverTime: performance.now(),
+            entitiesDelta,
+            lastProcessedIds: this.clientSequences
+        });
+    }
+}
+
+/* ==========================================================================
+   CLIENT ARCHITECTURE
+   ========================================================================== */
+
+class ClientCharacter implements GameEntity {
+    public lastCastTimestamp = 0;
+    public lastTargetId: string | null = null;
+    constructor(public id: string, public x: number, public y: number, public health = 100, public mana = 100, public areaId: string | null = null, public zoneId: string | null = null) {}
+}
+
+class ClientWorld implements WorldBase {
+    public areas = new Map<string, Area>();
+    public characters = new Map<string, ClientCharacter>();
+    public dirtyEntities = new Set<string>();
+
+    addArea(area: Area): void { this.areas.set(area.id, area); }
+    add(char: ClientCharacter, areaId: string, zoneId: string): void {
+        char.areaId = areaId;
+        char.zoneId = zoneId;
+        this.characters.set(char.id, char);
+        this.areas.get(areaId)?.getZone(zoneId)?.addCharacter(char.id);
+    }
+    get(id: string): ClientCharacter | undefined { return this.characters.get(id); }
+    markDirty(id: string): void { this.dirtyEntities.add(id); }
+    getObstacles(areaId: string, zoneId: string): Rect[] {
+        return this.areas.get(areaId)?.getZone(zoneId)?.obstacles || [];
+    }
+}
+
+class ClientNetwork {
+    constructor(private game: ClientGame, private transport: ClientTransport) {
+        this.transport.onReceive((bytes) => {
+            bytesTransmitted += bytes.byteLength;
+            const parsed = NetSerializer.deserialize(bytes);
+            if (parsed.packetType === PacketCategory.SNAPSHOT) {
+                this.game.onNetworkReceive(parsed.data);
+            }
+        });
+    }
+    send(packet: ActionRecord): void {
+        const bytes = NetSerializer.serialize({ packetType: PacketCategory.ACTION, data: packet });
+        this.transport.send(bytes);
+    }
+}
+
+class ClientGame {
+    public localPlayerId: string | null = null;
+    public world = new ClientWorld();
+    public network: ClientNetwork;
+    public keyboard = new KeyboardController();
+    public gamepad = new GamepadController();
+    public menuManager = new MenuManager();
+    public virtualInputs = new Set<string>();
+    public showTargetRange = false;
+    public showTorch = true;
+
+    public pendingActions: ActionRecord[] = [];
+    public sequenceId = 0;
+    private stateBuffer: { serverTime: number; entities: Record<string, EntityState> }[] = [];
+    private renderTime = 0;
+    private lastFrameTime = performance.now();
+    private accumulator = 0;
+
+    public lastKnownServerState: Record<string, EntityState> = {};
+
+    constructor(transport: ClientTransport) {
+        this.network = new ClientNetwork(this, transport);
+        this.world.addArea(buildStartingArea());
+
+        // Spawn dummy target in an open area on client
+        this.world.add(new ClientCharacter('dummy', 1250, 500), 'starting_area', 'forest_zone');
+    }
+
+    connect(characterId: string, playerId: string): void {
+        this.localPlayerId = characterId;
+        // FIX: Spawning player at (600, 250) so they don't get trapped in the building bounds
+        this.world.add(new ClientCharacter(characterId, 600, 250), 'starting_area', 'forest_zone');
+        this.lastKnownServerState[characterId] = { x: 600, y: 250, mana: 100, health: 100, areaId: 'starting_area', zoneId: 'forest_zone' };
+
+        this.sequenceId++;
+        const record: ActionRecord = {
+            sequenceId: this.sequenceId,
+            type: ActionType.JOIN,
+            payload: { characterId, playerId },
+            dt: 0
+        };
+        this.network.send(record);
+    }
+
+    start(): void {
+        const fixedDt = GAME_CONFIG.CLIENT_TICK_RATE / 1000;
+        const _loop = (currentTime: number) => {
+            let frameTime = (currentTime - this.lastFrameTime) / 1000;
+            if (frameTime > 0.25) frameTime = 0.25;
+            this.lastFrameTime = currentTime;
+            this.accumulator += frameTime;
+
+            while (this.accumulator >= fixedDt) {
+                this.fixedUpdate(fixedDt);
+                this.accumulator -= fixedDt;
+            }
+
+            this.render(frameTime);
+            requestAnimationFrame(_loop);
+        };
+        requestAnimationFrame(_loop);
+    }
+
+    resetState(): void {
+        for (const char of this.world.characters.values()) {
+            char.health = 100;
+            char.mana = 100;
+            if (this.lastKnownServerState[char.id]) {
+                this.lastKnownServerState[char.id].health = 100;
+                this.lastKnownServerState[char.id].mana = 100;
+            }
+        }
+    }
+
+    fixedUpdate(dt: number): void {
+        if (this.renderTime > 0) this.renderTime += dt * 1000;
+        this.processLocalInput(dt);
+        this.interpolateEntities();
+    }
+
+    processLocalInput(dt: number): void {
+        this.gamepad.update();
+        if (!this.localPlayerId) return;
+
+        const lp = this.world.get(this.localPlayerId);
+        if (!lp) return;
+
+        const context = this.menuManager.currentMenu || 'DEFAULT';
+        const active = new Set<string>();
+        const justPressed = new Set<string>();
+
+        const map = (ctrl: KeyboardController | GamepadController, type: string) => {
+            const mapping = INPUT_DICTIONARY[context]?.[type];
+            if (!mapping) return;
+            ctrl.activeKeys.forEach(k => { if (mapping[k]) active.add(mapping[k]); });
+            ctrl.justPressedKeys.forEach(k => { if (mapping[k]) justPressed.add(mapping[k]); });
+        };
+        map(this.keyboard, 'keyboard');
+        map(this.gamepad, 'gamepad');
+
+        this.virtualInputs.forEach(i => { active.add(i); justPressed.add(i); });
+        this.virtualInputs.clear();
+
+        const isActive = (i: string) => active.has(i);
+        const consume = (i: string) => {
+            if (justPressed.has(i)) { justPressed.delete(i); return true; }
+            return false;
+        };
+
+        CommandRegistry.forEach(command => {
+            const action = command(isActive, consume, this);
+            if (action) {
+                if (action.isLocal && action.execute) {
+                    action.execute(this);
+                } else if (action.type) {
+                    this.sequenceId++;
+                    const record: ActionRecord = { sequenceId: this.sequenceId, type: action.type, payload: action.payload || {}, dt };
+
+                    const handler = ActionRegistry.get(record.type);
+                    if (handler) handler.execute(lp, record.payload, dt, this.world);
+
+                    this.pendingActions.push(record);
+                    this.network.send(record);
+                }
+            }
+        });
+        this.keyboard.clearJustPressed();
+    }
+
+    onNetworkReceive(snapshot: Snapshot): void {
+        for (const [id, stateDelta] of Object.entries(snapshot.entitiesDelta)) {
+            if (!this.lastKnownServerState[id]) {
+                this.lastKnownServerState[id] = { ...stateDelta };
+            } else {
+                Object.assign(this.lastKnownServerState[id], stateDelta);
+            }
+
+            if (!this.world.get(id)) {
+                this.world.add(new ClientCharacter(id, stateDelta.x, stateDelta.y), stateDelta.areaId || 'starting_area', stateDelta.zoneId || 'forest_zone');
+            }
+        }
+
+        if (this.localPlayerId) {
+            const lp = this.world.get(this.localPlayerId);
+            if (lp && this.lastKnownServerState[this.localPlayerId]) {
+                Object.assign(lp, this.lastKnownServerState[this.localPlayerId]);
+
+                const lastAck = snapshot.lastProcessedIds[this.localPlayerId] || 0;
+                this.pendingActions = this.pendingActions.filter(a => a.sequenceId > lastAck);
+
+                for (const action of this.pendingActions) {
+                    ActionRegistry.get(action.type)?.reconcile(lp, action.payload, action.dt, this.world);
+                }
+            }
+        }
+
+        this.stateBuffer.push({ serverTime: snapshot.serverTime, entities: JSON.parse(JSON.stringify(this.lastKnownServerState)) });
+
+        const targetTime = snapshot.serverTime - GAME_CONFIG.INTERPOLATION_DELAY;
+        if (this.renderTime === 0 || Math.abs(this.renderTime - targetTime) > 200) this.renderTime = targetTime;
+        else this.renderTime += (targetTime - this.renderTime) * 0.1;
+
+        while (this.stateBuffer.length > 2 && this.stateBuffer[1].serverTime < this.renderTime - 200) {
+            this.stateBuffer.shift();
+        }
+    }
+
+    interpolateEntities(): void {
+        if (this.stateBuffer.length < 2) return;
+        let s0 = this.stateBuffer[0], s1 = this.stateBuffer[this.stateBuffer.length - 1];
+
+        for (let i = 0; i < this.stateBuffer.length - 1; i++) {
+            if (this.stateBuffer[i].serverTime <= this.renderTime && this.stateBuffer[i+1].serverTime >= this.renderTime) {
+                s0 = this.stateBuffer[i]; s1 = this.stateBuffer[i+1]; break;
+            }
+        }
+
+        const range = s1.serverTime - s0.serverTime;
+        const alpha = range > 0 ? Math.max(0, Math.min(1, (this.renderTime - s0.serverTime) / range)) : 0;
+
+        for (const char of this.world.characters.values()) {
+            if (char.id === this.localPlayerId) continue;
+
+            if (s0.entities[char.id] && s1.entities[char.id]) {
+                char.x = s0.entities[char.id].x + (s1.entities[char.id].x - s0.entities[char.id].x) * alpha;
+                char.y = s0.entities[char.id].y + (s1.entities[char.id].y - s0.entities[char.id].y) * alpha;
+                char.health = s1.entities[char.id].health;
+                char.mana = s1.entities[char.id].mana;
+            }
+        }
+    }
+
+    render(dt: number = 0.016): void {
+        const cliLocal = this.localPlayerId ? this.world.get(this.localPlayerId) : null;
+
+        if (cliLocal) {
+            camera.update(cliLocal.x, cliLocal.y, GAME_CONFIG.WORLD_WIDTH, GAME_CONFIG.WORLD_HEIGHT, dt);
+        }
+
+        ctx.clearRect(0, 0, DOM.canvas.width, DOM.canvas.height);
+
+        ctx.save();
+        const camX = Math.round(camera.x);
+        const camY = Math.round(camera.y);
+        ctx.translate(-camX, -camY);
+
+        let currentZone = null;
+        if (cliLocal) {
+            const area = this.world.areas.get(cliLocal.areaId || '');
+            currentZone = area?.getZone(cliLocal.zoneId || '');
+        } else {
+            currentZone = this.world.areas.get('starting_area')?.getZone('forest_zone');
+        }
+
+        // Draw Map Background using Proportional Scaling (object-fit: cover behavior to un-skew)
+        if (currentZone && MapImages.has(currentZone.mapName)) {
+            const img = MapImages.get(currentZone.mapName)!;
+            if (img.complete && img.naturalWidth !== 0) {
+                const imgRatio = img.naturalWidth / img.naturalHeight;
+                const worldRatio = GAME_CONFIG.WORLD_WIDTH / GAME_CONFIG.WORLD_HEIGHT;
+
+                let drawW = GAME_CONFIG.WORLD_WIDTH;
+                let drawH = GAME_CONFIG.WORLD_HEIGHT;
+                let drawX = 0;
+                let drawY = 0;
+
+                // Adjust rendering bounds proportionally to cover without skewing
+                if (imgRatio > worldRatio) {
+                    drawW = GAME_CONFIG.WORLD_HEIGHT * imgRatio;
+                    drawX = (GAME_CONFIG.WORLD_WIDTH - drawW) / 2;
+                } else {
+                    drawH = GAME_CONFIG.WORLD_WIDTH / imgRatio;
+                    drawY = (GAME_CONFIG.WORLD_HEIGHT - drawH) / 2;
+                }
+
+                ctx.drawImage(img, drawX, drawY, drawW, drawH);
+            } else {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, 0, GAME_CONFIG.WORLD_WIDTH, GAME_CONFIG.WORLD_HEIGHT);
+            }
+        } else {
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, GAME_CONFIG.WORLD_WIDTH, GAME_CONFIG.WORLD_HEIGHT);
+        }
+
+        let zoneObstacles: Rect[] = [];
+        if (cliLocal) {
+            zoneObstacles = this.world.getObstacles(cliLocal.areaId || '', cliLocal.zoneId || '');
+        } else {
+            zoneObstacles = this.world.getObstacles('starting_area', 'forest_zone');
+        }
+
+        if (this.showTargetRange && cliLocal) {
+            ctx.fillStyle = 'rgba(234, 179, 8, 0.15)';
+            ctx.strokeStyle = 'rgba(234, 179, 8, 0.3)';
+            ctx.lineWidth = 1;
+            const tileSize = 40;
+
+            const startX = Math.max(0, Math.floor((cliLocal.x - GAME_CONFIG.CAST_RANGE) / tileSize) * tileSize);
+            const endX = Math.min(GAME_CONFIG.WORLD_WIDTH, Math.ceil((cliLocal.x + GAME_CONFIG.CAST_RANGE) / tileSize) * tileSize);
+            const startY = Math.max(0, Math.floor((cliLocal.y - GAME_CONFIG.CAST_RANGE) / tileSize) * tileSize);
+            const endY = Math.min(GAME_CONFIG.WORLD_HEIGHT, Math.ceil((cliLocal.y + GAME_CONFIG.CAST_RANGE) / tileSize) * tileSize);
+
+            for (let x = startX; x <= endX; x += tileSize) {
+                for (let y = startY; y <= endY; y += tileSize) {
+                    const tileCenterX = x + tileSize / 2;
+                    const tileCenterY = y + tileSize / 2;
+                    const dx = tileCenterX - cliLocal.x;
+                    const dy = tileCenterY - cliLocal.y;
+
+                    if (dx*dx + dy*dy <= Math.pow(GAME_CONFIG.CAST_RANGE + tileSize / 2, 2)) {
+                        if (checkLineOfSight(cliLocal.x, cliLocal.y, tileCenterX, tileCenterY, zoneObstacles)) {
+                            ctx.fillRect(x, y, tileSize, tileSize);
+                            ctx.strokeRect(x, y, tileSize, tileSize);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Obstacles are no longer rendered as grey squares, but their hitboxes
+        // still function transparently behind the scenes to block movement and light!
+
+        if (this.localPlayerId) {
+            const srvLocal = server.world.get(this.localPlayerId);
+            if (srvLocal) {
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath(); ctx.arc(Math.round(srvLocal.x), Math.round(srvLocal.y), 14, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+
+        for (const char of this.world.characters.values()) {
+            const drawX = Math.round(char.x);
+            const drawY = Math.round(char.y);
+
+            if (char.id === this.localPlayerId) {
+                ctx.strokeStyle = '#34d399'; ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'; ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#34d399'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+                ctx.fillText(char.id, drawX, drawY - 28);
+                ctx.fillText(`(${drawX}, ${drawY})`, drawX, drawY - 17);
+                ctx.textAlign = 'left';
+
+                if ((performance.now() - char.lastCastTimestamp) < 200 && char.lastTargetId) {
+                    const target = this.world.get(char.lastTargetId);
+                    if (target && target.health > 0) {
+                        ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 4; ctx.shadowColor = '#a855f7'; ctx.shadowBlur = 10;
+                        ctx.beginPath(); ctx.moveTo(drawX, drawY); ctx.lineTo(Math.round(target.x), Math.round(target.y)); ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            } else {
+                ctx.strokeStyle = '#22d3ee';
+                ctx.fillStyle = char.health <= 0 ? 'rgba(239, 68, 68, 0.15)' : 'rgba(34, 211, 238, 0.2)';
+                ctx.lineWidth = 3;
+                ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                ctx.fillStyle = '#22d3ee'; ctx.font = '10px monospace';
+                ctx.fillText(`${char.id} (HP: ${char.health})`, drawX - 40, drawY - 25);
+            }
+        }
+
+        if (this.showTorch && cliLocal) {
+            const time = performance.now();
+            const speedFactor = 0.85;
+
+            // Global flicker (the whole torch shifting slightly)
+            const globalFlicker = (Math.sin(time * 0.013 * speedFactor) * 0.5 + Math.sin(time * 0.007  * speedFactor) * 0.3);
+            const baseTorchRange = 220 + (globalFlicker * 10);
+            const tileSize = 40;
+
+            const viewStartX = camX;
+            const viewEndX = camX + DOM.canvas.width;
+            const viewStartY = camY;
+            const viewEndY = camY + DOM.canvas.height;
+
+            const startX = Math.floor(viewStartX / tileSize) * tileSize;
+            const startY = Math.floor(viewStartY / tileSize) * tileSize;
+
+            // Spatial pseudo-random noise function (evaluates per tile)
+            const getNoise = (x, y, t) => {
+                return (
+                    Math.sin(x * 0.015 + t * 0.002 * speedFactor) +
+                    Math.cos(y * 0.015 + t * 0.0025 * speedFactor) +
+                    Math.sin((x + y) * 0.008 - t * 0.0015 * speedFactor)
+                ) / 3;
+            };
+
+            // Pass 1: Tile-based Darkness
+            for (let x = startX; x <= viewEndX; x += tileSize) {
+                for (let y = startY; y <= viewEndY; y += tileSize) {
+                    const tileCenterX = x + tileSize / 2;
+                    const tileCenterY = y + tileSize / 2;
+                    const dx = tileCenterX - cliLocal.x;
+                    const dy = tileCenterY - cliLocal.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    let litRatio = 0;
+
+                    // Uneven spatial modifier: distorts the shape of the light radius
+                    const spatialNoise = getNoise(tileCenterX, tileCenterY, time);
+                    const localTorchRange = baseTorchRange * (1.0 + spatialNoise * 0.3); // +/- 30% reach
+
+                    if (dist <= localTorchRange && checkLineOfSight(cliLocal.x, cliLocal.y, tileCenterX, tileCenterY, zoneObstacles)) {
+                        litRatio = Math.max(0, 1 - (dist / localTorchRange));
+                        // Add some noise to the brightness itself for flickering hot-spots
+                        const brightnessNoise = getNoise(tileCenterX + 100, tileCenterY - 100, time * 1.5) * 0.25;
+                        litRatio = Math.max(0, Math.min(1, litRatio + brightnessNoise));
+                        litRatio = Math.min(litRatio, .8)
+                        litRatio = litRatio * litRatio; // Soft falloff curve
+                    }
+
+                    if (litRatio < 1) {
+                        const darkness = 0.98 * (1 - litRatio);
+                        ctx.fillStyle = `rgba(5, 5, 8, ${darkness})`;
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                    }
+                }
+            }
+
+            // Pass 2: Warm ambient light overlay on lit tiles
+            ctx.globalCompositeOperation = 'lighter';
+            for (let x = startX; x <= viewEndX; x += tileSize) {
+                for (let y = startY; y <= viewEndY; y += tileSize) {
+                    const tileCenterX = x + tileSize / 2;
+                    const tileCenterY = y + tileSize / 2;
+                    const dx = tileCenterX - cliLocal.x;
+                    const dy = tileCenterY - cliLocal.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    const spatialNoise = getNoise(tileCenterX, tileCenterY, time);
+                    const localTorchRange = baseTorchRange * (1.0 + spatialNoise * 0.3);
+
+                    if (dist <= localTorchRange && checkLineOfSight(cliLocal.x, cliLocal.y, tileCenterX, tileCenterY, zoneObstacles)) {
+                        let litRatio = Math.max(0, 1 - (dist / localTorchRange));
+                        const brightnessNoise = getNoise(tileCenterX + 100, tileCenterY - 100, time * 1.5) * 0.25;
+                        litRatio = Math.max(0, Math.min(1, litRatio + brightnessNoise));
+                        litRatio = litRatio * litRatio;
+
+                        const alpha = litRatio * 0.55;
+                        ctx.fillStyle = `rgba(255, 120, 30, ${alpha})`; // Intense fiery orange
+                        ctx.strokeStyle = `rgba(255, 120, 30, ${alpha * 0.15})`;
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                        ctx.strokeRect(x, y, tileSize, tileSize);
+                    }
+                }
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        ctx.restore();
+
+        updateUI();
+    }
+}
+
+/* ==========================================================================
+   SIMULATED NETWORK PLUGIN (EASY SWAP FOR WEBSOCKETS)
+   ========================================================================== */
+
+let currentLatency = 38;
+function simulateNetworkDelay(callback: () => void): void {
+    setTimeout(callback, currentLatency * (0.9 + Math.random() * 0.2));
+}
+
+class SimulatedLocalTransport {
+    private serverHandler: ((cid: string, bytes: Uint8Array) => void) | null = null;
+    private clientHandler: ((bytes: Uint8Array) => void) | null = null;
+
+    public getServerTransport(): ServerTransport {
+        return {
+            onReceive: (handler) => { this.serverHandler = handler; },
+            broadcast: (bytes) => {
+                simulateNetworkDelay(() => {
+                    if (this.clientHandler) this.clientHandler(bytes);
+                });
+            }
+        };
+    }
+
+    public getClientTransport(): ClientTransport {
+        return {
+            onReceive: (handler) => { this.clientHandler = handler; },
+            send: (bytes) => {
+                simulateNetworkDelay(() => {
+                    if (this.serverHandler) this.serverHandler('client_conn_01', bytes);
+                });
+            }
+        };
+    }
+}
+
+/* ==========================================================================
+   SIMULATION SETUP & UI RENDERING
+   ========================================================================== */
+
+const simTransport = new SimulatedLocalTransport();
+
+const server = new ServerGame(simTransport.getServerTransport());
+const client = new ClientGame(simTransport.getClientTransport());
+
+server.start();
+client.start();
+
+DOM.latencySlider.addEventListener('input', (e) => {
+    currentLatency = parseInt((e.target as HTMLInputElement).value);
+    DOM.pingValue.innerText = `${currentLatency}ms`;
+});
+
+DOM.btnConnect.addEventListener('click', () => {
+    client.connect('457', '1');
+    DOM.btnConnect.disabled = true;
+    DOM.btnConnect.classList.add('opacity-50', 'cursor-not-allowed');
+});
+
+DOM.btnCast.addEventListener('click', () => client.virtualInputs.add('CAST_SPELL'));
+DOM.btnReset.addEventListener('click', () => { server.resetState(); client.resetState(); });
+
+function updateUI(): void {
+    const cliLocal = client.localPlayerId ? client.world.get(client.localPlayerId) : null;
+    const srvLocal = client.localPlayerId ? server.world.get(client.localPlayerId) : null;
+
+    if (cliLocal) {
+        DOM.clientHpText.innerText = `${cliLocal.health}/100`;
+        DOM.clientHpBar.style.width = `${cliLocal.health}%`;
+        DOM.clientMpText.innerText = `${cliLocal.mana}/100`;
+        DOM.clientMpBar.style.width = `${cliLocal.mana}%`;
+
+        const currentArea = client.world.areas.get(cliLocal.areaId || '');
+        const currentZone = currentArea?.getZone(cliLocal.zoneId || '');
+        if (currentZone) {
+            DOM.clientZone.innerText = `${currentZone.id} [${currentZone.mapName}] - Players: ${currentZone.characterCount}`;
+        }
+
+        DOM.clientSeq.innerText = client.sequenceId.toString();
+        DOM.clientPos.innerText = `X: ${Math.round(cliLocal.x)}, Y: ${Math.round(cliLocal.y)}`;
+    } else {
+        DOM.clientHpText.innerText = `0/0`;
+        DOM.clientHpBar.style.width = `0%`;
+        DOM.clientMpText.innerText = `0/0`;
+        DOM.clientMpBar.style.width = `0%`;
+        DOM.clientZone.innerText = `Not Connected`;
+        DOM.clientSeq.innerText = `0`;
+        DOM.clientPos.innerText = `X: 0, Y: 0`;
+    }
+
+    let targetChar = null;
+    for (const char of client.world.characters.values()) {
+        if (char.id !== client.localPlayerId) {
+            targetChar = char;
+            break;
+        }
+    }
+
+    if (targetChar) {
+        DOM.targetHpText.innerText = `${targetChar.health}/100`;
+        DOM.targetHpBar.style.width = `${targetChar.health}%`;
+
+        if (targetChar.health <= 0) {
+            DOM.targetStatus.innerText = "DEAD";
+            DOM.targetStatus.className = "text-[11px] text-rose-500 font-bold";
+        } else {
+            DOM.targetStatus.innerText = "ALIVE";
+            DOM.targetStatus.className = "text-[11px] text-cyan-400 font-bold";
+        }
+    } else {
+        DOM.targetHpText.innerText = `0/0`;
+        DOM.targetHpBar.style.width = `0%`;
+        DOM.targetStatus.innerText = "NO TARGET";
+        DOM.targetStatus.className = "text-[11px] text-slate-500 font-bold";
+    }
+
+    if (srvLocal && client.localPlayerId) {
+        DOM.serverSeq.innerText = (server.clientSequences[client.localPlayerId] || 0).toString();
+        DOM.serverPos.innerText = `X: ${Math.round(srvLocal.x)}, Y: ${Math.round(srvLocal.y)}`;
+    } else {
+        DOM.serverSeq.innerText = `0`;
+        DOM.serverPos.innerText = `X: 0, Y: 0`;
+    }
+
+    const qSize = client.pendingActions.length;
+    DOM.queueSize.innerText = qSize.toString();
+
+    if (qSize === 0) {
+        DOM.queueList.innerHTML = '<li class="text-slate-600 italic">Queue is empty (Synced)</li>';
+    } else {
+        DOM.queueList.innerHTML = client.pendingActions.slice(-10).map(a => {
+            const actionName = ActionType[a.type] || 'UNKNOWN';
+            const details = a.type === ActionType.CAST ? `Target: ${a.payload.targetId}` : `dx:${a.payload.x} dy:${a.payload.y}`;
+            return `<li>[Seq: ${a.sequenceId}] ${actionName} - ${details}</li>`;
+        }).join('');
+    }
+}
+</script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const tsScriptContent = document.getElementById('typescript-code').textContent;
+                const compiledCode = Babel.transform(tsScriptContent, {
+                    presets: ['env', 'typescript'],
+                    filename: 'game.ts'
+                }).code;
+
+                const runScript = document.createElement('script');
+                runScript.textContent = compiledCode;
+                document.body.appendChild(runScript);
+            } catch (error) {
+                console.error("TypeScript Compilation Error:", error);
+                alert("Compilation failed! See console for details.");
+            }
+        });
+    </script>
+</body>
+
+</html>

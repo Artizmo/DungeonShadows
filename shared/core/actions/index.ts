@@ -1,6 +1,6 @@
 import { GameProtocol } from "~/shared/network/generated/index.js";
 import type { ActionHandler } from "~/shared/core/types.js";
-import { GAME_CONFIG } from "~/shared/constants.js";
+import { GAME_CONFIG } from "~/shared/core/constants.js";
 
 export const ActionRegistry = new Map<GameProtocol.ActionType, ActionHandler>();
 
@@ -12,7 +12,7 @@ ActionRegistry.set(GameProtocol.ActionType.MOVE, {
     return true;
   },
   execute(entity, payload, dt, world) {
-    this.update(entity, payload, dt, world);
+    this.update!(entity, payload, dt, world);
   },
   update(entity, payload, dt, world) {
     const px = payload.x || 0;

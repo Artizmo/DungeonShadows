@@ -1,10 +1,12 @@
 export default class Zone {
-  public id: string;
-  public mapName: string;
-  public characterIds: Set<string>;
+  id: string;
+  areaId: string;
+  mapName: string;
+  characterIds: Set<string>;
 
-  constructor(id: string, mapName: string) {
+  constructor(id: string, areaId: string, mapName: string) {
     this.id = id;
+    this.areaId = areaId;
     this.mapName = mapName;
     this.characterIds = new Set();
   }

@@ -27,7 +27,8 @@
     "../shared/**/*",
     "../client/src/core/_utils/inputBindings.ts",
     "../client/src/core/actions",
-    "public/worker.js"
+    "public/worker.js",
+    "../server/src/core/MapCache.ts"
   ],
   "exclude": ["node_modules"]
 }

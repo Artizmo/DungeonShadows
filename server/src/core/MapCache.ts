@@ -1,9 +1,8 @@
-// server/maps/MapCache.ts
 import fs from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import type { Zone } from "~/core/types";
-import { Log } from "~/shared/core/Logger";
+import { Log } from "~/shared/core/Logger.js";
+import type Zone from "~/core/Zone";
 
 export interface PreChunkedMap {
   x: number;
@@ -17,7 +16,7 @@ interface CacheEntry {
   fileName: string;
 }
 
-export class MapCache {
+export default class MapCache {
   private cache = new Map<string, CacheEntry>();
   private readonly chunkSize = 256;
 
@@ -36,13 +35,14 @@ export class MapCache {
   public async getZoneMapChunks(zone: Zone): Promise<PreChunkedMap[]> {
     let entry = this.cache.get(zone.id);
 
-    if (entry) Log.DATA.INFO(`💾 Fetching Zone ${zone.id} from MapCache!`);
+    if (entry) {
+      Log.DATA.INFO(`💾 Fetching Zone ${zone.id} from MapCache!`);
+    }
 
     // 🟢 Cache Miss: Load from hard drive seamlessly if not present or expired
     if (!entry) {
-      Log.DATA.INFO(
-        `🔍 Zone ${zone.id} not found in MapCache. Fetching from disk.`,
-      );
+      Log.DATA.INFO(`🔍 Zone ${zone.id} not found in MapCache.`);
+      Log.DATA.INFO(`Fetching zone...`);
       await this.fetchZone(zone);
       entry = this.cache.get(zone.id);
     }
@@ -98,7 +98,7 @@ export class MapCache {
         fileName: mapPath,
       });
 
-      Log.DATA.INFO(`💾 Zone "${zone.id}" successfully cached.`);
+      Log.DATA.INFO(`💾 Zone ${zone.id} successfully cached.`);
     } catch (error) {
       Log.DATA.ERROR(
         `❌ Failed loading map for zone ${zone.id}. Error: ${error}`,
@@ -109,17 +109,17 @@ export class MapCache {
   /**
    * 3. CONTROL: Force Stale
    */
-  public forceStale(zoneId: string) {
+  public forceStale(zoneId: string): void {
     if (this.cache.has(zoneId)) {
       this.cache.delete(zoneId);
-      Log.DATA.INFO(`♻️ Zone "${zoneId}" manually purged (marked stale).`);
+      Log.DATA.INFO(`♻️ Zone ${zoneId} manually purged (marked stale).`);
     }
   }
 
   /**
    * 4. AUTOMATION: Active Inactivity Cleaner
    */
-  private startCleanupLoop() {
+  private startCleanupLoop(): void {
     this.cleanupInterval = setInterval(
       () => {
         const now = Date.now();
@@ -127,15 +127,20 @@ export class MapCache {
         for (const [zoneId, entry] of this.cache.entries()) {
           if (now - entry.lastAccessed > this.ttlMs) {
             this.cache.delete(zoneId);
-            Log.DATA.INFO(`🧹 Zone "${zoneId}" evicted due to inactivity.`);
+            Log.DATA.INFO(`🧹 Zone ${zoneId} evicted due to inactivity.`);
           }
         }
       },
-      1000 * 60 * 5,
+      1000 * 60 * 5, // Run every 5 minutes
     );
   }
 
-  public shutdown() {
-    if (this.cleanupInterval) clearInterval(this.cleanupInterval);
+  public shutdown(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
   }
 }
+
+// Export the single active instance directly
+export const mapCache = new MapCache();
