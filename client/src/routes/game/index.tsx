@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import gameEngine from "~/core";
+import game from "~/core";
 import GameHud from "~/components/game/GameHud";
 import GameCanvas from "~/components/game/GameCanvas";
 import { fetchGameTicket } from "~/services/auth";
@@ -27,10 +27,10 @@ export const Route = createFileRoute("/game/")({
     }
 
     console.log("🎯 Valid token acquired. Igniting engine core logic streams.");
-    await gameEngine.start(ticket);
+    await game.start(ticket);
 
     // Catch hooks up to fresh data on refresh
-    gameEngine.events.emit("character_update");
+    game.events.emit("character_update");
   },
 
   component: GameComponent,
@@ -39,7 +39,7 @@ export const Route = createFileRoute("/game/")({
 function GameComponent() {
   // Bind canvas to the persistent engine singleton
   const handleEngineResize = useCallback((canvas: HTMLCanvasElement) => {
-    gameEngine.bindCanvas(canvas);
+    game.handleBindCanvas(canvas);
   }, []);
 
   return (

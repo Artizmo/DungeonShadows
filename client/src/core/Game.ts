@@ -43,7 +43,6 @@ export default class Game {
 
     this.loop.onUpdate = (deltaTime: number) => this.update(deltaTime);
     this.loop.onTick = (tick: number) => this.tick(tick);
-    this.loop.onRender = () => this.render();
   }
 
   update(deltaTime: number): void {
@@ -51,6 +50,10 @@ export default class Game {
 
     // 1. Process inputs and move the character
     this.processInputs(deltaTime);
+    // 2. Update the camera to follow the new position
+    this.camera.update(this.world.character, this.renderer.canvas!);
+    // 3. Finally, render the up-to-date scene
+    this.renderer.render(this.world.character, this.camera);
   }
 
   tick(tick: number): void {
@@ -61,19 +64,8 @@ export default class Game {
       const data = Serialize.decode(packet);
       const handler = ActionRegistry.get(data.actionType);
       const { character } = this.world;
-      console.log("here?");
       handler?.execute({ data, character, game: this });
     }
-  }
-
-  render(): void {
-    if (!this.world.character) return;
-
-    // 1. Update the camera to follow the new position
-    this.camera.update(this.world.character, this.renderer.canvas!);
-
-    // 2. Finally, render the up-to-date scene
-    this.renderer.render(this.world.character, this.camera);
   }
 
   processInputs(deltaTime: number): void {
@@ -123,18 +115,14 @@ export default class Game {
     // Handle other distinct commands here (like CAST_SPELL) without looping over activeCommands directly
   }
 
-  bindCanvas(canvas: HTMLCanvasElement): void {
-    if (!canvas) return;
-
-    this.renderer.bind(canvas);
-  }
-
   start(ticket: string): void {
     this.loop.start();
     this.network.connect(ticket);
   }
 
-  stop(): void {
-    this.loop.stop();
+  handleBindCanvas(canvas: HTMLCanvasElement): void {
+    if (!canvas) return;
+
+    this.renderer.bind(canvas);
   }
 }
