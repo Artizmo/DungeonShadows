@@ -57,29 +57,24 @@ export default class Game {
     this.gamepad = gamepad;
     this.keyboard = keyboard;
 
-    this.loop.onUpdate = (deltaTime: number) => this.update(deltaTime);
+    this.loop.onUpdate = (deltaTime: number, alpha: number) =>
+      this.update(deltaTime, alpha);
     this.loop.onTick = (tick: number) => this.tick(tick);
   }
 
-  update(deltaTime: number): void {
+  update(deltaTime: number, alpha: number): void {
     if (!this.world.character) return;
 
     const { character } = this.world;
 
-    // 1. Convert milliseconds to seconds for the formula
-    const dtSeconds = deltaTime / 1000;
+    // Strict linear interpolation: P_render = P_prev + (P_current - P_prev) * alpha
+    character.renderPosition.x =
+      character.prevPosition.x +
+      (character.position.x - character.prevPosition.x) * alpha;
 
-    // 2. Adjust this speed to dictate how "snappy" or "floaty" the visual chase is.
-    // A value of 15-20 is usually a good starting point for tight controls.
-    const lerpSpeed = 20;
-
-    // 3. Frame-rate independent exponential decay
-    const lerpFactor = 1 - Math.exp(-lerpSpeed * dtSeconds);
-
-    character.renderPosition.x +=
-      (character.position.x - character.renderPosition.x) * lerpFactor;
-    character.renderPosition.y +=
-      (character.position.y - character.renderPosition.y) * lerpFactor;
+    character.renderPosition.y =
+      character.prevPosition.y +
+      (character.position.y - character.prevPosition.y) * alpha;
 
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(character, this.camera);
@@ -87,6 +82,7 @@ export default class Game {
 
   tick(tick: number): void {
     if (this.world.character) {
+      this.world.character.tick(tick);
       this.processInputs();
     }
 
@@ -113,8 +109,7 @@ export default class Game {
     if (!character) return;
 
     // 1. Teleport local character to the absolute authoritative position
-    character.position.x = serverData.playerState.x;
-    character.position.y = serverData.playerState.y;
+    character.move(serverData.playerState);
 
     // 2. Drop all inputs that the server has already acknowledged and processed
     this.inputHistory = this.inputHistory.filter(

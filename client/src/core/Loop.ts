@@ -3,7 +3,7 @@ export default class Loop {
   private lastTime: number = 0;
   private accumulator: number = 0;
 
-  onUpdate!: (deltaTime: number) => void;
+  onUpdate!: (deltaTime: number, alpha: number) => void;
   onTick!: (tick: number) => void;
 
   private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
@@ -39,11 +39,14 @@ export default class Loop {
       this.accumulator -= this.TICK_RATE_MS;
     }
 
+    // Calculate how far we are into the NEXT tick (from 0.0 to 1.0)
+    const alpha = this.accumulator / this.TICK_RATE_MS;
+
     // 4. Process Visuals (Variable Timestep)
     // This runs EVERY single frame at the native refresh rate of the monitor (60Hz, 144Hz, etc.)
     // It updates LERP visual positions and renders the canvas.
     if (this.onUpdate) {
-      this.onUpdate(deltaTime);
+      this.onUpdate(deltaTime, alpha);
     }
 
     requestAnimationFrame(this.loop.bind(this));

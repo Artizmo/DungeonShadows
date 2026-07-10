@@ -7,14 +7,9 @@ export default class Character {
   name: string;
   level: number;
   zone: Zone;
-  position: {
-    x: number;
-    y: number;
-  };
-  renderPosition: {
-    x: number;
-    y: number;
-  };
+  position: { x: number; y: number }; // The authoritative physics state
+  prevPosition: { x: number; y: number }; // For the renderer to interpolate FROM
+  renderPosition: { x: number; y: number }; // The fake visual camera target
   stats: {
     hp: number;
     maxHp: number;
@@ -35,11 +30,20 @@ export default class Character {
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };
+    this.prevPosition = { ...character.position };
     this.renderPosition = { ...this.position };
   }
 
-  move = (velocity: { x: number; y: number }): void => {
+  tick(tick: number) {
+    this.prevPosition.x = this.position.x;
+    this.prevPosition.y = this.position.y;
+  }
+
+  move(velocity: { x: number; y: number }): void {
+    this.prevPosition.x = this.position.x;
+    this.prevPosition.y = this.position.y;
+
     this.position.x += velocity.x;
     this.position.y += velocity.y;
-  };
+  }
 }

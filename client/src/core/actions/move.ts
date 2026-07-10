@@ -14,9 +14,7 @@ export const Move: ActionHandler = {
     try {
       // 1. Get the processed velocity vector for this step
       const velocity = Move.applyPhysics!({ data });
-
       character.move(velocity);
-
       return velocity;
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
