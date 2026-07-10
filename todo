@@ -1,10 +1,10 @@
 ### **Phase 1: Client Prediction (The `UPDATE` Loop @ 60Hz+)**
 
-[o] * **1. Input Capture:** The player presses "W". Your `InputHandler` flags `keys.w = true`.
-[ ] normalize position vector so that moving diagonally doesn't equate to more than 1, or moving much faster than normal.
-[ ] * **2. Sequence Tagging:** The `Character` increments its internal `sequenceId` (e.g., `id: 42`).
-[ ] * **3. State Storage:** The input snapshot and ID are pushed onto the end of the `pendingActions` array.
-[ ] * **4. Instant Application (Prediction):** The character's local coordinates are mathematically shifted immediately. The player feels zero lag.
+[x] * **1. Input Capture:** The player presses "W". Your `InputHandler` flags `keys.w = true`.
+[x] normalize position vector so that moving diagonally doesn't equate to more than 1, or moving much faster than normal.
+[x] * **2. Sequence Tagging:** The `Character` increments its internal `sequenceId` (e.g., `id: 42`).
+[x] * **3. State Storage:** The input snapshot and ID are pushed onto the end of the `pendingActions` array.
+[x] * **4. Instant Application (Prediction):** The character's local coordinates are mathematically shifted immediately. The player feels zero lag.
 
 ### **Phase 2: Client Binary Transmission (The `TICK` Loop @ 20Hz)**
 
