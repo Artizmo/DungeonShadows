@@ -65,17 +65,23 @@ export default class Game {
     if (!this.world.character) return;
 
     const { character } = this.world;
-    // 1. Process inputs and move the character
-    // this.processInputs();
-    const lerpFactor = 1 - Math.hypot(0.01, deltaTime);
+
+    // 1. Convert milliseconds to seconds for the formula
+    const dtSeconds = deltaTime / 1000;
+
+    // 2. Adjust this speed to dictate how "snappy" or "floaty" the visual chase is.
+    // A value of 15-20 is usually a good starting point for tight controls.
+    const lerpSpeed = 20;
+
+    // 3. Frame-rate independent exponential decay
+    const lerpFactor = 1 - Math.exp(-lerpSpeed * dtSeconds);
 
     character.renderPosition.x +=
       (character.position.x - character.renderPosition.x) * lerpFactor;
     character.renderPosition.y +=
       (character.position.y - character.renderPosition.y) * lerpFactor;
-    // 2. Update the camera to follow the new position
+
     this.camera.update(character, this.renderer.canvas!);
-    // 3. Finally, render the up-to-date scene
     this.renderer.render(character, this.camera);
   }
 
