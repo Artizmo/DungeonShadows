@@ -10,7 +10,7 @@ export default class Game {
   readonly loop: Loop;
   network: Network;
   world: World;
-  activeCharacters: Map<number, Character> = new Map();
+  // activeCharacters: Map<number, Character> = new Map();
   isReady = false;
 
   constructor(loop: Loop, network: Network, world: World) {
@@ -23,15 +23,8 @@ export default class Game {
     this.isReady = true;
     this.loop.start();
 
-    this.loop.onUpdate = (deltaTime: number) => {
-      if (!this.isReady) return;
-
-      this.update(deltaTime);
-    };
-
     this.loop.onTick = (tick: number) => {
       if (!this.isReady) return;
-
       this.tick(tick);
     };
 
@@ -42,32 +35,59 @@ export default class Game {
     });
   }
 
-  public update(deltaTime: number): void {}
-
   tick(tick: number) {
+    // Track who actually needs an update this tick (optional optimization)
+    const activePlayersThisTick = new Set<Character>();
+
+    // 1. Process ALL pending inputs from clients first
     while (this.network.packetQueue.length > 0) {
       const queueItem = this.network.packetQueue.shift();
-      if (!queueItem) return;
+      if (!queueItem) continue;
 
-      const packet = Serialize.decode(queueItem.bytes);
-      // if (packet.type !== GameProtocol.PacketPayload.ActionRecord) return;
+      const data = Serialize.decode(queueItem.bytes);
+      const character = this.world.characters.get(data.characterId);
+      if (!character) continue;
 
-      // const record = packet.data;
-      // const handler = ActionRegistry.get(record.type());
+      if (data.sequenceId <= character.lastProcessedSequenceId) continue;
 
-      // if (!handler) {
-      //   Log.SYSTEM.ERROR(`No handler found for action type: ${record.type()}!`);
-      //   return;
-      // }
+      // 2. Re-simulate the actions exactly as the client did
+      if (data.actions && data.actions.length > 0) {
+        for (const actionType of data.actions) {
+          const handler = ActionRegistry.get(actionType);
+          if (!handler) continue;
 
-      // const characterId = record.payload().characterId();
-      // const dt = Math.min(record.dt(), 0.1);
-      // handler.execute({ characterId }, this, dt);
+          const FIXED_DELTA = 1 / 20;
+
+          handler.execute({
+            data: {
+              activeCommands: new Set(data.activeCommands),
+              speed: character.speed,
+              deltaTime: FIXED_DELTA,
+            },
+            character,
+            game: this,
+          });
+        }
+      }
+
+      character.lastProcessedSequenceId = data.sequenceId;
+      activePlayersThisTick.add(character);
     }
+
+    // 3. Broadcast the Authoritative State ONCE at the end of the tick
+    for (const character of activePlayersThisTick) {
+      const updatePayload = Serialize.snapshot({
+        playerState: { x: character.position.x, y: character.position.y },
+        lastProcessedSequenceId: character.lastProcessedSequenceId,
+      });
+      this.network.broadcast.sendTo(character.id, updatePayload);
+    }
+
+    this.network.packetQueue = [];
   }
 
-  onNewConnection(playerCharacter): void {
+  onNewConnection(playerCharacter: Character): void {
     const handler = ActionRegistry.get(ActionType.JOIN);
-    handler.execute(playerCharacter, this);
+    if (handler) handler.execute({ data: playerCharacter, game: this });
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useGame } from "~/hooks/useGame";
 
 interface GameCanvasProps {
   onResize: (canvas: HTMLCanvasElement) => void;
@@ -6,6 +7,7 @@ interface GameCanvasProps {
 
 export default function GameCanvas({ onResize }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isMoving = useGame<boolean>((game) => game.world?.character?.isMoving);
 
   // 1. Initial Setup Loop (Runs once when ready)
   useEffect(() => {
@@ -24,7 +26,7 @@ export default function GameCanvas({ onResize }: GameCanvasProps) {
 
   // 2. Continuous Resize Listener Loop
   useEffect(() => {
-    let resizeTimeout: number;
+    let resizeTimeout: NodeJS.Timeout;
 
     const handleResize = () => {
       clearTimeout(resizeTimeout);

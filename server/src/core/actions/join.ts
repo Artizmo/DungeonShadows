@@ -5,14 +5,11 @@ import Character from "../Character";
 import type { ActionHandler } from "~/core/actions/types";
 import { Serialize } from "~/shared/network/serialize";
 import { ActionType } from "~/shared/core/types";
+
 export const Join: ActionHandler = {
-  execute: async (
-    { characterId, playerId },
-    game,
-    dt,
-    entity,
-  ): Promise<void> => {
+  execute: async ({ data, game }): Promise<void> => {
     try {
+      const { playerId, characterId } = data;
       const [playerData, characterData] = await Promise.all([
         fetchPlayer(playerId),
         fetchCharacter(characterId),
@@ -23,7 +20,7 @@ export const Join: ActionHandler = {
       character.playerId = player.id;
       game.world.add(character);
 
-      const packet = Serialize.serializeSnapshot({
+      const packet = Serialize.data({
         serverTick: game.loop.tick,
         actionType: ActionType.JOIN,
         character,
@@ -36,7 +33,7 @@ export const Join: ActionHandler = {
       );
 
       for (const chunk of mapChunks) {
-        const packet = Serialize.serializeSnapshot({
+        const packet = Serialize.data({
           serverTick: game.loop.tick,
           actionType: ActionType.LOAD_MAP,
           characterId: character.id,
@@ -45,7 +42,7 @@ export const Join: ActionHandler = {
         game.network.broadcast.sendTo(character.id, packet);
       }
     } catch (error) {
-      Log.DATA.ERROR(`Could not load data: ${error}`);
+      Log.DATA.ERROR(`Could not load server data: ${error}`);
     }
   },
 };

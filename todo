@@ -8,9 +8,9 @@
 
 ### **Phase 2: Client Binary Transmission (The `TICK` Loop @ 20Hz)**
 
-[ ] * **1. Array Polling:** The fixed network tick fires. The engine grabs all actions in `pendingActions` that haven't been broadcast yet.
-[ ] * **2. Serialization:** The array data is packed into a `PlayerInput` FlatBuffer byte array (containing the OpCode, the sequence ID, and the input payload).
-[ ] * **3. Dispatch:** The binary buffer is flushed out through the WebSocket directly to the server.
+[x] * **1. Array Polling:** The fixed network tick fires. The engine grabs all actions in `pendingActions` that haven't been broadcast yet.
+[x] * **2. Serialization:** The array data is packed into a byte array (containing the sequence ID, and the input payload).
+[x] * **3. Dispatch:** The binary buffer is flushed out through the WebSocket directly to the server.
 
 ### **Phase 3: Server Authority (Server `TICK` Loop)**
 

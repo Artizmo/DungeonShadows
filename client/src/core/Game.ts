@@ -13,8 +13,9 @@ import {
   inputDictionary,
 } from "~/core/commands/input-dictionary";
 import { CommandType } from "~/core/commands/index";
-import { ActionType } from "~/shared/core/types";
+import { ActionType, PacketCategory } from "~/shared/core/types";
 import type { InputAction, WorldState } from "./types";
+import { Log } from "~/shared/core/Logger";
 
 export default class Game {
   events: EventEmitter;
@@ -31,7 +32,7 @@ export default class Game {
     sequenceId: number;
     tick: number;
     actions: Set<ActionType>;
-    commands: Set<CommandType>;
+    activeCommands: Set<CommandType>;
   }> = [];
   private stateHistory: Array<{
     sequenceId: number;
@@ -82,6 +83,7 @@ export default class Game {
 
   tick(tick: number): void {
     if (this.world.character) {
+      this.events.emit("game_update");
       this.world.character.tick(tick);
       this.processInputs();
     }
@@ -93,7 +95,7 @@ export default class Game {
       const data = Serialize.decode(packet);
 
       // Check if this packet is a World State / Update from the server
-      if (data.actionType === "SERVER_UPDATE") {
+      if (data.category === PacketCategory.SNAPSHOT) {
         this.handleServerReconciliation(data);
       } else {
         // Fallback for immediate non-movement action handlers
@@ -109,7 +111,12 @@ export default class Game {
     if (!character) return;
 
     // 1. Teleport local character to the absolute authoritative position
-    character.move(serverData.playerState);
+    character.position.x = serverData.playerState.x;
+    character.position.y = serverData.playerState.y;
+
+    // 🟢 CRITICAL: Snap prevPosition so the LERP doesn't glitch!
+    character.prevPosition.x = serverData.playerState.x;
+    character.prevPosition.y = serverData.playerState.y;
 
     // 2. Drop all inputs that the server has already acknowledged and processed
     this.inputHistory = this.inputHistory.filter(
@@ -128,7 +135,7 @@ export default class Game {
 
       // Reconstruction of the simulation parameters for each history frame
       const dataContext = {
-        activeCommands: savedInput.commands,
+        activeCommands: savedInput.activeCommands,
         speed: character.speed,
         deltaTime: FIXED_DELTA,
       };
@@ -168,13 +175,15 @@ export default class Game {
       if (actionType) actionTypeQueue.add(actionType);
     }
 
+    if (this.activeCommands.size === 0) return;
+
     this.sequenceId++;
 
     this.inputHistory.push({
       sequenceId: this.sequenceId,
       tick: this.loop.tick,
       actions: new Set(actionTypeQueue),
-      commands: new Set(this.activeCommands),
+      activeCommands: new Set(this.activeCommands),
     });
 
     // 🟢 Only run prediction if there are actual actions to simulate
@@ -198,10 +207,12 @@ export default class Game {
 
     // 🟢 Always tell the server our latest sequenceId, even if actions array is empty []
     this.network.send(
-      Serialize.serializeAction({
+      Serialize.action({
+        characterId: character.id,
         sequenceId: this.sequenceId,
         tick: this.loop.tick,
-        actions: Array.from(actionTypeQueue),
+        actions: Array.from(new Set(actionTypeQueue)),
+        activeCommands: Array.from(new Set(this.activeCommands)),
       }),
     );
 

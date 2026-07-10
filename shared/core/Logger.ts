@@ -1,5 +1,5 @@
 type LogLevel = "INFO" | "WARN" | "FAIL" | "DBUG";
-type LogSystem = "SYST" | "NWRK" | "DATA" | "TEST" | "WRLD" | "CHAR";
+type LogSystem = "SYST" | "NETW" | "DATA" | "TEST" | "WRLD" | "CHAR";
 
 class Logger {
   private readonly system: LogSystem;
@@ -13,7 +13,7 @@ class Logger {
     },
     systems: {
       SYST: "#FFFFFF",
-      NWRK: "#2BC2FC",
+      NETW: "#2BC2FC",
       DATA: "#F5D77F",
       TEST: "#b2d128",
       WRLD: "#7AE6B5",
@@ -111,7 +111,7 @@ const Log = {} as {
 
 const systemMapping: Record<keyof typeof Log, LogSystem> = {
   SYSTEM: "SYST",
-  NETWORK: "NWRK",
+  NETWORK: "NETW",
   DATA: "DATA",
   TEST: "TEST",
   WORLD: "WRLD",
