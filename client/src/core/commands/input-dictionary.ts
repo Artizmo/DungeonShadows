@@ -1,3 +1,4 @@
+import { ActionType } from "~/shared/core/types";
 import { CommandType } from ".";
 
 export const inputDictionary: Record<
@@ -42,4 +43,21 @@ export const inputDictionary: Record<
       b0: CommandType.UI_SELECT,
     },
   },
+};
+
+export const actionDictionary: Record<CommandType, ActionType | null> = {
+  // Movement
+  [CommandType.MOVE_UP]: ActionType.MOVE,
+  [CommandType.MOVE_DOWN]: ActionType.MOVE,
+  [CommandType.MOVE_LEFT]: ActionType.MOVE,
+  [CommandType.MOVE_RIGHT]: ActionType.MOVE,
+
+  // Gameplay Actions
+  [CommandType.CAST_SPELL]: ActionType.CAST,
+
+  // UI / Meta Actions
+  [CommandType.MENU_TOGGLE]: null,
+  [CommandType.UI_UP]: null,
+  [CommandType.UI_DOWN]: null,
+  [CommandType.UI_SELECT]: null,
 };

@@ -2,47 +2,48 @@ export default class Loop {
   tick: number = 0;
   private lastTime: number = 0;
   private accumulator: number = 0;
-  private frameAccumulator: number = 0;
+
   onUpdate!: (deltaTime: number) => void;
   onTick!: (tick: number) => void;
-  // Constants
-  private readonly TICK_RATE_MS = 1000 / 20; // 50ms (20 ticks/sec)
-  private readonly FRAME_RATE_MS = 1000 / 60; // 16.67ms (60 fps)
+
+  private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
 
   constructor() {
     this.start();
   }
 
   start() {
-    requestAnimationFrame(this.loop.bind(this));
+    // Request animation frame passes a high-res timestamp automatically
+    requestAnimationFrame((time) => {
+      this.lastTime = time;
+      requestAnimationFrame(this.loop.bind(this));
+    });
   }
 
   private loop(currentTime: number) {
-    // 1. Calculate delta time
+    // 1. Calculate delta time (how long it took since the last display frame)
     let deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
     // Safety: Cap deltaTime to avoid "Spiral of Death" if tab loses focus
     if (deltaTime > 250) deltaTime = 250;
 
-    // 2. Add to accumulators
+    // 2. Add real time passed to the tick accumulator
     this.accumulator += deltaTime;
-    this.frameAccumulator += deltaTime;
 
     // 3. Process Ticks (Fixed Timestep)
-    // Runs as many times as needed to catch up (20 TPS)
+    // Runs exactly enough times to catch up the simulation state to real-world time
     while (this.accumulator >= this.TICK_RATE_MS) {
       this.tick += 1;
       this.onTick(this.tick);
       this.accumulator -= this.TICK_RATE_MS;
     }
 
-    // 4. Process Updates (Capped at 60 FPS)
-    // Only runs if enough time has passed to satisfy the 60fps requirement
-    if (this.frameAccumulator >= this.FRAME_RATE_MS) {
+    // 4. Process Visuals (Variable Timestep)
+    // This runs EVERY single frame at the native refresh rate of the monitor (60Hz, 144Hz, etc.)
+    // It updates LERP visual positions and renders the canvas.
+    if (this.onUpdate) {
       this.onUpdate(deltaTime);
-      // Reset frame accumulator, preserving remainder to keep timing accurate
-      this.frameAccumulator %= this.FRAME_RATE_MS;
     }
 
     requestAnimationFrame(this.loop.bind(this));

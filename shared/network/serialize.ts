@@ -1,4 +1,4 @@
-import { encode, decode } from "@msgpack/msgpack";
+import { encode, decodeMulti } from "@msgpack/msgpack";
 import { PacketCategory } from "~/shared/core/types.js";
 
 export class Serialize {
@@ -11,6 +11,8 @@ export class Serialize {
   }
 
   static decode(bytes: Uint8Array): any {
-    return decode(bytes);
+    // decodeMulti parses sequentially. Calling .next().value grabs
+    // the first valid object and ignores the remaining padding bytes.
+    return decodeMulti(bytes).next().value;
   }
 }

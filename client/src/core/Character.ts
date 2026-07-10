@@ -23,7 +23,7 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed: number = 3.6;
+  speed: number = 2;
   sequenceId: number = 0;
 
   constructor(character: Character) {
@@ -37,4 +37,9 @@ export default class Character {
     this.position = { ...character.position };
     this.renderPosition = { ...this.position };
   }
+
+  move = (velocity: { x: number; y: number }): void => {
+    this.position.x += velocity.x;
+    this.position.y += velocity.y;
+  };
 }

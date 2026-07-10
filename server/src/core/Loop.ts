@@ -1,73 +1,62 @@
-import type { GameConfig } from "~/shared/core/types";
-
 export default class ServerLoop {
-  public tick = 0;
-  public onUpdate!: (deltaTime: number) => void;
-  public onTick!: (tick: number) => void;
-  private frameRate: number;
-  private fixedStep: number;
-  private framesPerTick: number;
-  private frameSize: number;
-  private frameTime = 0;
-  private lastTime = 0;
-  private isRunning = false;
-  private intervalId: any = null; // 🟢 Track the interval ID
+  tick: number = 0;
+  private lastTime: bigint = 0n;
+  private accumulator: number = 0; // in milliseconds
+  private isRunning: boolean = false;
+  private timeoutId: NodeJS.Timeout | null = null;
 
-  constructor(config: GameConfig) {
-    this.frameRate = config.frameRate;
-    this.frameSize = config.frameSize;
-    this.fixedStep = 1 / this.frameRate;
+  onTick!: (tick: number) => void;
 
-    const framesPerTick = Math.round(this.frameRate / config.tickRate);
-    this.framesPerTick = Math.max(1, framesPerTick);
+  private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
+
+  constructor() {
+    this.start();
   }
 
-  public start(): void {
+  start() {
     if (this.isRunning) return;
-
     this.isRunning = true;
-    this.lastTime = performance.now();
-    this.frameTime = 0;
 
-    // 🟢 Call processLoop directly and save the interval ID
-    this.intervalId = setInterval(() => this.processLoop(), 0);
+    // Grab high-resolution real time in nanoseconds
+    this.lastTime = process.hrtime.bigint();
+
+    // Start the recursive timeout loop
+    this.tickLoop();
   }
 
-  public stop(): void {
+  stop() {
     this.isRunning = false;
-
-    // 🟢 Clean up the background timer properly
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId);
     }
   }
 
-  /**
-   * Core deterministic execution logic (Mirrors client exactly)
-   */
-  private processLoop(): void {
-    if (!this.isRunning) return; // Guard clause moved here
+  private tickLoop() {
+    if (!this.isRunning) return;
 
-    const currentTime = performance.now();
-    let deltaTime = (currentTime - this.lastTime) / 1000;
+    // 1. Calculate delta time in milliseconds using BigInt arithmetic
+    const currentTime = process.hrtime.bigint();
+    // 1 millisecond = 1,000,000 nanoseconds
+    let deltaTime = Number(currentTime - this.lastTime) / 1_000_000;
     this.lastTime = currentTime;
 
-    if (deltaTime > 0.25) {
-      deltaTime = 0.25;
-    }
+    // Safety: Cap deltaTime to avoid CPU spikes if the event loop gets bogged down
+    if (deltaTime > 250) deltaTime = 250;
 
-    this.frameTime += deltaTime;
+    // 2. Add real time passed to the tick accumulator
+    this.accumulator += deltaTime;
 
-    while (this.frameTime >= this.fixedStep) {
-      this.onUpdate(this.fixedStep);
-
-      if (this.tick % this.framesPerTick === 0) {
+    // 3. Process Ticks (Fixed Timestep)
+    while (this.accumulator >= this.TICK_RATE_MS) {
+      this.tick += 1;
+      if (this.onTick) {
         this.onTick(this.tick);
       }
-
-      this.frameTime -= this.fixedStep;
-      this.tick = (this.tick + 1) % this.frameSize;
+      this.accumulator -= this.TICK_RATE_MS;
     }
+
+    // 4. Schedule the next evaluation quickly
+    // Target 1ms to ensure we catch the next 50ms mark accurately
+    this.timeoutId = setTimeout(() => this.tickLoop(), 1);
   }
 }

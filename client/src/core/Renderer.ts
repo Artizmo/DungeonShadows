@@ -124,13 +124,20 @@ export default class Renderer {
   public renderCharacter(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
+    // 1. Get the raw world coordinates
     const worldX = character.renderPosition.x * this.TILE_SIZE;
     const worldY = character.renderPosition.y * this.TILE_SIZE;
 
-    const drawX = Math.round(worldX - camera.x);
-    const drawY = Math.round(worldY - camera.y);
+    // 2. Calculate the relative position to camera
+    const relativeX = worldX - camera.x;
+    const relativeY = worldY - camera.y;
+
+    // 3. Round only at the very end for the draw call
+    const drawX = Math.round(relativeX);
+    const drawY = Math.round(relativeY);
 
     const radius = this.TILE_SIZE / 2;
+
     this.ctx.beginPath();
     this.ctx.arc(drawX + radius, drawY + radius, radius, 0, Math.PI * 2);
     this.ctx.fillStyle = "#1b4d3e"; // Background filler
