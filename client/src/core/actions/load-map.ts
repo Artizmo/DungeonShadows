@@ -7,7 +7,7 @@ export const LoadMap: ActionHandler = {
       const { chunk } = data;
       if (!chunk) return;
 
-      game.renderer.loadMap(chunk);
+      game!.renderer.loadMap(chunk);
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
     }

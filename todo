@@ -1,71 +1,67 @@
-### **Phase 1: Client Prediction (The `UPDATE` Loop @ 60Hz+)**
+### **Phase 1: Client Prediction**
 
-[x] * **1. Input Capture:** The player presses "W". Your `InputHandler` flags `keys.w = true`.
-[x] normalize position vector so that moving diagonally doesn't equate to more than 1, or moving much faster than normal.
-[x] * **2. Sequence Tagging:** The `Character` increments its internal `sequenceId` (e.g., `id: 42`).
-[x] * **3. State Storage:** The input snapshot and ID are pushed onto the end of the `pendingActions` array.
-[x] * **4. Instant Application (Prediction):** The character's local coordinates are mathematically shifted immediately. The player feels zero lag.
+[x] Capture player input and flag keys.
+[x] Normalize position vector for consistent movement speed.
+[x] Increment `sequenceId` for the character.
+[x] Store input snapshot and ID in `pendingActions`.
+[x] Apply local prediction immediately.
 
-### **Phase 2: Client Binary Transmission (The `TICK` Loop @ 20Hz)**
+### **Phase 2: Client Binary Transmission**
 
-[x] * **1. Array Polling:** The fixed network tick fires. The engine grabs all actions in `pendingActions` that haven't been broadcast yet.
-[x] * **2. Serialization:** The array data is packed into a byte array (containing the sequence ID, and the input payload).
-[x] * **3. Dispatch:** The binary buffer is flushed out through the WebSocket directly to the server.
+[x] Poll `pendingActions` for unbroadcasted inputs.
+[x] Serialize data into a byte array.
+[x] Dispatch binary buffer via WebSocket.
 
-### **Phase 3: Server Authority (Server `TICK` Loop)**
+### **Phase 3: Server Authority**
 
-[x] * **1. Deserialization:** The server receives the raw byte array, slices off the OpCode, and unpacks the FlatBuffer.
-[x] * **2. Validation:** The server checks if the move is legal (e.g., did the player move too fast? Are they running into a wall?).
-[x] * **3. State Mutation:** The server applies the "W" input to its own authoritative version of the Character.
-[x] * **4. Sequence Acknowledgment:** The server updates this player's state record with `lastProcessedId = 42`.
+[x] Deserialize incoming byte array.
+[x] Validate move legality and collisions.
+[x] Mutate state on the authoritative server.
+[x] Update player record with `lastProcessedId`.
 
-### **Phase 4: Server Binary Transmission (Server `TICK` Loop)**
+### **Phase 4: Server Binary Transmission**
 
-[x] * **1. State Serialization:** The server takes the true, newly calculated $(X, Y)$ coordinates and the `lastProcessedId: 42` and packs them into a `StateUpdate` FlatBuffer.
-[x] * **2. Broadcast:** The server blasts this tiny binary payload back down the WebSocket to the client.
+[x] Serialize current $(X, Y)$ coordinates and `lastProcessedId`.
+[x] Broadcast binary payload to the client.
 
-### **Phase 5: Server Reconciliation (Client Socket Receiver - Asynchronous)**
+### **Phase 5: Server Reconciliation**
 
-[x] * **1. Ground Truth Override:** The client unpacks the server packet and **instantly overwrites** the character's local $(X, Y)$ coordinates with the Server's $(X, Y)$ coordinates.
-[x] * **2. The $O(A)$ Pluck:** The client looks at the server's `lastProcessedId` (42). It loops through its `pendingActions` array from index 0, `.shift()`ing (removing) every action where `id <= 42`.
-[x] * **3. Re-Simulation:** If there are newer actions still sitting in `pendingActions` (like an `id: 43` where the player pressed "A" while the packet was traveling), the client rapidly re-applies that movement math on top of the new server coordinates.
+[x] Overwrite local coordinates with server's ground truth.
+[x] Pluck processed actions from `pendingActions` based on `lastProcessedId`.
+[x] Re-simulate any remaining pending actions on top of the corrected state.
 
-### **Phase 6: Client Smooth Rendering (The `UPDATE` Loop @ 60Hz+)**
+### **Phase 6: Client Smooth Rendering**
 
-[x] * **1. Camera Snap:** The camera calculates its focus offset based on the newly reconciled coordinates.
-[x] * **2. Visual Draw:** The renderer draws the background map.
-[x] * **3. Final Pixel Output:** The renderer draws the character. Because of the instant prediction and background reconciliation, the player never saw the coordinates reset—the green token just glides perfectly smoothly across the screen.
+[x] Calculate camera focus offset.
+[x] Draw background map.
+[x] Render character at reconciled coordinates.
 
-### **Phase 7: Entity Interpolation (Smooth Movements)**
+### **Phase 7: Entity Interpolation**
 
-Client prediction only covers the local player. If you snap all *other* characters to the server's snapshot every 50ms, they will stutter wildly. You must interpolate them.
+[ ] Buffer recent server snapshots.
+[ ] Define `renderTime` in the past for buffering.
+[ ] Identify snapshots bracketing the `renderTime`.
+[ ] Perform linear interpolation (Lerp) for entity positions.
 
-[ ] 1. Keep a buffer of the last few server snapshots on the client.
-[ ] 2. Determine a `renderTime` that is slightly in the past (e.g., 100ms behind [ ] current client time) to ensure you always have a snapshot "before" and "after" the render time.
-[ ] 3. In your visual `update()` loop, find the two server snapshots that bracket your `renderTime`.
-[ ] 4. Use linear interpolation (Lerp) to calculate the exact `x` and `y` for all other entities between snapshot A and snapshot B.
+### **Phase 8: Rendering & Update Loop**
 
-### **Phase 8: The Frame Rate `update()` and Canvas Renderer**
+[x] Initialize `Renderer` class with HTML `<canvas>`.
+[x] Clear canvas during `requestAnimationFrame`.
+[x] Draw map grid/tiles.
+[x] Draw local player at predicted coordinates.
+[ ] Draw entities at interpolated coordinates.
+[ ] Execute `game.update(renderDelta)` for visual effects.
 
-The `update()` loop runs via `requestAnimationFrame` and handles all visuals.
+[o] Zoning
+[o] Implement `ZoneInstance` class for local entity/terrain management.
+[ ] Abstract World Manager interface for zone-based routing.
+[ ] Convert server tick loop to $O(A)$ zone-based iteration.
+[ ] Build $O(1)$ zone handoff logic using hash map exchanges.
 
-[x] 1. Create a `Renderer` class tied to an HTML `<canvas>` element.
-[x] 2. In `requestAnimationFrame`, clear the canvas.
-[x] 3. **Draw Map:** Loop through your Zone/Map data and draw grid lines or tiles.
-[x] 4. **Draw Local Player:** Draw a circle at the local player's *predicted* `x` and `y` coordinates.
-[ ] 5. **Draw Entities:** Draw circles for NPCs and other players at their *interpolated* coordinates.
-[ ] 6. **Draw Effects:** Run `game.update(renderDelta)` to handle particle animations, fading texts, and visual-only acts.
+### **End-to-End Testing**
 
-### **Step 8: End-to-End Testing**
-
-To prove your architecture works, execute this final test path:
-
-[ ] 1. **Boot the Server:** Run your Node process. Verify it logs "Server Tick 1... 2... 3..." every 50ms.
-[ ] 2. **Boot the Client:** Open two browser windows. Verify both connect to the WebSocket and receive the initial game state.
-[ ] 3. **Visual Check:** Ensure the canvas draws a grid (your map) and two circles representing the players.
-[ ] 4. **Movement Check:** Click on Window A and press 'D'.
-* Window A's circle should move right *instantly* (Client Prediction).
-* The server should receive the input, update its state, and broadcast.
-* Window B's circle for Player A should move right *smoothly* over the next few frames (Entity Interpolation).
-
-[ ] 5. **Reconciliation Check:** Force a lag spike or a hardcoded disagreement (e.g., have the server cut movement speed in half temporarily). The local player should slightly jitter backward as it is corrected by the server, proving authority is intact.
+[ ] Verify server tick logs every 50ms.
+[ ] Verify multi-client connection and initial state sync.
+[ ] Confirm visual rendering of map and player tokens.
+[ ] Validate local prediction and remote interpolation.
+[ ] Perform reconciliation check by forcing server-side disagreement.
