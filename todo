@@ -21,20 +21,20 @@
 
 ### **Phase 4: Server Binary Transmission (Server `TICK` Loop)**
 
-[ ] * **1. State Serialization:** The server takes the true, newly calculated $(X, Y)$ coordinates and the `lastProcessedId: 42` and packs them into a `StateUpdate` FlatBuffer.
-[ ] * **2. Broadcast:** The server blasts this tiny binary payload back down the WebSocket to the client.
+[x] * **1. State Serialization:** The server takes the true, newly calculated $(X, Y)$ coordinates and the `lastProcessedId: 42` and packs them into a `StateUpdate` FlatBuffer.
+[x] * **2. Broadcast:** The server blasts this tiny binary payload back down the WebSocket to the client.
 
 ### **Phase 5: Server Reconciliation (Client Socket Receiver - Asynchronous)**
 
-[ ] * **1. Ground Truth Override:** The client unpacks the server packet and **instantly overwrites** the character's local $(X, Y)$ coordinates with the Server's $(X, Y)$ coordinates.
-[ ] * **2. The $O(A)$ Pluck:** The client looks at the server's `lastProcessedId` (42). It loops through its `pendingActions` array from index 0, `.shift()`ing (removing) every action where `id <= 42`.
-[ ] * **3. Re-Simulation:** If there are newer actions still sitting in `pendingActions` (like an `id: 43` where the player pressed "A" while the packet was traveling), the client rapidly re-applies that movement math on top of the new server coordinates.
+[x] * **1. Ground Truth Override:** The client unpacks the server packet and **instantly overwrites** the character's local $(X, Y)$ coordinates with the Server's $(X, Y)$ coordinates.
+[x] * **2. The $O(A)$ Pluck:** The client looks at the server's `lastProcessedId` (42). It loops through its `pendingActions` array from index 0, `.shift()`ing (removing) every action where `id <= 42`.
+[x] * **3. Re-Simulation:** If there are newer actions still sitting in `pendingActions` (like an `id: 43` where the player pressed "A" while the packet was traveling), the client rapidly re-applies that movement math on top of the new server coordinates.
 
 ### **Phase 6: Client Smooth Rendering (The `UPDATE` Loop @ 60Hz+)**
 
-[ ] * **1. Camera Snap:** The camera calculates its focus offset based on the newly reconciled coordinates.
-[ ] * **2. Visual Draw:** The renderer draws the background map.
-[ ] * **3. Final Pixel Output:** The renderer draws the character. Because of the instant prediction and background reconciliation, the player never saw the coordinates reset—the green token just glides perfectly smoothly across the screen.
+[x] * **1. Camera Snap:** The camera calculates its focus offset based on the newly reconciled coordinates.
+[x] * **2. Visual Draw:** The renderer draws the background map.
+[x] * **3. Final Pixel Output:** The renderer draws the character. Because of the instant prediction and background reconciliation, the player never saw the coordinates reset—the green token just glides perfectly smoothly across the screen.
 
 ### **Phase 7: Entity Interpolation (Smooth Movements)**
 
@@ -49,10 +49,10 @@ Client prediction only covers the local player. If you snap all *other* characte
 
 The `update()` loop runs via `requestAnimationFrame` and handles all visuals.
 
-[ ] 1. Create a `Renderer` class tied to an HTML `<canvas>` element.
-[ ] 2. In `requestAnimationFrame`, clear the canvas.
-[ ] 3. **Draw Map:** Loop through your Zone/Map data and draw grid lines or tiles.
-[ ] 4. **Draw Local Player:** Draw a circle at the local player's *predicted* `x` and `y` coordinates.
+[x] 1. Create a `Renderer` class tied to an HTML `<canvas>` element.
+[x] 2. In `requestAnimationFrame`, clear the canvas.
+[x] 3. **Draw Map:** Loop through your Zone/Map data and draw grid lines or tiles.
+[x] 4. **Draw Local Player:** Draw a circle at the local player's *predicted* `x` and `y` coordinates.
 [ ] 5. **Draw Entities:** Draw circles for NPCs and other players at their *interpolated* coordinates.
 [ ] 6. **Draw Effects:** Run `game.update(renderDelta)` to handle particle animations, fading texts, and visual-only acts.
 

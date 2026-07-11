@@ -9,10 +9,17 @@ interface CredentialFormManagerProps {
 export default function CredentialFormManager({
   onAuthSuccess,
 }: CredentialFormManagerProps) {
-  const [email, setEmail] = useState("luke.skywalker@tatooine.net");
-  const [password, setPassword] = useState("password123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper to quickly fill standard accounts
+  const handleSelectProfile = (selectedEmail: string) => {
+    setEmail(selectedEmail);
+    setPassword("password123");
+    setErrorMessage(null);
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +67,41 @@ export default function CredentialFormManager({
       noValidate
       className="space-y-5 relative"
     >
+      {/* 🟢 Quick Login Profile Toggles */}
+      <div>
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+          Quick Access Profiles
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => handleSelectProfile("luke.skywalker@tatooine.net")}
+            className={`px-3 py-2 text-xs font-semibold rounded-lg border transition ${
+              email === "luke.skywalker@tatooine.net"
+                ? "bg-indigo-950 border-indigo-500 text-indigo-300"
+                : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"
+            }`}
+          >
+            ☀️ Luke Skywalker
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => handleSelectProfile("han.solo@smugglers.org")}
+            className={`px-3 py-2 text-xs font-semibold rounded-lg border transition ${
+              email === "han.solo@smugglers.org"
+                ? "bg-indigo-950 border-indigo-500 text-indigo-300"
+                : "bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700"
+            }`}
+          >
+            🚀 Han Solo
+          </button>
+        </div>
+      </div>
+
+      <hr className="border-slate-800/60 my-2" />
+
       <div>
         <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">
           Email Address

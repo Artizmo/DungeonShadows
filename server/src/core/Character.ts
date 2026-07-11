@@ -18,7 +18,7 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed = 5;
+  speed = 1;
   sequenceId = 0;
   lastProcessedSequenceId = 0;
 
@@ -33,6 +33,7 @@ export default class Character {
     this.position = { ...character.position };
     this.prevPosition = { ...character.position };
     this.renderPosition = { ...this.position };
+    this.speed = character.speed;
   }
 
   tick(): void {

@@ -12,9 +12,9 @@ export const playersData = new Map<number, PlayerRecord>([
     2,
     {
       id: 2,
-      firstName: "Leia",
-      lastName: "Organa",
-      email: "leia.organa@alderaan.gov",
+      firstName: "Han",
+      lastName: "Solo",
+      email: "han.solo@smugglers.org",
     },
   ],
   [
@@ -26,69 +26,6 @@ export const playersData = new Map<number, PlayerRecord>([
       email: "selvaggio@smugglers.org",
     },
   ],
-  [
-    4,
-    {
-      id: 4,
-      firstName: "Lando",
-      lastName: "Calrissian",
-      email: "lando.c@cloudcity.io",
-    },
-  ],
-  [
-    5,
-    {
-      id: 5,
-      firstName: "Obi-Wan",
-      lastName: "Kenobi",
-      email: "ben.kenobi@jediorder.org",
-    },
-  ],
-  [
-    6,
-    {
-      id: 6,
-      firstName: "Mace",
-      lastName: "Windu",
-      email: "mace.windu@jedi-council.org",
-    },
-  ],
-  [
-    7,
-    {
-      id: 7,
-      firstName: "Ahsoka",
-      lastName: "Tano",
-      email: "snips@fulcrum.net",
-    },
-  ],
-  [
-    8,
-    {
-      id: 8,
-      firstName: "Din",
-      lastName: "Djarin",
-      email: "mando@bountyhunters.guild",
-    },
-  ],
-  [
-    9,
-    {
-      id: 9,
-      firstName: "Boba",
-      lastName: "Fett",
-      email: "boba.fett@kamino.com",
-    },
-  ],
-  [
-    10,
-    {
-      id: 10,
-      firstName: "Cassian",
-      lastName: "Andor",
-      email: "c.andor@rebellion.agency",
-    },
-  ],
 ]);
 
 export const charactersData = new Map<number, CharacterRecord>([
@@ -96,7 +33,7 @@ export const charactersData = new Map<number, CharacterRecord>([
     456,
     {
       id: 456,
-      playerId: 3,
+      playerId: 2,
       name: "Brytagg, the Grim",
       isDead: false,
       inventory: ["rusty_dagger", "health_potion"],
@@ -120,7 +57,7 @@ export const charactersData = new Map<number, CharacterRecord>([
     458,
     {
       id: 458,
-      playerId: 7,
+      playerId: 3,
       name: "Thorgar Ironbreaker",
       isDead: false,
       inventory: ["iron_axe", "ale"],

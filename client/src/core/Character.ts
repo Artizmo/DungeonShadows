@@ -19,7 +19,7 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed: number = 5;
+  speed = 1;
   sequenceId: number = 0;
   isMoving: boolean = false;
 
@@ -34,6 +34,7 @@ export default class Character {
     this.position = { ...character.position };
     this.prevPosition = { ...character.position };
     this.renderPosition = { ...this.position };
+    this.speed = character.speed;
   }
 
   tick(tick: number) {
