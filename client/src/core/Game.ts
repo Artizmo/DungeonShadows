@@ -67,15 +67,24 @@ export default class Game {
     if (!this.world.character) return;
 
     const { character } = this.world;
+    // 🟢 Decay the visual offset by ~15% per frame (or use exponential decay based on deltaTime)
+    character.visualOffset.x *= 0.85;
+    character.visualOffset.y *= 0.85;
 
-    // Strict linear interpolation: P_render = P_prev + (P_current - P_prev) * alpha
-    character.renderPosition.x =
+    // Flush small floating point dust to zero
+    if (Math.abs(character.visualOffset.x) < 0.01) character.visualOffset.x = 0;
+    if (Math.abs(character.visualOffset.y) < 0.01) character.visualOffset.y = 0;
+
+    // 🟢 Calculate final render position: standard LERP + decaying error offset
+    const lerpX =
       character.prevPosition.x +
       (character.position.x - character.prevPosition.x) * alpha;
-
-    character.renderPosition.y =
+    const lerpY =
       character.prevPosition.y +
       (character.position.y - character.prevPosition.y) * alpha;
+
+    character.renderPosition.x = lerpX + character.visualOffset.x;
+    character.renderPosition.y = lerpY + character.visualOffset.y;
 
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(character, this.camera);
@@ -110,41 +119,54 @@ export default class Game {
     const { character } = this.world;
     if (!character) return;
 
-    // 1. Teleport local character to the absolute authoritative position
-    character.position.x = serverData.playerState.x;
-    character.position.y = serverData.playerState.y;
-
-    // 🟢 CRITICAL: Snap prevPosition so the LERP doesn't glitch!
-    character.prevPosition.x = serverData.playerState.x;
-    character.prevPosition.y = serverData.playerState.y;
-
-    // 2. Drop all inputs that the server has already acknowledged and processed
+    // 1. Drop all inputs that the server has already acknowledged and processed
     this.inputHistory = this.inputHistory.filter(
       (input) => input.sequenceId > serverData.lastProcessedSequenceId,
     );
 
-    // Cap history size just in case network synchronization stretches or drops out completely
     const MAX_HISTORY_TICKS = 100;
     if (this.inputHistory.length > MAX_HISTORY_TICKS) {
-      this.inputHistory = this.inputHistory.slice(-MAX_HISTORY_TICKS);
+      this.inputHistory = this.inputHistory.slice(-MAX_HISTORY_TICKS); //
     }
 
-    // 3. REPLAY all inputs that are still outstanding (not yet processed by server)
-    for (const savedInput of this.inputHistory) {
-      const FIXED_DELTA = 1 / 20; // Ensure this matches your server tickrate perfectly
+    // 2. 🟢 CACHE ORIGINAL PREDICTION STATES
+    // Capture where the renderer currently thinks we are before any coordinate modifications
+    const oldPredictedX = character.position.x;
+    const oldPredictedY = character.position.y;
 
-      // Reconstruction of the simulation parameters for each history frame
+    // 3. Teleport local character to the absolute authoritative server baseline
+    character.position.x = serverData.playerState.x;
+    character.position.y = serverData.playerState.y;
+
+    // 4. REPLAY all inputs that are still outstanding (not yet processed by server)
+    for (const savedInput of this.inputHistory) {
+      const FIXED_DELTA = 1 / 20;
+
       const dataContext = {
         activeCommands: savedInput.activeCommands,
         speed: character.speed,
         deltaTime: FIXED_DELTA,
       };
 
-      // Re-run the movement action locally on top of the server baseline
-      const handler = ActionRegistry.get(ActionType.MOVE); // Ensure this maps to your Move registry key
+      const handler = ActionRegistry.get(ActionType.MOVE);
       if (handler) {
         handler.execute({ data: dataContext, character, game: this });
       }
+    }
+
+    // 5. 🟢 VISUAL ERROR ABSORPTION
+    // Calculate how far the server correction shifted our physical body
+    const shiftX = oldPredictedX - character.position.x;
+    const shiftY = oldPredictedY - character.position.y;
+
+    // Add that exact shift into our visual offset so the rendered sprite does not move an inch!
+    if (Math.abs(shiftX) < 32 && Math.abs(shiftY) < 32) {
+      character.visualOffset.x += shiftX;
+      character.visualOffset.y += shiftY;
+    } else {
+      // Emergency snap if desync is massive (e.g., teleported or respawned)
+      character.visualOffset.x = 0;
+      character.visualOffset.y = 0;
     }
   }
 
@@ -174,8 +196,6 @@ export default class Game {
       const actionType = actionDictionary[type];
       if (actionType) actionTypeQueue.add(actionType);
     }
-
-    if (this.activeCommands.size === 0) return;
 
     this.sequenceId++;
 

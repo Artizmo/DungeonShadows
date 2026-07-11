@@ -18,7 +18,7 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed = 2;
+  speed = 5;
   sequenceId = 0;
   lastProcessedSequenceId = 0;
 

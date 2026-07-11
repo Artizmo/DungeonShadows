@@ -46,8 +46,8 @@ export const Move: ActionHandler = {
       // 🟢 The Golden Formula: Direction * Time Slice * Real Speed Value
       // If speed = 300 and deltaTime = 1/60, this returns exactly 5 pixels per tick.
       return {
-        x: dx * deltaTime * speed * 3.1,
-        y: dy * deltaTime * speed * 3.1,
+        x: dx * deltaTime * speed,
+        y: dy * deltaTime * speed,
       };
     } catch (error) {
       Log.DATA.ERROR(`Could not run physics for move action: ${error}.`);

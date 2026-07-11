@@ -10,6 +10,7 @@ export default class Character {
   position: { x: number; y: number }; // The authoritative physics state
   prevPosition: { x: number; y: number }; // For the renderer to interpolate FROM
   renderPosition: { x: number; y: number }; // The fake visual camera target
+  visualOffset: { x: number; y: number } = { x: 0, y: 0 };
   stats: {
     hp: number;
     maxHp: number;
@@ -18,7 +19,7 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed: number = 1.5;
+  speed: number = 5;
   sequenceId: number = 0;
   isMoving: boolean = false;
 
