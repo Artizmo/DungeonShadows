@@ -8,16 +8,16 @@
 
 ### **Phase 2: Client Binary Transmission (The `TICK` Loop @ 20Hz)**
 
-[ ] * **1. Array Polling:** The fixed network tick fires. The engine grabs all actions in `pendingActions` that haven't been broadcast yet.
-[ ] * **2. Serialization:** The array data is packed into a `PlayerInput` FlatBuffer byte array (containing the OpCode, the sequence ID, and the input payload).
-[ ] * **3. Dispatch:** The binary buffer is flushed out through the WebSocket directly to the server.
+[x] * **1. Array Polling:** The fixed network tick fires. The engine grabs all actions in `pendingActions` that haven't been broadcast yet.
+[x] * **2. Serialization:** The array data is packed into a byte array (containing the sequence ID, and the input payload).
+[x] * **3. Dispatch:** The binary buffer is flushed out through the WebSocket directly to the server.
 
 ### **Phase 3: Server Authority (Server `TICK` Loop)**
 
-[ ] * **1. Deserialization:** The server receives the raw byte array, slices off the OpCode, and unpacks the FlatBuffer.
-[ ] * **2. Validation:** The server checks if the move is legal (e.g., did the player move too fast? Are they running into a wall?).
-[ ] * **3. State Mutation:** The server applies the "W" input to its own authoritative version of the Character.
-[ ] * **4. Sequence Acknowledgment:** The server updates this player's state record with `lastProcessedId = 42`.
+[x] * **1. Deserialization:** The server receives the raw byte array, slices off the OpCode, and unpacks the FlatBuffer.
+[x] * **2. Validation:** The server checks if the move is legal (e.g., did the player move too fast? Are they running into a wall?).
+[x] * **3. State Mutation:** The server applies the "W" input to its own authoritative version of the Character.
+[x] * **4. Sequence Acknowledgment:** The server updates this player's state record with `lastProcessedId = 42`.
 
 ### **Phase 4: Server Binary Transmission (Server `TICK` Loop)**
 

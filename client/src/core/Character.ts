@@ -10,6 +10,7 @@ export default class Character {
   position: { x: number; y: number }; // The authoritative physics state
   prevPosition: { x: number; y: number }; // For the renderer to interpolate FROM
   renderPosition: { x: number; y: number }; // The fake visual camera target
+  visualOffset: { x: number; y: number } = { x: 0, y: 0 };
   stats: {
     hp: number;
     maxHp: number;
@@ -18,8 +19,9 @@ export default class Character {
   };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
-  speed: number = 2;
+  speed: number = 5;
   sequenceId: number = 0;
+  isMoving: boolean = false;
 
   constructor(character: Character) {
     this.id = character.id;
@@ -37,12 +39,11 @@ export default class Character {
   tick(tick: number) {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
+    this.isMoving = false;
   }
 
   move(velocity: { x: number; y: number }): void {
-    this.prevPosition.x = this.position.x;
-    this.prevPosition.y = this.position.y;
-
+    this.isMoving = true;
     this.position.x += velocity.x;
     this.position.y += velocity.y;
   }

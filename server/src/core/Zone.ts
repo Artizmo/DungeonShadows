@@ -4,7 +4,7 @@ export default class Zone {
   mapName: string;
   characterIds: Set<string>;
 
-  constructor(id: string, areaId: string, mapName: string) {
+  constructor({ id, areaId, mapName }) {
     this.id = id;
     this.areaId = areaId;
     this.mapName = mapName;

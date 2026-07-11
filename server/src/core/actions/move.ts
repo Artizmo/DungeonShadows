@@ -1,6 +1,6 @@
 import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/actions/types";
-import { CommandType } from "../commands";
+import { CommandType } from "~/core/actions/types";
 
 export interface Coords {
   x: number;

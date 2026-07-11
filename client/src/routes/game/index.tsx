@@ -27,7 +27,7 @@ export const Route = createFileRoute("/game/")({
     }
 
     console.log("🎯 Valid token acquired. Igniting engine core logic streams.");
-    await game.start(ticket);
+    game.start(ticket);
 
     // Catch hooks up to fresh data on refresh
     game.events.emit("character_update");

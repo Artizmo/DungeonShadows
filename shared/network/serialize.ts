@@ -2,11 +2,15 @@ import { encode, decodeMulti } from "@msgpack/msgpack";
 import { PacketCategory } from "~/shared/core/types.js";
 
 export class Serialize {
-  static serializeAction(data: any): Uint8Array {
+  static data(data: any): Uint8Array {
+    return encode({ ...data });
+  }
+
+  static action(data: any): Uint8Array {
     return encode({ category: PacketCategory.ACTION, ...data });
   }
 
-  static serializeSnapshot(data: any): Uint8Array {
+  static snapshot(data: any): Uint8Array {
     return encode({ category: PacketCategory.SNAPSHOT, ...data });
   }
 
