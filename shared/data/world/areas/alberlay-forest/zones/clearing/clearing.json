@@ -1,0 +1,14 @@
+{
+    "id": "clearing:alberlay-forest",
+    "areaId": "alberlay-forest",
+    "name": "The Clearing",
+    "map": {
+        "file": "clearing.webp",
+        "width": 4032,
+        "height": 3024,
+        "totalChunks": 192,
+        "lastProcessedDate": "2026-07-14T02:38:45.567Z"
+    },
+    "colliders": [],
+    "items": []
+}

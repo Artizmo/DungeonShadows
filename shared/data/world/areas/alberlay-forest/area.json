@@ -1,0 +1,11 @@
+{
+  "id": "alberlay-forest",
+  "name": "Alberlay Forest",
+  "description": "The forest on the outskirts of Sephus.",
+  "zones": [
+    {
+      "id": "clearing:alberlay-forest",
+      "zonePath": "./zones/clearing.json"
+    }
+  ]
+}

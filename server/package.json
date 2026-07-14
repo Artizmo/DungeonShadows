@@ -4,6 +4,7 @@
   "description": "Dungeon Shadows server",
   "scripts": {
     "start": "tsx ./src/main.ts",
+    "preprocess": "tsx ./src/preprocess.ts",
     "dev": "tsx watch --ignore ./src/data/saved/ ./src/main.ts"
   },
   "author": "",

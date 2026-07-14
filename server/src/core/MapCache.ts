@@ -54,6 +54,31 @@ export default class MapCache {
   }
 
   /**
+   * 1.5. O(1) Key-Based Chunk Reader
+   * Fetches only the single, specific coordinate slice needed for AOI loading
+   */
+  public async getChunk(
+    zone: Zone,
+    chunkKey: string,
+  ): Promise<PreChunkedMap | undefined> {
+    let entry = this.cache.get(zone.id);
+
+    // 🟢 Cache Miss: Load and slice the entire zone if it's not already in memory
+    if (!entry) {
+      Log.DATA.INFO(
+        `🔍 Zone ${zone.id} cache miss for chunk [${chunkKey}]. Loading full map...`,
+      );
+      await this.fetchZone(zone);
+      entry = this.cache.get(zone.id);
+    }
+
+    if (!entry) return undefined;
+
+    entry.lastAccessed = Date.now(); // Reset inactivity timer
+    return entry.chunks.get(chunkKey); // O(1) direct bucket lookup
+  }
+
+  /**
    * 2. The Heavy Lifting (Slicing raw file bytes)
    */
   private async fetchZone(zone: Zone): Promise<void> {

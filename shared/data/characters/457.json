@@ -19,7 +19,7 @@
     "mana": 150,
     "maxMana": 150
   },
-  "speed": 5,
+  "speed": 2.5,
   "inventory": [],
   "updatedAt": "2026-06-12T03:52:39.844Z"
 }
