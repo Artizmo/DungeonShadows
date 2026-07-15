@@ -3,11 +3,11 @@
     "areaId": "sephus",
     "name": "Arena",
     "map": {
-        "width": 10000,
-        "height": 3197,
-        "file": "test.webp",
-        "totalChunks": 1040,
-        "lastProcessedDate": "2026-07-15T05:24:10.358Z"
+        "width": 2950,
+        "height": 1320,
+        "file": "arena.webp",
+        "totalChunks": 144,
+        "lastProcessedDate": "2026-07-15T15:45:25.298Z"
     },
     "colliders": [
         {

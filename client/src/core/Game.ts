@@ -67,24 +67,11 @@ export default class Game {
     if (!this.world.character) return;
 
     const { character } = this.world;
-    // 🟢 Decay the visual offset by ~15% per frame (or use exponential decay based on deltaTime)
-    character.visualOffset.x *= 0.85;
-    character.visualOffset.y *= 0.85;
+    const { position, prevPosition, renderPosition } = character;
 
-    // Flush small floating point dust to zero
-    if (Math.abs(character.visualOffset.x) < 0.01) character.visualOffset.x = 0;
-    if (Math.abs(character.visualOffset.y) < 0.01) character.visualOffset.y = 0;
-
-    // 🟢 Calculate final render position: standard LERP + decaying error offset
-    const lerpX =
-      character.prevPosition.x +
-      (character.position.x - character.prevPosition.x) * alpha;
-    const lerpY =
-      character.prevPosition.y +
-      (character.position.y - character.prevPosition.y) * alpha;
-
-    character.renderPosition.x = lerpX + character.visualOffset.x;
-    character.renderPosition.y = lerpY + character.visualOffset.y;
+    // 🟢 Calculate final render position: standard LERP
+    renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
+    renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
 
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(character, this.camera);
@@ -116,8 +103,9 @@ export default class Game {
   }
 
   private handleServerReconciliation(serverData: any): void {
+    if (!this.world.character) return;
+
     const { character } = this.world;
-    if (!character) return;
 
     // 1. Drop all inputs that the server has already acknowledged and processed
     this.inputHistory = this.inputHistory.filter(
@@ -138,6 +126,7 @@ export default class Game {
     character.position.x = serverData.playerState.x;
     character.position.y = serverData.playerState.y;
 
+    console.log("bingo", serverData);
     // 4. REPLAY all inputs that are still outstanding (not yet processed by server)
     for (const savedInput of this.inputHistory) {
       const FIXED_DELTA = 1 / 20;
