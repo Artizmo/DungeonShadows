@@ -5,7 +5,7 @@
   "zones": [
     {
       "id": "clearing:alberlay-forest",
-      "zonePath": "./zones/clearing.json"
+      "zonePath": "clearing/clearing.json"
     }
   ]
 }

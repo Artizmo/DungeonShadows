@@ -35,7 +35,7 @@ export default class Game {
     });
   }
 
-  tick(tick: number) {
+  async tick(tick: number) {
     // Track who actually needs an update this tick (optional optimization)
     const activePlayersThisTick = new Set<Character>();
 
@@ -58,7 +58,7 @@ export default class Game {
 
           const FIXED_DELTA = 1 / 20;
 
-          handler.execute({
+          await handler.execute({
             data: {
               activeCommands: new Set(data.activeCommands),
               speed: character.speed,
@@ -86,8 +86,8 @@ export default class Game {
     this.network.packetQueue = [];
   }
 
-  onNewConnection(playerCharacter: Character): void {
+  async onNewConnection(playerCharacter: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.JOIN);
-    if (handler) handler.execute({ data: playerCharacter, game: this });
+    if (handler) await handler.execute({ data: playerCharacter, game: this });
   }
 }

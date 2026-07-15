@@ -28,7 +28,7 @@ async function chunkImage(inputImagePath, outputDir) {
       },
     })
       .composite([{ input: inputImagePath, top, left }])
-      .toFile(path.join(outputDir, "chunk_0_0.png"));
+      .toFile(path.join(outputDir, "0_0.webp"));
 
     chunkPromises.push(promise);
   } else {
@@ -37,11 +37,33 @@ async function chunkImage(inputImagePath, outputDir) {
         const chunkWidth = Math.min(CHUNK_SIZE, width - x);
         const chunkHeight = Math.min(CHUNK_SIZE, height - y);
 
-        // Fire off the operation, but DO NOT await it here
+        // 🟢 Convert pixel offset to Grid Index (0, 1, 2...)
+        const gridX = x / CHUNK_SIZE;
+        const gridY = y / CHUNK_SIZE;
+
+        // 🟢 Save using grid coordinates (e.g., "0_1.webp")
         const promise = image
           .clone()
           .extract({ left: x, top: y, width: chunkWidth, height: chunkHeight })
-          .toFile(path.join(outputDir, `chunk_${y}_${x}.png`));
+          .toFile(path.join(outputDir, `${gridX}_${gridY}.webp`));
+
+        chunkPromises.push(promise);
+      }
+    }
+    for (let y = 0; y < height; y += CHUNK_SIZE) {
+      for (let x = 0; x < width; x += CHUNK_SIZE) {
+        const chunkWidth = Math.min(CHUNK_SIZE, width - x);
+        const chunkHeight = Math.min(CHUNK_SIZE, height - y);
+
+        // 🟢 Convert pixel offset to Grid Index (0, 1, 2...)
+        const gridX = x / CHUNK_SIZE;
+        const gridY = y / CHUNK_SIZE;
+
+        // 🟢 Save using grid coordinates (e.g., "0_1.webp")
+        const promise = image
+          .clone()
+          .extract({ left: x, top: y, width: chunkWidth, height: chunkHeight })
+          .toFile(path.join(outputDir, `${gridX}_${gridY}.webp`));
 
         chunkPromises.push(promise);
       }

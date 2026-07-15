@@ -11,19 +11,18 @@ export interface ICamera {
   y: number;
 }
 
-// 🟢 Pre-define the structure for cached textures
 interface IChunkTexture {
   x: number;
   y: number;
   img: HTMLImageElement;
+  loaded: boolean;
 }
 
 export default class Renderer {
   canvas: HTMLCanvasElement | null = null;
   ctx: CanvasRenderingContext2D | null = null;
-  readonly TILE_SIZE = 32;
+  private readonly CHUNK_SIZE = 256;
   private chunkTextures: Map<string, IChunkTexture> = new Map();
-  private chunkSize: number = 0;
 
   private readonly MAX_WIDTH = 1920;
   private readonly MAX_HEIGHT = 896;
@@ -45,77 +44,75 @@ export default class Renderer {
     const clampedWidth = Math.min(browserWidth, this.MAX_WIDTH);
     const clampedHeight = Math.min(browserHeight, this.MAX_HEIGHT);
 
-    const snappedWidth =
-      Math.floor(clampedWidth / this.TILE_SIZE) * this.TILE_SIZE;
-    const snappedHeight =
-      Math.floor(clampedHeight / this.TILE_SIZE) * this.TILE_SIZE;
-
-    this.canvas.width = snappedWidth;
-    this.canvas.height = snappedHeight;
+    this.canvas.width = clampedWidth;
+    this.canvas.height = clampedHeight;
 
     if (this.ctx) {
       this.ctx.imageSmoothingEnabled = false;
     }
   }
 
-  public loadMap(chunk: IMapChunk) {
-    const chunkKey = `${chunk.x}_${chunk.y}`;
-    if (this.chunkTextures.has(chunkKey)) return;
+  public loadMap(chunks: IMapChunk[]): void {
+    if (!chunks || !Array.isArray(chunks)) return;
 
-    // Convert Uint8Array to binary string
-    let binary = "";
-    const len = chunk.textureBytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(chunk.textureBytes[i]);
-    }
-    const base64 = btoa(binary);
+    for (const chunk of chunks) {
+      const chunkKey = `${chunk.x}_${chunk.y}`;
+      if (this.chunkTextures.has(chunkKey)) continue;
 
-    const img = new Image();
-    img.src = `data:image/webp;base64,${base64}`;
-
-    img.onload = () => {
-      if (this.chunkSize === 0 && img.width > 0) this.chunkSize = img.width;
-
-      this.chunkTextures.set(chunkKey, {
+      const img = new Image();
+      const textureEntry: IChunkTexture = {
         x: chunk.x,
         y: chunk.y,
         img: img,
-      });
-    };
+        loaded: false,
+      };
+
+      this.chunkTextures.set(chunkKey, textureEntry);
+
+      const blob = new Blob([chunk.textureBytes], { type: "image/webp" });
+      const url = URL.createObjectURL(blob);
+
+      img.onload = () => {
+        textureEntry.loaded = true;
+        URL.revokeObjectURL(url);
+      };
+
+      img.onerror = (err) => {
+        console.error(`❌ Failed to decode map chunk [${chunkKey}]:`, err);
+        this.chunkTextures.delete(chunkKey);
+      };
+
+      img.src = url;
+    }
   }
 
   public render(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
-    // 1. Clear the screen with the background color
     this.ctx.fillStyle = "#11111b";
     this.ctx.fillRect(0, 0, this.width, this.height);
 
-    // 2. Snap camera to integers to prevent sub-pixel shimmering
     const camX = Math.round(camera.x);
     const camY = Math.round(camera.y);
 
-    // 3. Render map chunks (Only if they are ready)
-    if (this.chunkSize > 0) {
-      // Un-commented chunk loop so the background actually draws
-      for (const chunk of this.chunkTextures.values()) {
-        const drawX = chunk.x * this.chunkSize - camX;
-        const drawY = chunk.y * this.chunkSize - camY;
+    for (const chunk of this.chunkTextures.values()) {
+      if (!chunk.loaded) continue;
 
-        if (
-          drawX + chunk.img.width < 0 ||
-          drawY + chunk.img.height < 0 ||
-          drawX > this.width ||
-          drawY > this.height
-        ) {
-          continue;
-        }
+      const drawX = chunk.x * this.CHUNK_SIZE - camX;
+      const drawY = chunk.y * this.CHUNK_SIZE - camY;
 
-        this.ctx.drawImage(chunk.img, drawX, drawY);
+      if (
+        drawX + this.CHUNK_SIZE < 0 ||
+        drawY + this.CHUNK_SIZE < 0 ||
+        drawX > this.width ||
+        drawY > this.height
+      ) {
+        continue;
       }
+
+      this.ctx.drawImage(chunk.img, drawX, drawY);
     }
 
-    // 4. Render the character LAST so they appear on top of the world map
     if (character) {
       this.renderCharacter(character, camera);
     }
@@ -124,23 +121,23 @@ export default class Renderer {
   public renderCharacter(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
-    // 1. Get the raw world coordinates
-    const worldX = character.renderPosition.x * this.TILE_SIZE;
-    const worldY = character.renderPosition.y * this.TILE_SIZE;
+    // 🟢 NO CHARACTER_WIDTH MULTIPLIERS: Positions are treated as raw world pixels
+    const worldX = character.renderPosition.x;
+    const worldY = character.renderPosition.y;
 
-    // 2. Calculate the relative position to camera
     const relativeX = worldX - camera.x;
     const relativeY = worldY - camera.y;
 
-    // 3. Round only at the very end for the draw call
     const drawX = Math.round(relativeX);
     const drawY = Math.round(relativeY);
 
-    const radius = this.TILE_SIZE / 2;
+    // Hardcode a clean visual radius for the character sprite circle (e.g., 16px radius)
+    const radius = 16;
 
     this.ctx.beginPath();
-    this.ctx.arc(drawX + radius, drawY + radius, radius, 0, Math.PI * 2);
-    this.ctx.fillStyle = "#1b4d3e"; // Background filler
+    // 🟢 Center the arc directly on drawX/drawY instead of throwing in visual cell padding
+    this.ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
+    this.ctx.fillStyle = "#1b4d3e";
     this.ctx.fill();
     this.ctx.strokeStyle = "#ffffff";
     this.ctx.stroke();

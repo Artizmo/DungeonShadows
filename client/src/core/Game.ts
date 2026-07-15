@@ -124,7 +124,7 @@ export default class Game {
       (input) => input.sequenceId > serverData.lastProcessedSequenceId,
     );
 
-    const MAX_HISTORY_TICKS = 100;
+    const MAX_HISTORY_TICKS = 10;
     if (this.inputHistory.length > MAX_HISTORY_TICKS) {
       this.inputHistory = this.inputHistory.slice(-MAX_HISTORY_TICKS); //
     }

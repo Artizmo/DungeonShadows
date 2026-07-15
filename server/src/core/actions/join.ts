@@ -16,31 +16,36 @@ export const Join: ActionHandler = {
       ]);
       const player = new Player(playerData);
       Log.NETWORK.INFO(`${player.fullName} has connected!`);
+
+      characterData.camera = data.camera;
       const character = new Character(characterData);
+
+      // todo: pass camera data from client
       character.playerId = player.id;
       game.world.add(character);
 
-      const packet = Serialize.data({
-        serverTick: game.loop.tick,
-        actionType: ActionType.JOIN,
-        character,
-      });
-      game.network.broadcast.sendTo(character.id, packet);
-
-      // 🟢 Send MAP_CHUNK data from cache
-      const mapChunks = await game.world.mapCache.getZoneMapChunks(
-        character.zone,
+      game.network.broadcast.sendTo(
+        character.id,
+        Serialize.data({
+          serverTick: game.loop.tick,
+          actionType: ActionType.JOIN,
+          character,
+        }),
       );
 
-      for (const chunk of mapChunks) {
-        const packet = Serialize.data({
+      const { toLoadChunks, toUnloadKeys } =
+        await game.world.handleCharacterSpatialUpdate(character);
+      console.log("bingo toLoadChunks", toLoadChunks, toUnloadKeys);
+
+      game.network.broadcast.sendTo(
+        character.id,
+        Serialize.data({
           serverTick: game.loop.tick,
           actionType: ActionType.LOAD_MAP,
           characterId: character.id,
-          chunk,
-        });
-        game.network.broadcast.sendTo(character.id, packet);
-      }
+          chunks: toLoadChunks,
+        }),
+      );
     } catch (error) {
       Log.DATA.ERROR(`Could not load server data: ${error}`);
     }

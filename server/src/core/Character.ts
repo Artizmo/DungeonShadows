@@ -7,22 +7,30 @@ export default class Character {
   name: string;
   level: number;
   zone: Zone;
-  position: { x: number; y: number }; // The authoritative physics state
-  prevPosition: { x: number; y: number }; // For the renderer to interpolate FROM
-  renderPosition: { x: number; y: number }; // The fake visual camera target
-  stats: {
-    hp: number;
-    maxHp: number;
-    mana: number;
-    maxMana: number;
+  camera: {
+    width: number;
+    height: number;
+    readonly minX: number;
+    readonly maxX: number;
+    readonly minY: number;
+    readonly maxY: number;
   };
+  position: { x: number; y: number };
+  prevPosition: { x: number; y: number };
+  renderPosition: { x: number; y: number };
+  stats: { hp: number; maxHp: number; mana: number; maxMana: number };
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
   speed = 1;
   sequenceId = 0;
   lastProcessedSequenceId = 0;
 
+  // 🟢 Track active chunks currently loaded on the client side
+  public activeAOI: Set<string> = new Set();
+  public currentBucketKey: string | null = null;
+
   constructor(character: Character) {
+    console.log("bingo zone", character.zone);
     this.id = character.id;
     this.playerId = character.playerId;
     this.name = character.name;
@@ -34,6 +42,30 @@ export default class Character {
     this.prevPosition = { ...character.position };
     this.renderPosition = { ...this.position };
     this.speed = character.speed;
+    this.currentBucketKey = character.currentBucketKey || null;
+    this.activeAOI = character.activeAOI
+      ? new Set(character.activeAOI)
+      : new Set();
+
+    // 🟢 Capture character scope so getters don't evaluate to NaN
+    const self = this;
+
+    this.camera = {
+      width: character.camera.width,
+      height: character.camera.height,
+      get minX() {
+        return self.position.x - this.width / 2;
+      },
+      get maxX() {
+        return self.position.x + this.width / 2;
+      },
+      get minY() {
+        return self.position.y - this.height / 2;
+      },
+      get maxY() {
+        return self.position.y + this.height / 2;
+      },
+    };
   }
 
   tick(): void {

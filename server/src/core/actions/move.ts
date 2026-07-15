@@ -1,6 +1,8 @@
 import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/actions/types";
 import { CommandType } from "~/core/actions/types";
+import { Serialize } from "~/shared/network/serialize";
+import { ActionType } from "~/shared/core/types";
 
 export interface Coords {
   x: number;
@@ -8,17 +10,27 @@ export interface Coords {
 }
 
 export const Move: ActionHandler = {
-  execute: ({ data, character, game }): Coords => {
-    if (!game || !character) return { x: 0, y: 0 };
+  execute: async ({ data, character, game }): Promise<void> => {
+    if (!game || !character) return;
 
     try {
       // 1. Get the processed velocity vector for this step
       const velocity = Move.applyPhysics!({ data });
       character.move(velocity);
-      return velocity;
+      const { toLoadChunks } =
+        await game.world.handleCharacterSpatialUpdate(character);
+      game.network.broadcast.sendTo(
+        character.id,
+        Serialize.data({
+          serverTick: game.loop.tick,
+          actionType: ActionType.LOAD_MAP,
+          characterId: character.id,
+          chunks: toLoadChunks,
+        }),
+      );
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
-      return { x: 0, y: 0 };
+      return;
     }
   },
 

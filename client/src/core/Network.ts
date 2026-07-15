@@ -31,7 +31,13 @@ export default class Network {
     const authenticatedUrl = `${WS_URL}?ticket=${encodeURIComponent(ticket)}`;
     Log.NETWORK.INFO("🔌 Initializing connection...");
 
-    const ws: ManagedWebSocket = new WebSocket(authenticatedUrl);
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const protocolPayload = `dimensions-${width}x${height}`;
+    const ws: ManagedWebSocket = new WebSocket(
+      authenticatedUrl,
+      protocolPayload,
+    );
     ws.wasIntentionallyClosed = false;
     ws.binaryType = "arraybuffer";
     this.socket = ws;

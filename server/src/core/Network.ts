@@ -50,6 +50,18 @@ export default class Network {
       const parsedUrl = new URL(fullUrlString);
       const ticket = parsedUrl.searchParams.get("ticket");
 
+      // Read the subprotocol header
+      const protocol = request.headers["sec-websocket-protocol"];
+      let width = 0;
+      let height = 0;
+      if (protocol && protocol.startsWith("dimensions-")) {
+        const dimensions = protocol.replace("dimensions-", "");
+        const cameraDefault = dimensions.split("x");
+
+        width = Number(cameraDefault[0]);
+        height = Number(cameraDefault[1]);
+      }
+
       if (origin !== undefined) {
         const isDevelopment = process.env.NODE_ENV !== "production";
         if (!isDevelopment && origin !== process.env.ALLOWED_ORIGIN) {
@@ -106,6 +118,7 @@ export default class Network {
       this.events.emit("new_connection", {
         characterId,
         playerId,
+        camera: { width, height },
       });
 
       socket.on("pong", () => {

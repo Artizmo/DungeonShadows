@@ -4,10 +4,10 @@ import type { ActionHandler } from "~/core/actions/types";
 export const LoadMap: ActionHandler = {
   execute: ({ data, game }): void => {
     try {
-      const { chunk } = data;
-      if (!chunk) return;
+      const { chunks } = data;
+      if (!chunks) return;
 
-      game!.renderer.loadMap(chunk);
+      game!.renderer.loadMap(chunks);
     } catch (error) {
       Log.DATA.ERROR(`Could not load data: ${error}`);
     }

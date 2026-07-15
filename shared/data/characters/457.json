@@ -5,8 +5,8 @@
   "level": 12,
   "isAlive": true,
   "position": {
-    "x": 61,
-    "y": 16
+    "x": 1952,
+    "y": 512
   },
   "zone": {
     "id": "arena:sephus",
@@ -19,7 +19,7 @@
     "mana": 150,
     "maxMana": 150
   },
-  "speed": 2.5,
+  "speed": 200,
   "inventory": [],
   "updatedAt": "2026-06-12T03:52:39.844Z"
 }
