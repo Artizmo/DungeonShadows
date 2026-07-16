@@ -669,17 +669,11 @@ ActionRegistry.set(ActionType.MOVE, {
         const radius = 16;
 
         const checkCollision = (cx: number, cy: number) => {
-            if (cx - radius < 0 || cx + radius > GAME_CONFIG.WORLD_WIDTH ||
+            /*if (cx - radius < 0 || cx + radius > GAME_CONFIG.WORLD_WIDTH ||
                 cy - radius < 0 || cy + radius > GAME_CONFIG.WORLD_HEIGHT) {
                 return true;
             }
-            const obstacles = world.getObstacles(entity.areaId!, entity.zoneId!);
-            for (const obs of obstacles) {
-                if (cx + radius > obs.x && cx - radius < obs.x + obs.w &&
-                    cy + radius > obs.y && cy - radius < obs.y + obs.h) {
-                    return true;
-                }
-            }
+            const*/
             return false;
         };
 
@@ -1070,7 +1064,7 @@ class ClientGame {
     public menuManager = new MenuManager();
     public virtualInputs = new Set<string>();
     public showTargetRange = false;
-    public showTorch = true;
+    public showTorch = false;
 
     public pendingActions: ActionRecord[] = [];
     public sequenceId = 0;

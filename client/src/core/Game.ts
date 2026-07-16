@@ -14,32 +14,35 @@ import {
 } from "~/core/commands/input-dictionary";
 import { CommandType } from "~/core/commands/index";
 import { ActionType, PacketCategory } from "~/shared/core/types";
-import type { InputAction, WorldState } from "./types";
-import { Log } from "~/shared/core/Logger";
+import type { WorldState } from "./types";
 
 export default class Game {
   events: EventEmitter;
-  world: World;
-  renderer: Renderer;
   loop: Loop;
   network: Network;
+  world: World;
+  renderer: Renderer;
+  camera: Camera = new Camera();
   gamepad: GamepadController;
   keyboard: KeyboardController;
-  camera: Camera = new Camera();
   sequenceId = 0;
   private activeCommands = new Set<CommandType>();
   private inputHistory: Array<{
+    // move to character class
     sequenceId: number;
     tick: number;
-    actions: Set<ActionType>;
+    action: ActionType;
     activeCommands: Set<CommandType>;
   }> = [];
-  private stateHistory: Array<{
-    sequenceId: number;
-    tick: number;
-    actions: Set<ActionType>;
-    state: WorldState;
-  }> = [];
+  // private stateHistory: Array<{
+  //   // move to world class
+  //   sequenceId: number;
+  //   tick: number;
+  //   actions: Set<ActionType>;
+  //   state: WorldState;
+  // }> = [];
+  private readonly FIXED_DELTA = 1 / 20;
+  private readonly MAX_HISTORY_TICKS = 10;
 
   constructor(
     world: World,
@@ -58,12 +61,11 @@ export default class Game {
     this.gamepad = gamepad;
     this.keyboard = keyboard;
 
-    this.loop.onUpdate = (deltaTime: number, alpha: number) =>
-      this.update(deltaTime, alpha);
+    this.loop.onUpdate = (alpha: number) => this.update(alpha);
     this.loop.onTick = (tick: number) => this.tick(tick);
   }
 
-  update(deltaTime: number, alpha: number): void {
+  update(alpha: number): void {
     if (!this.world.character) return;
 
     const { character } = this.world;
@@ -107,14 +109,15 @@ export default class Game {
 
     const { character } = this.world;
 
-    // 1. Drop all inputs that the server has already acknowledged and processed
-    this.inputHistory = this.inputHistory.filter(
-      (input) => input.sequenceId > serverData.lastProcessedSequenceId,
-    );
+    while (
+      this.inputHistory.length > 0 &&
+      this.inputHistory[0].sequenceId <= serverData.lastProcessedSequenceId
+    ) {
+      this.inputHistory.shift();
+    }
 
-    const MAX_HISTORY_TICKS = 10;
-    if (this.inputHistory.length > MAX_HISTORY_TICKS) {
-      this.inputHistory = this.inputHistory.slice(-MAX_HISTORY_TICKS); //
+    while (this.inputHistory.length > this.MAX_HISTORY_TICKS) {
+      this.inputHistory.shift();
     }
 
     // 2. 🟢 CACHE ORIGINAL PREDICTION STATES
@@ -126,18 +129,15 @@ export default class Game {
     character.position.x = serverData.playerState.x;
     character.position.y = serverData.playerState.y;
 
-    console.log("bingo", serverData);
     // 4. REPLAY all inputs that are still outstanding (not yet processed by server)
     for (const savedInput of this.inputHistory) {
-      const FIXED_DELTA = 1 / 20;
-
       const dataContext = {
         activeCommands: savedInput.activeCommands,
         speed: character.speed,
-        deltaTime: FIXED_DELTA,
+        deltaTime: this.FIXED_DELTA,
       };
 
-      const handler = ActionRegistry.get(ActionType.MOVE);
+      const handler = ActionRegistry.get(savedInput.action);
       if (handler) {
         handler.execute({ data: dataContext, character, game: this });
       }
@@ -145,29 +145,29 @@ export default class Game {
 
     // 5. 🟢 VISUAL ERROR ABSORPTION
     // Calculate how far the server correction shifted our physical body
-    const shiftX = oldPredictedX - character.position.x;
-    const shiftY = oldPredictedY - character.position.y;
+    // const shiftX = oldPredictedX - character.position.x;
+    // const shiftY = oldPredictedY - character.position.y;
 
     // Add that exact shift into our visual offset so the rendered sprite does not move an inch!
-    if (Math.abs(shiftX) < 32 && Math.abs(shiftY) < 32) {
-      character.visualOffset.x += shiftX;
-      character.visualOffset.y += shiftY;
-    } else {
-      // Emergency snap if desync is massive (e.g., teleported or respawned)
-      character.visualOffset.x = 0;
-      character.visualOffset.y = 0;
-    }
+    // if (Math.abs(shiftX) < 32 && Math.abs(shiftY) < 32) {
+    //   character.visualOffset.x += shiftX;
+    //   character.visualOffset.y += shiftY;
+    // } else {
+    //   // Emergency snap if desync is massive (e.g., teleported or respawned)
+    //   character.visualOffset.x = 0;
+    //   character.visualOffset.y = 0;
+    // }
   }
 
   processInputs(): void {
     const { character } = this.world;
-    this.activeCommands.clear();
-
-    this.gamepad.update();
     const rawKeyboard = this.keyboard.activeKeys;
     const rawGamepad = this.gamepad.activeKeys;
     const context = "DEFAULT";
     const actionTypeQueue: Set<ActionType> = new Set();
+
+    this.activeCommands.clear();
+    this.gamepad.update();
 
     const kMap = inputDictionary[context]?.["keyboard"];
     if (kMap)
@@ -186,14 +186,15 @@ export default class Game {
       if (actionType) actionTypeQueue.add(actionType);
     }
 
-    this.sequenceId++;
-
-    this.inputHistory.push({
-      sequenceId: this.sequenceId,
-      tick: this.loop.tick,
-      actions: new Set(actionTypeQueue),
-      activeCommands: new Set(this.activeCommands),
-    });
+    for (const action of actionTypeQueue) {
+      this.sequenceId++;
+      this.inputHistory.push({
+        sequenceId: this.sequenceId,
+        tick: this.loop.tick,
+        action,
+        activeCommands: new Set(this.activeCommands),
+      });
+    }
 
     // 🟢 Only run prediction if there are actual actions to simulate
     if (actionTypeQueue.size > 0) {
@@ -220,26 +221,26 @@ export default class Game {
         characterId: character.id,
         sequenceId: this.sequenceId,
         tick: this.loop.tick,
-        actions: Array.from(new Set(actionTypeQueue)),
-        activeCommands: Array.from(new Set(this.activeCommands)),
+        actions: Array.from(actionTypeQueue),
+        activeCommands: Array.from(this.activeCommands),
       }),
     );
 
-    this.stateHistory.push({
-      sequenceId: this.sequenceId,
-      tick: this.loop.tick,
-      actions: new Set(actionTypeQueue),
-      state: {
-        character: {
-          stats: { ...character.stats },
-          position: { ...character.position },
-        },
-      },
-    });
+    // this.stateHistory.push({
+    //   sequenceId: this.sequenceId,
+    //   tick: this.loop.tick,
+    //   actions: new Set(actionTypeQueue),
+    //   state: {
+    //     character: {
+    //       stats: { ...character.stats },
+    //       position: { ...character.position },
+    //     },
+    //   },
+    // });
 
-    if (this.stateHistory.length > 15) {
-      this.stateHistory.shift();
-    }
+    // if (this.stateHistory.length > 15) {
+    //   this.stateHistory.shift();
+    // }
   }
 
   start(ticket: string): void {
