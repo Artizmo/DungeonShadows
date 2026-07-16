@@ -183,21 +183,22 @@ export default class Game {
     }
 
     // 🟢 Only run prediction if there are actual actions to simulate
-    if (actionTypeQueue.size === 0) return;
+    if (actionTypeQueue.size > 0) {
+      for (const actionType of actionTypeQueue) {
+        const handler = ActionRegistry.get(actionType);
+        if (!handler) continue;
 
-    for (const actionType of actionTypeQueue) {
-      const handler = ActionRegistry.get(actionType);
-      if (!handler) continue;
-
-      handler.execute({
-        data: {
-          activeCommands: this.activeCommands,
-          speed: character.speed,
-          deltaTime: this.DELTA_TIME,
-        },
-        character,
-        game: this,
-      });
+        const FIXED_DELTA = 1 / 20;
+        handler.execute({
+          data: {
+            activeCommands: this.activeCommands,
+            speed: character.speed,
+            deltaTime: FIXED_DELTA,
+          },
+          character,
+          game: this,
+        });
+      }
     }
 
     // 🟢 Always tell the server our latest sequenceId, even if actions array is empty []

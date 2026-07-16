@@ -93,13 +93,13 @@ export default class Game {
 
       const targetId = character.id;
 
-      console.log(`[${Date.now()}] Scheduling packet for ${targetId}`);
+      // console.log(`[${Date.now()}] Scheduling packet for ${targetId}`);
 
       // simulating network latency - temporary
       setTimeout(() => {
-        console.log(
-          `[${Date.now()}] ---> Sending delayed packet to ${targetId}`,
-        );
+        // console.log(
+        //   `[${Date.now()}] ---> Sending delayed packet to ${targetId}`,
+        // );
         this.network.broadcast.sendTo(targetId, updatePayload);
       }, 38);
     }

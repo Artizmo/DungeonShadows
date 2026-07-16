@@ -53,10 +53,13 @@
 [ ] Execute `game.update(renderDelta)` for visual effects.
 
 [o] Zoning
-[o] Implement `ZoneInstance` class for local entity/terrain management.
-[ ] Abstract World Manager interface for zone-based routing.
 [ ] Convert server tick loop to $O(A)$ zone-based iteration.
-[ ] Build $O(1)$ zone handoff logic using hash map exchanges.
+[x] Build $O(1)$ zone bucket logic using hash map exchanges.
+[ ] Evict unused buckets, maps, etc.
+[ ] Debug to confirm character buckets change and are accurate
+[ ] Server state should be empty if nothing has changed.
+[ ] Implement pendingState to collect only the state that has changed.
+[ ] PendingState should take into account zone buckets and character camera
 
 ### **End-to-End Testing**
 
