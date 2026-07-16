@@ -35,7 +35,6 @@ export const Join: ActionHandler = {
 
       const { toLoadChunks, toUnloadKeys } =
         await game.world.handleCharacterSpatialUpdate(character);
-      console.log("bingo toLoadChunks", toLoadChunks, toUnloadKeys);
 
       game.network.broadcast.sendTo(
         character.id,

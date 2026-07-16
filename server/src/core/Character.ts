@@ -30,7 +30,6 @@ export default class Character {
   public currentBucketKey: string | null = null;
 
   constructor(character: Character) {
-    console.log("bingo zone", character.zone);
     this.id = character.id;
     this.playerId = character.playerId;
     this.name = character.name;

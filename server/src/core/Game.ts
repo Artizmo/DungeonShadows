@@ -75,19 +75,39 @@ export default class Game {
     }
 
     // 3. Broadcast the Authoritative State ONCE at the end of the tick
+    // for (const character of activePlayersThisTick) {
+    //   const updatePayload = Serialize.snapshot({
+    //     playerState: { x: character.position.x, y: character.position.y },
+    //     lastProcessedSequenceId: character.lastProcessedSequenceId,
+    //   });
+    //   this.network.broadcast.sendTo(character.id, updatePayload);
+    // }
+
+    const LATENCY_MS = 150; // Delay in milliseconds
+
     for (const character of activePlayersThisTick) {
       const updatePayload = Serialize.snapshot({
         playerState: { x: character.position.x, y: character.position.y },
         lastProcessedSequenceId: character.lastProcessedSequenceId,
       });
-      this.network.broadcast.sendTo(character.id, updatePayload);
-    }
 
-    this.network.packetQueue = [];
+      const targetId = character.id;
+
+      console.log(`[${Date.now()}] Scheduling packet for ${targetId}`);
+
+      // simulating network latency - temporary
+      setTimeout(() => {
+        console.log(
+          `[${Date.now()}] ---> Sending delayed packet to ${targetId}`,
+        );
+        this.network.broadcast.sendTo(targetId, updatePayload);
+      }, 38);
+    }
   }
 
   async onNewConnection(playerCharacter: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.JOIN);
+
     if (handler) await handler.execute({ data: playerCharacter, game: this });
   }
 }

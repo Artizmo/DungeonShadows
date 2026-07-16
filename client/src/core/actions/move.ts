@@ -1,4 +1,3 @@
-import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/actions/types";
 import { CommandType } from "../commands";
 
@@ -12,12 +11,6 @@ export const Move: ActionHandler = {
     if (!game || !character) return { x: 0, y: 0 };
 
     // 1. Get the processed velocity vector for this step
-    const velocity = Move.applyPhysics!({ data });
-    character.move(velocity);
-    return velocity;
-  },
-
-  applyPhysics: ({ data }): Coords => {
     const { activeCommands, deltaTime, speed } = data;
     let dx = 0;
     let dy = 0;
@@ -39,9 +32,12 @@ export const Move: ActionHandler = {
 
     // 🟢 The Golden Formula: Direction * Time Slice * Real Speed Value
     // If speed = 300 and deltaTime = 1/60, this returns exactly 5 pixels per tick.
-    return {
+    const velocity = {
       x: dx * deltaTime * speed,
       y: dy * deltaTime * speed,
     };
+
+    character.move(velocity);
+    return velocity;
   },
 };

@@ -1340,10 +1340,10 @@ class ClientGame {
 
         if (this.localPlayerId) {
             const srvLocal = server.world.get(this.localPlayerId);
-            if (srvLocal) {
+            /*if (srvLocal) {
                 ctx.fillStyle = '#f43f5e';
                 ctx.beginPath(); ctx.arc(Math.round(srvLocal.x), Math.round(srvLocal.y), 14, 0, Math.PI * 2); ctx.fill();
-            }
+            }*/
         }
 
         for (const char of this.world.characters.values()) {
@@ -1351,9 +1351,9 @@ class ClientGame {
             const drawY = Math.round(char.y);
 
             if (char.id === this.localPlayerId) {
-                ctx.strokeStyle = '#34d399'; ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'; ctx.lineWidth = 3;
+                ctx.strokeStyle = '#000000'; ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#34d399'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
                 ctx.fillText(char.id, drawX, drawY - 28);
                 ctx.fillText(`(${drawX}, ${drawY})`, drawX, drawY - 17);
                 ctx.textAlign = 'left';
