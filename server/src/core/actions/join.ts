@@ -17,7 +17,6 @@ export const Join: ActionHandler = {
       const player = new Player(playerData);
       Log.NETWORK.INFO(`${player.fullName} has connected!`);
 
-      console.log("bingo", data.camera);
       characterData.camera = data.camera;
       const character = new Character(characterData);
 
