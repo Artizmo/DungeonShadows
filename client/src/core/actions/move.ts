@@ -1,5 +1,5 @@
 import type { ActionHandler } from "~/core/actions/types";
-import { CommandType } from "../commands";
+import { CommandType } from "./input-dictionary";
 
 export interface Coords {
   x: number;
