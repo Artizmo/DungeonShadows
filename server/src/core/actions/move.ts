@@ -14,11 +14,12 @@ export const Move: ActionHandler = {
     if (!game || !character) return;
 
     try {
-      // 1. Get the processed velocity vector for this step
       const velocity = Move.applyPhysics!({ data });
       character.move(velocity);
-      const { toLoadChunks } =
+
+      const { toLoadChunks, toUnloadKeys } =
         await game.world.handleCharacterSpatialUpdate(character);
+
       game.network.broadcast.sendTo(
         character.id,
         Serialize.data({
@@ -26,6 +27,7 @@ export const Move: ActionHandler = {
           actionType: ActionType.LOAD_MAP,
           characterId: character.id,
           chunks: toLoadChunks,
+          toUnloadKeys,
         }),
       );
     } catch (error) {

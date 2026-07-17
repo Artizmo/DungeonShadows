@@ -91,6 +91,10 @@ export default class Game {
 
       const data = Serialize.decode(packet);
 
+      if (data?.actionType === ActionType.LOAD_MAP) {
+        // console.log("bingo chunks", data);
+      }
+
       if (data.category === PacketCategory.SNAPSHOT) {
         this.handleServerReconciliation(data);
       } else {

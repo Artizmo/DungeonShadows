@@ -16,6 +16,7 @@ interface IChunkTexture {
   y: number;
   img: HTMLImageElement;
   loaded: boolean;
+  objectUrl?: string; // 🟢 Track URL for safe middle-of-load evictions
 }
 
 export default class Renderer {
@@ -52,33 +53,62 @@ export default class Renderer {
     }
   }
 
-  public loadMap(chunks: IMapChunk[]): void {
+  public loadMap(chunks: IMapChunk[], toUnloadKeys: string[]): void {
     if (!chunks || !Array.isArray(chunks)) return;
+
+    // 🟢 Deletes zone bucket image chunks safely
+    if (toUnloadKeys) {
+      for (const key of toUnloadKeys) {
+        const entry = this.chunkTextures.get(key);
+        if (entry) {
+          // 1. Strip callbacks so we don't trigger updates on dead elements
+          entry.img.onload = null;
+          entry.img.onerror = null;
+
+          // 2. Clear src to prompt immediate GPU/browser texture release
+          entry.img.src = "";
+
+          // 3. Revoke Object URL if it hasn't loaded or been cleaned up yet
+          if (entry.objectUrl) {
+            URL.revokeObjectURL(entry.objectUrl);
+          }
+
+          this.chunkTextures.delete(key);
+        }
+      }
+    }
 
     for (const chunk of chunks) {
       const chunkKey = `${chunk.x}_${chunk.y}`;
       if (this.chunkTextures.has(chunkKey)) continue;
 
       const img = new Image();
+      const blob = new Blob([chunk.textureBytes], { type: "image/webp" });
+      const url = URL.createObjectURL(blob);
+
       const textureEntry: IChunkTexture = {
         x: chunk.x,
         y: chunk.y,
         img: img,
         loaded: false,
+        objectUrl: url, // Store the reference immediately
       };
 
       this.chunkTextures.set(chunkKey, textureEntry);
 
-      const blob = new Blob([chunk.textureBytes], { type: "image/webp" });
-      const url = URL.createObjectURL(blob);
-
       img.onload = () => {
         textureEntry.loaded = true;
-        URL.revokeObjectURL(url);
+        if (textureEntry.objectUrl) {
+          URL.revokeObjectURL(textureEntry.objectUrl);
+          delete textureEntry.objectUrl; // Dereference once revoked
+        }
       };
 
       img.onerror = (err) => {
         console.error(`❌ Failed to decode map chunk [${chunkKey}]:`, err);
+        if (textureEntry.objectUrl) {
+          URL.revokeObjectURL(textureEntry.objectUrl);
+        }
         this.chunkTextures.delete(chunkKey);
       };
 
@@ -121,7 +151,6 @@ export default class Renderer {
   public renderCharacter(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
-    // 🟢 NO CHARACTER_WIDTH MULTIPLIERS: Positions are treated as raw world pixels
     const worldX = character.renderPosition.x;
     const worldY = character.renderPosition.y;
 
@@ -131,11 +160,9 @@ export default class Renderer {
     const drawX = Math.round(relativeX);
     const drawY = Math.round(relativeY);
 
-    // Hardcode a clean visual radius for the character sprite circle (e.g., 16px radius)
     const radius = 16;
 
     this.ctx.beginPath();
-    // 🟢 Center the arc directly on drawX/drawY instead of throwing in visual cell padding
     this.ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
     this.ctx.fillStyle = "#1b4d3e";
     this.ctx.fill();

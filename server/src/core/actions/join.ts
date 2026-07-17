@@ -17,6 +17,7 @@ export const Join: ActionHandler = {
       const player = new Player(playerData);
       Log.NETWORK.INFO(`${player.fullName} has connected!`);
 
+      console.log("bingo", data.camera);
       characterData.camera = data.camera;
       const character = new Character(characterData);
 
@@ -33,7 +34,7 @@ export const Join: ActionHandler = {
         }),
       );
 
-      const { toLoadChunks, toUnloadKeys } =
+      const { toLoadChunks } =
         await game.world.handleCharacterSpatialUpdate(character);
 
       game.network.broadcast.sendTo(

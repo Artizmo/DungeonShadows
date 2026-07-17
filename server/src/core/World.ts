@@ -46,6 +46,7 @@ export default class World {
     const zone = this.areas
       .get(character.zone.areaId)
       .getZone(character.zone.id);
+
     // 1. Get bucket that contains character's position
     const currentBucketX = Math.floor(character.position.x / this.CHUNK_SIZE);
     const currentBucketY = Math.floor(character.position.y / this.CHUNK_SIZE);
@@ -63,14 +64,14 @@ export default class World {
       character.currentBucketKey = currentBucketKey;
     }
 
-    // 2 & 3. Get intersecting camera buckets + apply surrounding buffer radius
+    // 2 & 3. Get intersecting camera buckets (Math.floor for min, Math.ceil for max) + buffer
     const startBucketX = Math.max(
       0,
       Math.floor(character.camera.minX / this.CHUNK_SIZE) - bufferRadius,
     );
     const endBucketX = Math.min(
       Math.ceil(zone.map.width / this.CHUNK_SIZE) - 1,
-      Math.floor(character.camera.maxX / this.CHUNK_SIZE) + bufferRadius,
+      Math.ceil(character.camera.maxX / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
     );
     const startBucketY = Math.max(
       0,
@@ -78,17 +79,7 @@ export default class World {
     );
     const endBucketY = Math.min(
       Math.ceil(zone.map.height / this.CHUNK_SIZE) - 1,
-      Math.floor(character.camera.maxY / this.CHUNK_SIZE) + bufferRadius,
-    );
-
-    console.log(
-      `[AOI Debug] Char Position: (${character.position.x}, ${character.position.y})`,
-    );
-    console.log(
-      `[AOI Debug] Camera Bounds: X(${character.camera.minX} to ${character.camera.maxX}) Y(${character.camera.minY} to ${character.camera.maxY})`,
-    );
-    console.log(
-      `[AOI Debug] Buckets Selected: X(${startBucketX} to ${endBucketX}) Y(${startBucketY} to ${endBucketY})`,
+      Math.ceil(character.camera.maxY / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
     );
 
     // 4. Gather the entire active Area of Interest (AOI) set
