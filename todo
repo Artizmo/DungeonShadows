@@ -53,7 +53,6 @@
 [ ] Execute `game.update(renderDelta)` for visual effects.
 
 [o] Zoning
-[ ] Convert server tick loop to $O(A)$ zone-based iteration.
 [x] Build $O(1)$ zone bucket logic using hash map exchanges.
 [ ] Evict unused buckets, maps, etc.
 [ ] Debug to confirm character buckets change and are accurate

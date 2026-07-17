@@ -3,7 +3,7 @@ import Player from "~/core/Player";
 import { Log } from "~/shared/core/Logger";
 import Character from "../Character";
 import type { ActionHandler } from "~/core/actions/types";
-import { Serialize } from "~/shared/network/serialize";
+import { Serialize } from "~/shared/core/serialize";
 import { ActionType } from "~/shared/core/types";
 
 export const Join: ActionHandler = {

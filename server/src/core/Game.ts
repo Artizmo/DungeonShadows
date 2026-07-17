@@ -2,7 +2,7 @@ import type Loop from "~/core/Loop";
 import type Network from "~/core/Network";
 import type World from "~/core/World";
 import type Character from "~/core/Character";
-import { Serialize } from "~/shared/network/serialize";
+import { Serialize } from "~/shared/core/serialize";
 import { ActionRegistry } from "./actions";
 import { ActionType } from "~/shared/core/types";
 

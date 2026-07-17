@@ -2,7 +2,7 @@ import World from "~/core/World";
 import Camera from "~/core/Camera";
 import GamepadController from "~/core/GamepadController";
 import KeyboardController from "~/core/KeyboardController";
-import { Serialize } from "~/shared/network/serialize";
+import { Serialize } from "~/shared/core/serialize";
 import { ActionRegistry } from "./actions";
 import type EventEmitter from "eventemitter3";
 import type Loop from "~/core/Loop";
@@ -11,10 +11,9 @@ import type Network from "~/core/Network";
 import {
   actionDictionary,
   inputDictionary,
-} from "~/core/commands/input-dictionary";
-import { CommandType } from "~/core/commands/index";
+} from "~/core/actions/input-dictionary";
+import { CommandType } from "~/core/actions/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
-import type { WorldState } from "./types";
 
 export default class Game {
   events: EventEmitter;
