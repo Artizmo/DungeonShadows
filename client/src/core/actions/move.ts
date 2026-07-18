@@ -21,23 +21,35 @@ export const Move: ActionHandler = {
     if (activeCommands.has(CommandType.MOVE_LEFT)) dx -= 1;
     if (activeCommands.has(CommandType.MOVE_RIGHT)) dx += 1;
 
-    // 🟢 SAFE CODES: Calculate true vector length
+    // Calculate true vector length
     const length = Math.sqrt(dx * dx + dy * dy);
 
     if (length > 0) {
-      // 🟢 Force a pure directional unit vector regardless of raw hardware magnitude
       dx /= length;
       dy /= length;
     }
 
-    // 🟢 The Golden Formula: Direction * Time Slice * Real Speed Value
-    // If speed = 300 and deltaTime = 1/60, this returns exactly 5 pixels per tick.
+    // The Golden Formula: Direction * Time Slice * Real Speed Value
     const velocity = {
       x: dx * deltaTime * speed,
       y: dy * deltaTime * speed,
     };
 
     character.move(velocity);
+
+    // 🟢 FIX: Enforce identical boundary constraints locally during prediction/replay loops
+    if (character.zone && character.zone.map) {
+      const minBoundX = 0;
+      const minBoundY = 0;
+      const maxBoundX = character.zone.map.width;
+      const maxBoundY = character.zone.map.height;
+
+      if (character.position.x < minBoundX) character.position.x = minBoundX;
+      if (character.position.x > maxBoundX) character.position.x = maxBoundX;
+      if (character.position.y < minBoundY) character.position.y = minBoundY;
+      if (character.position.y > maxBoundY) character.position.y = maxBoundY;
+    }
+
     return velocity;
   },
 };

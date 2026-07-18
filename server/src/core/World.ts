@@ -53,7 +53,20 @@ export default class World {
       .get(character.zone.areaId)
       .getZone(character.zone.id);
 
-    // 1. Get bucket that contains character's position
+    // 1. Enforce Absolute Map Boundaries for the Character
+    // Allows the entity to walk completely off-screen, up to the exact pixel edge of the map
+    const entityPadding = 0;
+    const minBoundX = entityPadding;
+    const minBoundY = entityPadding;
+    const maxBoundX = zone.map.width - entityPadding;
+    const maxBoundY = zone.map.height - entityPadding;
+
+    if (character.position.x < minBoundX) character.position.x = minBoundX;
+    if (character.position.x > maxBoundX) character.position.x = maxBoundX;
+    if (character.position.y < minBoundY) character.position.y = minBoundY;
+    if (character.position.y > maxBoundY) character.position.y = maxBoundY;
+
+    // 2. Synchronize Grid Buckets
     const currentBucketX = Math.floor(character.position.x / this.CHUNK_SIZE);
     const currentBucketY = Math.floor(character.position.y / this.CHUNK_SIZE);
     const currentBucketKey = `${currentBucketX}_${currentBucketY}`;
@@ -70,22 +83,40 @@ export default class World {
       character.currentBucketKey = currentBucketKey;
     }
 
-    // 2 & 3. Get intersecting camera buckets (Math.floor for min, Math.ceil for max) + buffer
+    // 3. Decoupled Viewport Tracking
+    // Simulates the client's locked camera container so chunk eviction stays stable at map boundaries
+    const CLIENT_MAX_WIDTH = zone.map.width;
+    const CLIENT_MAX_HEIGHT = zone.map.height;
+
+    let targetCamX = character.position.x - CLIENT_MAX_WIDTH / 2;
+    let targetCamY = character.position.y - CLIENT_MAX_HEIGHT / 2;
+
+    const maxCamX = Math.max(0, zone.map.width - CLIENT_MAX_WIDTH);
+    const maxCamY = Math.max(0, zone.map.height - CLIENT_MAX_HEIGHT);
+    const finalCamX = Math.max(0, Math.min(targetCamX, maxCamX));
+    const finalCamY = Math.max(0, Math.min(targetCamY, maxCamY));
+
+    const serverCameraMinX = finalCamX;
+    const serverCameraMaxX = finalCamX + CLIENT_MAX_WIDTH;
+    const serverCameraMinY = finalCamY;
+    const serverCameraMaxY = finalCamY + CLIENT_MAX_HEIGHT;
+
+    // Calculate intersecting camera buckets using the locked viewport limits
     const startBucketX = Math.max(
       0,
-      Math.floor(character.cameraMinX / this.CHUNK_SIZE) - bufferRadius,
+      Math.floor(serverCameraMinX / this.CHUNK_SIZE) - bufferRadius,
     );
     const endBucketX = Math.min(
       Math.ceil(zone.map.width / this.CHUNK_SIZE) - 1,
-      Math.ceil(character.cameraMaxX / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
+      Math.ceil(serverCameraMaxX / this.CHUNK_SIZE) + bufferRadius,
     );
     const startBucketY = Math.max(
       0,
-      Math.floor(character.cameraMinY / this.CHUNK_SIZE) - bufferRadius,
+      Math.floor(serverCameraMinY / this.CHUNK_SIZE) - bufferRadius,
     );
     const endBucketY = Math.min(
       Math.ceil(zone.map.height / this.CHUNK_SIZE) - 1,
-      Math.ceil(character.cameraMaxY / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
+      Math.ceil(serverCameraMaxY / this.CHUNK_SIZE) + bufferRadius,
     );
 
     // 4. Gather the entire active Area of Interest (AOI) set
@@ -133,7 +164,7 @@ export default class World {
       }
     }
 
-    // 6. Return delta state to the handler to emit to the client
+    // 6. Return delta state + complete zone bounds to the network handler
     return {
       chunks,
       unchunks,

@@ -25,8 +25,8 @@ export default class Renderer {
   private readonly CHUNK_SIZE = 256;
   private chunkTextures: Map<string, IChunkTexture> = new Map();
 
-  private readonly MAX_WIDTH = 1920;
-  private readonly MAX_HEIGHT = 896;
+  // private readonly MAX_WIDTH = 1920;
+  // private readonly MAX_HEIGHT = 896;
 
   public get width(): number {
     return this.canvas ? this.canvas.width : 0;
@@ -39,14 +39,8 @@ export default class Renderer {
     this.canvas = canvas;
     this.ctx = canvas.getContext("2d");
 
-    const browserWidth = window.innerWidth;
-    const browserHeight = window.innerHeight;
-
-    const clampedWidth = Math.min(browserWidth, this.MAX_WIDTH);
-    const clampedHeight = Math.min(browserHeight, this.MAX_HEIGHT);
-
-    this.canvas.width = clampedWidth;
-    this.canvas.height = clampedHeight;
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
 
     if (this.ctx) {
       this.ctx.imageSmoothingEnabled = false;
