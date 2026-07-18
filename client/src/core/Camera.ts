@@ -5,7 +5,6 @@ export default class Camera {
   public y = 0;
 
   public update(character: Character, canvas: HTMLCanvasElement): void {
-    // 🟢 PURE PIXELS: Read directly from position properties without multiplying
     const playerWorldX = character.renderPosition.x;
     const playerWorldY = character.renderPosition.y;
 

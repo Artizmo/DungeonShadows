@@ -56,7 +56,7 @@
 [x] Build $O(1)$ zone bucket logic using hash map exchanges.
 [x] Evict unused buckets, maps, etc.
 [x] Debug to confirm character buckets change and are accurate
-[ ] Server state should be empty if nothing has changed.
+[o] Server state should be empty if nothing has changed.
 [ ] Implement pendingState to collect only the state that has changed.
 [ ] PendingState should take into account zone buckets and character camera
 

@@ -15,22 +15,25 @@ declare module "ws" {
 }
 
 export default class Network {
+  readonly events = new EventEmitter();
   readonly socketServer: WebSocketServer;
-  readonly connections: Map<number, WebSocket> = new Map();
-  events = new EventEmitter();
-  broadcast = new Broadcaster(this.connections);
+  readonly connections = new Map<number, WebSocket>();
+  readonly broadcast = new Broadcaster(this.connections);
+
   packetQueue: QueueItem[] = [];
   private getTick: () => number = () => 0;
+  private pingInterval: NodeJS.Timeout;
 
-  constructor(config: any) {
+  constructor(config: { port: number }) {
     this.socketServer = new WebSocketServer({ port: config.port });
 
-    setInterval(() => {
+    // Keep-alive heartbeat loop
+    this.pingInterval = setInterval(() => {
       for (const [id, socket] of this.connections.entries()) {
-        if (socket && socket.readyState === WebSocket.OPEN) {
+        if (socket.readyState === WebSocket.OPEN) {
           if (!socket.isAlive) {
             Log.NETWORK.WARN(`Player ${id} timed out.`);
-            socket.terminate();
+            socket.terminate(); // Triggers "close" event cleanly
             continue;
           }
 
@@ -42,35 +45,21 @@ export default class Network {
 
     this.socketServer.on("connection", async (socket: WebSocket, request) => {
       const { origin } = request.headers;
-      const rawUrl = request.url || "";
-      const fullUrlString = rawUrl.startsWith("http")
-        ? rawUrl
-        : `${origin || "http://localhost"}${rawUrl}`;
+      const isProd = process.env.NODE_ENV === "production";
 
-      const parsedUrl = new URL(fullUrlString);
+      // 1. Guard: Validate Origin
+      if (isProd && origin && origin !== process.env.ALLOWED_ORIGIN) {
+        Log.NETWORK.WARN(`Blocked unauthorized connection from: ${origin}`);
+        socket.close(4003, "Forbidden Origin");
+        return;
+      }
+
+      // 2. Parse URL and Extract Ticket
+      const base = origin || "http://localhost";
+      const parsedUrl = new URL(request.url || "", base);
       const ticket = parsedUrl.searchParams.get("ticket");
 
-      // Read the subprotocol header
-      const protocol = request.headers["sec-websocket-protocol"];
-      let width = 0;
-      let height = 0;
-      if (protocol && protocol.startsWith("dimensions-")) {
-        const dimensions = protocol.replace("dimensions-", "");
-        const cameraDefault = dimensions.split("x");
-
-        width = Number(cameraDefault[0]);
-        height = Number(cameraDefault[1]);
-      }
-
-      if (origin !== undefined) {
-        const isDevelopment = process.env.NODE_ENV !== "production";
-        if (!isDevelopment && origin !== process.env.ALLOWED_ORIGIN) {
-          Log.NETWORK.WARN(`Blocked unauthorized connection from: ${origin}`);
-          socket.close(4003, "Forbidden Origin");
-          return;
-        }
-      }
-
+      // 3. Guard: Validate Ticket Presence
       if (!ticket || ticket === "undefined" || ticket === "[object Object]") {
         Log.NETWORK.WARN(
           `Connection rejected: Malformed ticket. Received: "${ticket}"`,
@@ -79,19 +68,79 @@ export default class Network {
         return;
       }
 
-      let playerId: number;
-      let characterId: number;
+      // 4. Extract Camera Dimensions from Subprotocol
+      let width = 0,
+        height = 0;
+      const protocol = request.headers["sec-websocket-protocol"];
+
+      if (protocol?.startsWith("dimensions-")) {
+        const [w, h] = protocol
+          .replace("dimensions-", "")
+          .split("x")
+          .map(Number);
+        width = w || 0;
+        height = h || 0;
+      }
+
+      // 5. Authenticate JWT Ticket
       const secretKey =
         process.env.GAME_SECRET || "fallback_secret_key_development_only";
 
       try {
         const decoded = jwt.verify(ticket, secretKey) as {
-          playerId: number;
-          characterId: number;
+          playerId: unknown;
+          characterId: unknown;
         };
+        const playerId = Number(decoded.playerId);
+        const characterId = Number(decoded.characterId);
 
-        playerId = Number(decoded.playerId);
-        characterId = Number(decoded.characterId);
+        // 6. Evict Existing Stale Connections
+        const staleSocket = this.connections.get(characterId);
+        if (staleSocket) {
+          // Temporarily remove listener to prevent the old socket's close event
+          // from deleting the Map key we are about to overwrite.
+          staleSocket.removeAllListeners("close");
+          staleSocket.close(4000, "Evicted by new session handshake");
+        }
+
+        // 7. Register and Initialize New Session
+        socket.isAlive = true;
+        this.connections.set(characterId, socket);
+
+        this.events.emit("new_connection", {
+          characterId,
+          playerId,
+          camera: { width, height },
+        });
+
+        socket.on("pong", () => {
+          socket.isAlive = true;
+          Log.NETWORK.INFO(`Received PONG from characterId ${characterId}`);
+        });
+
+        socket.on("message", (message, isBinary) => {
+          try {
+            if (!message || !isBinary) return;
+
+            const bytes = new Uint8Array(message as Buffer);
+            this.packetQueue.push({
+              tick: this.getTick(),
+              bytes,
+            });
+          } catch (err) {
+            Log.NETWORK.ERROR(`Failed to handle incoming packet: ${err}`);
+          }
+        });
+
+        socket.on("close", () => {
+          this.handleSocketClose(characterId, socket);
+        });
+
+        socket.on("error", (error) => {
+          Log.NETWORK.ERROR(
+            `Socket error for CID ${characterId}: ${error.message}`,
+          );
+        });
       } catch (err) {
         socket.send(
           JSON.stringify({
@@ -103,52 +152,7 @@ export default class Network {
           `Connection rejected: Invalid ticket signature. ${err}`,
         );
         socket.close(4001, "Unauthorized: Invalid Ticket");
-        return;
       }
-
-      if (this.connections.has(characterId)) {
-        const staleSocket = this.connections.get(characterId);
-        if (staleSocket) {
-          staleSocket.close(4000, "Evicted by new session handshake");
-        }
-      }
-
-      socket.isAlive = true;
-      this.connections.set(characterId, socket);
-      this.events.emit("new_connection", {
-        characterId,
-        playerId,
-        camera: { width, height },
-      });
-
-      socket.on("pong", () => {
-        socket.isAlive = true;
-        Log.NETWORK.INFO(`Received PONG from characterId ${characterId}`);
-      });
-
-      socket.on("message", (message, isBinary) => {
-        try {
-          if (!message) return;
-          if (!isBinary) return;
-
-          // 🟢 This pulls the raw, clean Uint8Array bytes directly out of the message
-          const bytes = new Uint8Array(message as Buffer);
-          this.packetQueue.push({
-            tick: this.getTick(),
-            bytes: bytes,
-          });
-        } catch (err) {
-          Log.NETWORK.ERROR(`Failed to handle incoming packet: ${err}`);
-        }
-      });
-
-      socket.on("close", (e) => {
-        this.handleSocketClose(playerId, socket);
-      });
-
-      socket.on("error", (error) =>
-        Log.NETWORK.ERROR(`Socket error for PID ${playerId}: ${error.message}`),
-      );
     });
 
     Log.NETWORK.INFO(`Server listening on port ${config.port}.`);
@@ -164,10 +168,12 @@ export default class Network {
   ): void {
     if (this.connections.get(characterId) === closingSocket) {
       this.connections.delete(characterId);
+      this.events.emit("connection_closed", characterId);
     }
   }
 
   public close(): void {
+    clearInterval(this.pingInterval);
     this.socketServer.close();
   }
 }

@@ -10,8 +10,8 @@ export default class Game {
   readonly loop: Loop;
   network: Network;
   world: World;
-  // activeCharacters: Map<number, Character> = new Map();
   isReady = false;
+  private readonly DELTA_TIME = 1 / 20;
 
   constructor(loop: Loop, network: Network, world: World) {
     this.loop = loop;
@@ -30,15 +30,12 @@ export default class Game {
 
     this.network.registerTickProvider(() => this.loop.tick);
 
-    this.network.events.on("new_connection", (playerCharacter) => {
-      this.onNewConnection(playerCharacter);
+    this.network.events.on("new_connection", (character) => {
+      this.onNewConnection(character);
     });
   }
 
   async tick(tick: number) {
-    // Track who actually needs an update this tick (optional optimization)
-    const activePlayersThisTick = new Set<Character>();
-
     // 1. Process ALL pending inputs from clients first
     while (this.network.packetQueue.length > 0) {
       const queueItem = this.network.packetQueue.shift();
@@ -46,23 +43,20 @@ export default class Game {
 
       const data = Serialize.decode(queueItem.bytes);
       const character = this.world.characters.get(data.characterId);
-      if (!character) continue;
 
+      if (!character) continue;
       if (data.sequenceId <= character.lastProcessedSequenceId) continue;
 
-      // 2. Re-simulate the actions exactly as the client did
+      // 2. Notarize the client's actions
       if (data.actions && data.actions.length > 0) {
         for (const actionType of data.actions) {
           const handler = ActionRegistry.get(actionType);
           if (!handler) continue;
 
-          const FIXED_DELTA = 1 / 20;
-
           await handler.execute({
             data: {
               activeCommands: new Set(data.activeCommands),
-              speed: character.speed,
-              deltaTime: FIXED_DELTA,
+              deltaTime: this.DELTA_TIME,
             },
             character,
             game: this,
@@ -71,43 +65,26 @@ export default class Game {
       }
 
       character.lastProcessedSequenceId = data.sequenceId;
-      activePlayersThisTick.add(character);
     }
 
-    // 3. Broadcast the Authoritative State ONCE at the end of the tick
-    // for (const character of activePlayersThisTick) {
-    //   const updatePayload = Serialize.snapshot({
-    //     playerState: { x: character.position.x, y: character.position.y },
-    //     lastProcessedSequenceId: character.lastProcessedSequenceId,
-    //   });
-    //   this.network.broadcast.sendTo(character.id, updatePayload);
-    // }
-
-    const LATENCY_MS = 150; // Delay in milliseconds
-
-    for (const character of activePlayersThisTick) {
+    // 3. Broadcast the Authoritative State to ALL active characters in the world
+    // This maintains the continuous downstream heartbeat
+    for (const character of this.world.characters.values()) {
       const updatePayload = Serialize.snapshot({
         playerState: { x: character.position.x, y: character.position.y },
         lastProcessedSequenceId: character.lastProcessedSequenceId,
       });
 
-      const targetId = character.id;
-
-      // console.log(`[${Date.now()}] Scheduling packet for ${targetId}`);
-
-      // simulating network latency - temporary
+      // Simulating network latency
       setTimeout(() => {
-        // console.log(
-        //   `[${Date.now()}] ---> Sending delayed packet to ${targetId}`,
-        // );
-        this.network.broadcast.sendTo(targetId, updatePayload);
+        this.network.broadcast.sendTo(character.id, updatePayload);
       }, 38);
     }
   }
 
-  async onNewConnection(playerCharacter: Character): Promise<void> {
+  async onNewConnection(character: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.JOIN);
 
-    if (handler) await handler.execute({ data: playerCharacter, game: this });
+    if (handler) await handler.execute({ data: character, game: this });
   }
 }

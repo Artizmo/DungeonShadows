@@ -1,3 +1,8 @@
+export interface ICoords {
+  x: number;
+  y: number;
+}
+
 export interface QueueItem {
   tick: number;
   bytes: Uint8Array;

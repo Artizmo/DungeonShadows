@@ -10,13 +10,13 @@ interface ManagedWebSocket extends WebSocket {
 }
 
 export default class Network {
-  readonly events = new EventEmitter();
   playerId: number | null = null;
   characterId: number | null = null;
   packetQueue: Uint8Array[] = [];
+  readonly events = new EventEmitter();
   private socket: ManagedWebSocket | null = null;
 
-  public connect(ticket: string): void {
+  connect(ticket: string): void {
     this.disconnect();
 
     const decoded = decodeTicket(ticket);
@@ -73,13 +73,13 @@ export default class Network {
     };
   }
 
-  public send(bytes: Uint8Array): void {
+  send(bytes: Uint8Array): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(bytes.buffer);
     }
   }
 
-  public disconnect(): void {
+  disconnect(): void {
     if (!this.socket) return;
 
     this.socket.wasIntentionallyClosed = true;

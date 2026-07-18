@@ -3,6 +3,7 @@ import Area from "~/core/Area";
 import type Character from "~/core/Character";
 import MapCache, { type PreChunkedMap } from "~/core/MapCache";
 import { Log } from "~/shared/core/Logger";
+import type Zone from "./Zone";
 
 export default class World {
   name: string;
@@ -42,7 +43,12 @@ export default class World {
   public async handleCharacterSpatialUpdate(
     character: Character,
     bufferRadius: number = 1,
-  ): Promise<{ toLoadChunks: PreChunkedMap[]; toUnloadKeys: string[] }> {
+  ): Promise<{
+    zone: Zone;
+    toLoadChunks: PreChunkedMap[];
+    toUnloadKeys: string[];
+    currentBucketKey: string;
+  }> {
     const zone = this.areas
       .get(character.zone.areaId)
       .getZone(character.zone.id);
@@ -67,19 +73,19 @@ export default class World {
     // 2 & 3. Get intersecting camera buckets (Math.floor for min, Math.ceil for max) + buffer
     const startBucketX = Math.max(
       0,
-      Math.floor(character.camera.minX / this.CHUNK_SIZE) - bufferRadius,
+      Math.floor(character.cameraMinX / this.CHUNK_SIZE) - bufferRadius,
     );
     const endBucketX = Math.min(
       Math.ceil(zone.map.width / this.CHUNK_SIZE) - 1,
-      Math.ceil(character.camera.maxX / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
+      Math.ceil(character.cameraMaxX / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
     );
     const startBucketY = Math.max(
       0,
-      Math.floor(character.camera.minY / this.CHUNK_SIZE) - bufferRadius,
+      Math.floor(character.cameraMinY / this.CHUNK_SIZE) - bufferRadius,
     );
     const endBucketY = Math.min(
       Math.ceil(zone.map.height / this.CHUNK_SIZE) - 1,
-      Math.ceil(character.camera.maxY / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
+      Math.ceil(character.cameraMaxY / this.CHUNK_SIZE) + bufferRadius, // 🟢 Removed the "- 1"
     );
 
     // 4. Gather the entire active Area of Interest (AOI) set
@@ -131,6 +137,8 @@ export default class World {
     return {
       toLoadChunks,
       toUnloadKeys,
+      zone,
+      currentBucketKey,
     };
   }
 

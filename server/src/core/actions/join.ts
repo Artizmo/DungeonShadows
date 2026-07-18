@@ -8,45 +8,42 @@ import { ActionType } from "~/shared/core/types";
 
 export const Join: ActionHandler = {
   execute: async ({ data, game }): Promise<void> => {
-    try {
-      const { playerId, characterId } = data;
-      const [playerData, characterData] = await Promise.all([
-        fetchPlayer(playerId),
-        fetchCharacter(characterId),
-      ]);
-      const player = new Player(playerData);
-      Log.NETWORK.INFO(`${player.fullName} has connected!`);
+    const { playerId, characterId } = data;
+    const [playerData, characterData] = await Promise.all([
+      fetchPlayer(playerId),
+      fetchCharacter(characterId),
+    ]);
+    const player = new Player(playerData);
+    Log.NETWORK.INFO(`${player.fullName} has connected!`);
 
-      characterData.camera = data.camera;
-      const character = new Character(characterData);
+    characterData.cameraWidth = data.camera.width;
+    characterData.cameraHeight = data.camera.height;
+    const character = new Character(characterData);
+    const { toLoadChunks, zone } =
+      await game.world.handleCharacterSpatialUpdate(character);
 
-      // todo: pass camera data from client
-      character.playerId = player.id;
-      game.world.add(character);
+    character.playerId = player.id;
+    game.world.add(character);
 
-      game.network.broadcast.sendTo(
-        character.id,
-        Serialize.data({
-          serverTick: game.loop.tick,
-          actionType: ActionType.JOIN,
-          character,
-        }),
-      );
+    game.network.broadcast.sendTo(
+      character.id,
+      Serialize.data({
+        serverTick: game.loop.tick,
+        actionType: ActionType.JOIN,
+        character,
+        chunks: toLoadChunks,
+        zone: { ...zone, buckets: Array.from(zone.buckets) },
+      }),
+    );
 
-      const { toLoadChunks } =
-        await game.world.handleCharacterSpatialUpdate(character);
-
-      game.network.broadcast.sendTo(
-        character.id,
-        Serialize.data({
-          serverTick: game.loop.tick,
-          actionType: ActionType.LOAD_MAP,
-          characterId: character.id,
-          chunks: toLoadChunks,
-        }),
-      );
-    } catch (error) {
-      Log.DATA.ERROR(`Could not load server data: ${error}`);
-    }
+    // game.network.broadcast.sendTo(
+    //   character.id,
+    //   Serialize.data({
+    //     serverTick: game.loop.tick,
+    //     actionType: ActionType.LOAD_MAP,
+    //     character,
+    //     chunks: toLoadChunks,
+    //   }),
+    // );
   },
 };

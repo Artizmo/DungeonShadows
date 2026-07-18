@@ -141,6 +141,37 @@ export default class Renderer {
       }
 
       this.ctx.drawImage(chunk.img, drawX, drawY);
+
+      // 🔴 DEBUG OVERLAY: Draw Red Chunk Border
+      this.ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
+      this.ctx.lineWidth = 1;
+      this.ctx.strokeRect(drawX, drawY, this.CHUNK_SIZE, this.CHUNK_SIZE);
+
+      // Set up text styling first so measurements are accurate
+      this.ctx.font = "bold 12px monospace";
+      const labelText = `[${chunk.x}, ${chunk.y}]`;
+
+      // Calculate background badge sizing dynamically
+      const textMetrics = this.ctx.measureText(labelText);
+      const paddingX = 6;
+      const paddingY = 4;
+
+      const badgeW = textMetrics.width + paddingX * 2;
+      const badgeH = 12 + paddingY * 2; // 12px matches font size
+      const badgeX = drawX + 4;
+      const badgeY = drawY + 4;
+
+      // 1. Draw solid dark background box
+      this.ctx.fillStyle = "rgba(17, 17, 27, 0.85)"; // Matches your canvas clear color
+      this.ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+
+      // 2. Draw a subtle border around the text box
+      this.ctx.strokeStyle = "#00ffff";
+      this.ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+
+      // 3. Draw the bold red text on top
+      this.ctx.fillStyle = "#ffffff";
+      this.ctx.fillText(labelText, badgeX + paddingX, badgeY + paddingY + 10); // +10 aligns text baseline
     }
 
     if (character) {

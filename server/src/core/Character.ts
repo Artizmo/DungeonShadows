@@ -1,33 +1,24 @@
-import type { ActionRecord } from "~/shared/core/types";
-import Zone from "~/core/Zone";
+import type Zone from "~/core/Zone";
+import type { ActionRecord, ICoords } from "~/shared/core/types";
 
 export default class Character {
   id: number;
   playerId: number;
   name: string;
   level: number;
-  zone: Zone;
-  camera: {
-    width: number;
-    height: number;
-    readonly minX: number;
-    readonly maxX: number;
-    readonly minY: number;
-    readonly maxY: number;
-  };
-  position: { x: number; y: number };
-  prevPosition: { x: number; y: number };
-  renderPosition: { x: number; y: number };
   stats: { hp: number; maxHp: number; mana: number; maxMana: number };
+  zone: Zone;
+  cameraWidth: number;
+  cameraHeight: number;
+  position: ICoords;
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
   speed = 1;
   sequenceId = 0;
   lastProcessedSequenceId = 0;
-
   // 🟢 Track active chunks currently loaded on the client side
-  public activeAOI: Set<string> = new Set();
-  public currentBucketKey: string | null = null;
+  activeAOI: Set<string> = new Set();
+  currentBucketKey: string | null = null;
 
   constructor(character: Character) {
     this.id = character.id;
@@ -38,38 +29,26 @@ export default class Character {
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };
-    this.prevPosition = { ...character.position };
-    this.renderPosition = { ...this.position };
     this.speed = character.speed;
     this.currentBucketKey = character.currentBucketKey || null;
     this.activeAOI = character.activeAOI
       ? new Set(character.activeAOI)
       : new Set();
-
-    // 🟢 Capture character scope so getters don't evaluate to NaN
-    const self = this;
-
-    this.camera = {
-      width: character.camera.width,
-      height: character.camera.height,
-      get minX() {
-        return self.position.x - this.width / 2;
-      },
-      get maxX() {
-        return self.position.x + this.width / 2;
-      },
-      get minY() {
-        return self.position.y - this.height / 2;
-      },
-      get maxY() {
-        return self.position.y + this.height / 2;
-      },
-    };
+    this.cameraWidth = character.cameraWidth;
+    this.cameraHeight = character.cameraHeight;
   }
 
-  tick(): void {
-    this.prevPosition.x = this.position.x;
-    this.prevPosition.y = this.position.y;
+  get cameraMinX() {
+    return this.position.x - this.cameraWidth / 2;
+  }
+  get cameraMaxX() {
+    return this.position.x + this.cameraWidth / 2;
+  }
+  get cameraMinY() {
+    return this.position.y - this.cameraHeight / 2;
+  }
+  get cameraMaxY() {
+    return this.position.y + this.cameraHeight / 2;
   }
 
   move(velocity: { x: number; y: number }): void {

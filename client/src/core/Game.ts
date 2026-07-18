@@ -26,20 +26,6 @@ export default class Game {
   keyboard: KeyboardController;
   sequenceId = 0;
   private activeCommands = new Set<CommandType>();
-  private inputHistory: Array<{
-    // move to character class
-    sequenceId: number;
-    tick: number;
-    action: ActionType;
-    activeCommands: Set<CommandType>;
-  }> = [];
-  // private stateHistory: Array<{
-  //   // move to world class
-  //   sequenceId: number;
-  //   tick: number;
-  //   actions: Set<ActionType>;
-  //   state: WorldState;
-  // }> = [];
   private readonly DELTA_TIME = 1 / 20;
   private readonly MAX_INPUT_HISTORY = 10;
 
@@ -70,7 +56,7 @@ export default class Game {
     const { character } = this.world;
     const { position, prevPosition, renderPosition } = character;
 
-    // 🟢 Calculate final render position: standard LERP
+    // 🟢 Calculate final render position and LERP
     renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
     renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
 
@@ -107,24 +93,20 @@ export default class Game {
     const { character } = this.world;
 
     while (
-      this.inputHistory.length > 0 &&
-      (this.inputHistory[0].sequenceId <= serverData.lastProcessedSequenceId ||
-        this.inputHistory.length > this.MAX_INPUT_HISTORY)
+      this.world.character.inputHistory.length > 0 &&
+      (this.world.character.inputHistory[0].sequenceId <=
+        serverData.lastProcessedSequenceId ||
+        this.world.character.inputHistory.length > this.MAX_INPUT_HISTORY)
     ) {
-      this.inputHistory.shift();
+      this.world.character.inputHistory.shift();
     }
 
-    // 2. 🟢 CACHE ORIGINAL PREDICTION STATES
-    // Capture where the renderer currently thinks we are before any coordinate modifications
-    // const oldPredictedX = character.position.x;
-    // const oldPredictedY = character.position.y;
-
-    // 3. Teleport local character to the absolute authoritative server baseline
+    // Set to authoritative server baseline
     character.position.x = serverData.playerState.x;
     character.position.y = serverData.playerState.y;
 
-    // 4. REPLAY all inputs that are still outstanding (not yet processed by server)
-    for (const savedInput of this.inputHistory) {
+    // Replay all inputs that have not yet been processed by server
+    for (const savedInput of this.world.character.inputHistory) {
       const dataContext = {
         activeCommands: savedInput.activeCommands,
         speed: character.speed,
@@ -173,7 +155,7 @@ export default class Game {
 
     for (const action of actionTypeQueue) {
       this.sequenceId++;
-      this.inputHistory.push({
+      this.world.character.inputHistory.push({
         sequenceId: this.sequenceId,
         tick: this.loop.tick,
         action,
@@ -181,18 +163,17 @@ export default class Game {
       });
     }
 
-    // 🟢 Only run prediction if there are actual actions to simulate
+    // 🟢 Client prediction from action queue O(A)
     if (actionTypeQueue.size > 0) {
       for (const actionType of actionTypeQueue) {
         const handler = ActionRegistry.get(actionType);
         if (!handler) continue;
 
-        const FIXED_DELTA = 1 / 20;
         handler.execute({
           data: {
             activeCommands: this.activeCommands,
             speed: character.speed,
-            deltaTime: FIXED_DELTA,
+            deltaTime: this.DELTA_TIME,
           },
           character,
           game: this,
@@ -210,22 +191,6 @@ export default class Game {
         activeCommands: Array.from(this.activeCommands),
       }),
     );
-
-    // this.stateHistory.push({
-    //   sequenceId: this.sequenceId,
-    //   tick: this.loop.tick,
-    //   actions: new Set(actionTypeQueue),
-    //   state: {
-    //     character: {
-    //       stats: { ...character.stats },
-    //       position: { ...character.position },
-    //     },
-    //   },
-    // });
-
-    // if (this.stateHistory.length > 15) {
-    //   this.stateHistory.shift();
-    // }
   }
 
   start(ticket: string): void {
