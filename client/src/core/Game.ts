@@ -47,7 +47,7 @@ export default class Game {
     this.keyboard = keyboard;
 
     this.loop.onUpdate = (alpha: number) => this.update(alpha);
-    this.loop.onTick = (tick: number) => this.tick(tick);
+    this.loop.onTick = () => this.tick();
   }
 
   update(alpha: number): void {
@@ -64,10 +64,10 @@ export default class Game {
     this.renderer.render(character, this.camera);
   }
 
-  tick(tick: number): void {
+  tick(): void {
     if (this.world.character) {
       this.events.emit("game_update");
-      this.world.character.tick(tick);
+      this.world.character.tick();
       this.processInputs();
     }
 
@@ -77,12 +77,16 @@ export default class Game {
 
       const data = Serialize.decode(packet);
 
-      if (data.category === PacketCategory.SNAPSHOT) {
-        this.handleServerReconciliation(data);
-      } else {
+      // 1. If it's an action response (like LOAD_MAP), run its visual/structural logic first
+      if (data.actionType) {
         const handler = ActionRegistry.get(data.actionType);
         const { character } = this.world;
         handler?.execute({ data, character, game: this });
+      }
+
+      // 2. Then, if it carries state data, apply your working reconciliation method
+      if (data.category === PacketCategory.SNAPSHOT || data.playerState) {
+        this.handleServerReconciliation(data);
       }
     }
   }

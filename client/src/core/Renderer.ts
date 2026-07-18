@@ -53,12 +53,12 @@ export default class Renderer {
     }
   }
 
-  public loadMap(chunks: IMapChunk[], toUnloadKeys: string[]): void {
+  public loadMap(chunks: IMapChunk[], unchunks: string[]): void {
     if (!chunks || !Array.isArray(chunks)) return;
 
     // 🟢 Deletes zone bucket image chunks safely
-    if (toUnloadKeys) {
-      for (const key of toUnloadKeys) {
+    if (unchunks) {
+      for (const key of unchunks) {
         const entry = this.chunkTextures.get(key);
         if (entry) {
           // 1. Strip callbacks so we don't trigger updates on dead elements

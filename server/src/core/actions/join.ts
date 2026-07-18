@@ -19,7 +19,7 @@ export const Join: ActionHandler = {
     characterData.cameraWidth = data.camera.width;
     characterData.cameraHeight = data.camera.height;
     const character = new Character(characterData);
-    const { toLoadChunks, zone } =
+    const { chunks, zone } =
       await game.world.handleCharacterSpatialUpdate(character);
 
     character.playerId = player.id;
@@ -31,7 +31,7 @@ export const Join: ActionHandler = {
         serverTick: game.loop.tick,
         actionType: ActionType.JOIN,
         character,
-        chunks: toLoadChunks,
+        chunks,
         zone: { ...zone, buckets: Array.from(zone.buckets) },
       }),
     );

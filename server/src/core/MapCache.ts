@@ -3,14 +3,14 @@ import path from "path";
 import { Log } from "~/shared/core/Logger.js";
 import type Zone from "~/core/Zone";
 
-export interface PreChunkedMap {
+export interface Chunk {
   x: number;
   y: number;
   textureBytes: Uint8Array;
 }
 
 interface ChunkCacheEntry {
-  data: PreChunkedMap;
+  data: Chunk;
   lastAccessed: number;
 }
 
@@ -19,10 +19,7 @@ export default class MapCache {
   private cache = new Map<string, ChunkCacheEntry>();
 
   // Track ongoing disk reads so concurrent requests for the same chunk don't duplicate I/O
-  private loadingPromises = new Map<
-    string,
-    Promise<PreChunkedMap | undefined>
-  >();
+  private loadingPromises = new Map<string, Promise<Chunk | undefined>>();
 
   // Configuration settings
   private readonly ttlMs = 1000 * 60 * 15; // Evict individual chunks after 15 mins of inactivity
@@ -38,7 +35,7 @@ export default class MapCache {
   public async getChunk(
     zone: Zone,
     chunkKey: string,
-  ): Promise<PreChunkedMap | undefined> {
+  ): Promise<Chunk | undefined> {
     const [strX, strY] = chunkKey.split("_");
     const gridX = parseInt(strX, 10);
     const gridY = parseInt(strY, 10);
@@ -68,7 +65,7 @@ export default class MapCache {
   private async readPreprocessedChunkFromDisk(
     zone: Zone,
     chunkKey: string,
-  ): Promise<PreChunkedMap | undefined> {
+  ): Promise<Chunk | undefined> {
     const [strX, strY] = chunkKey.split("_");
     const gridX = parseInt(strX, 10);
     const gridY = parseInt(strY, 10);

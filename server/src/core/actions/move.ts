@@ -14,7 +14,7 @@ export const Move: ActionHandler = {
     if (!game || !character) return;
 
     // const velocity = Move.applyPhysics!({ data });
-    const { speed } = character;
+    const { lastProcessedSequenceId, speed } = character;
     const { activeCommands, deltaTime } = data;
     let dx = 0;
     let dy = 0;
@@ -43,17 +43,18 @@ export const Move: ActionHandler = {
 
     character.move(velocity);
 
-    const { toLoadChunks, toUnloadKeys, zone } =
+    const { chunks, unchunks, zone } =
       await game.world.handleCharacterSpatialUpdate(character);
 
     game.network.broadcast.sendTo(
       character.id,
       Serialize.data({
+        lastProcessedSequenceId,
         serverTick: game.loop.tick,
-        actionType: ActionType.LOAD_MAP,
+        actionType: ActionType.ZONE_UPDATE,
         character,
-        chunks: toLoadChunks,
-        toUnloadKeys,
+        chunks,
+        unchunks,
         zone: { ...zone, buckets: Array.from(zone.buckets) },
       }),
     );

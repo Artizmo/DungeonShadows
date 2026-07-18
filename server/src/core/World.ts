@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import Area from "~/core/Area";
 import type Character from "~/core/Character";
-import MapCache, { type PreChunkedMap } from "~/core/MapCache";
+import MapCache, { type Chunk } from "~/core/MapCache";
 import { Log } from "~/shared/core/Logger";
 import type Zone from "./Zone";
 
@@ -45,8 +45,8 @@ export default class World {
     bufferRadius: number = 1,
   ): Promise<{
     zone: Zone;
-    toLoadChunks: PreChunkedMap[];
-    toUnloadKeys: string[];
+    chunks: Chunk[];
+    unchunks: string[];
     currentBucketKey: string;
   }> {
     const zone = this.areas
@@ -97,12 +97,12 @@ export default class World {
     }
 
     // 5. Delta Calculations: Only send changes over the websocket
-    const toUnloadKeys: string[] = [];
+    const unchunks: string[] = [];
     const toLoadKeys: string[] = [];
 
     // Find buckets the player has walked away from
     for (const key of character.activeAOI) {
-      if (!currentAOI.has(key)) toUnloadKeys.push(key);
+      if (!currentAOI.has(key)) unchunks.push(key);
     }
 
     // Find brand new buckets entering the viewport bounds
@@ -114,13 +114,13 @@ export default class World {
     character.activeAOI = currentAOI;
 
     // Decrement viewport counters for retired buckets
-    for (const bucketKey of toUnloadKeys) {
+    for (const bucketKey of unchunks) {
       const bucket = zone.buckets.get(bucketKey);
       if (bucket) bucket.userCount--;
     }
 
     // Fetch and prepare WebP texture data for incoming buckets
-    const toLoadChunks: PreChunkedMap[] = [];
+    const chunks: Chunk[] = [];
     for (const bucketKey of toLoadKeys) {
       const bucket = zone.buckets.get(bucketKey);
       if (bucket) {
@@ -128,15 +128,15 @@ export default class World {
 
         const chunkData = await this.mapCache.getChunk(zone, bucketKey);
         if (chunkData) {
-          toLoadChunks.push(chunkData);
+          chunks.push(chunkData);
         }
       }
     }
 
     // 6. Return delta state to the handler to emit to the client
     return {
-      toLoadChunks,
-      toUnloadKeys,
+      chunks,
+      unchunks,
       zone,
       currentBucketKey,
     };
