@@ -97,8 +97,8 @@ export default class World {
 
     // 3. Decoupled Viewport Tracking
     // Simulates the client's locked camera container so chunk eviction stays stable at map boundaries
-    const CLIENT_MAX_WIDTH = zone.map.width;
-    const CLIENT_MAX_HEIGHT = zone.map.height;
+    const CLIENT_MAX_WIDTH = character.cameraWidth;
+    const CLIENT_MAX_HEIGHT = character.cameraHeight;
 
     let targetCamX = character.position.x - CLIENT_MAX_WIDTH / 2;
     let targetCamY = character.position.y - CLIENT_MAX_HEIGHT / 2;
@@ -154,7 +154,10 @@ export default class World {
     }
 
     // Commit the new AOI state to character memory
-    character.activeAOI = currentAOI;
+    character.activeAOI.clear();
+    for (const key of currentAOI) {
+      character.activeAOI.add(key);
+    }
 
     // Decrement viewport counters for retired buckets
     for (const bucketKey of unchunks) {
