@@ -17,6 +17,7 @@ export default class Zone {
     totalChunks: number;
     lastProcessedDate: Date;
   };
+  userCount = 0;
 
   // Key: "X_Y" (e.g., "0_0", "3_4"), Value: Spatial Bucket state
   buckets: Map<string, Bucket>;

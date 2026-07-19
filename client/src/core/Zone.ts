@@ -17,6 +17,7 @@ export default class Zone {
     totalChunks: number;
     lastProcessedDate: Date;
   };
+  userCount = 0;
 
   // Key: "X_Y" (e.g., "0_0", "3_4"), Value: Spatial Bucket state
   buckets: Map<string, Bucket>;
@@ -26,7 +27,8 @@ export default class Zone {
     this.name = zone.name;
     this.areaId = zone.areaId;
     this.map = { ...zone.map };
-    this.buckets = new Map();
+    this.buckets = { ...zone.buckets };
+    this.userCount = zone.userCount;
   }
 
   /**

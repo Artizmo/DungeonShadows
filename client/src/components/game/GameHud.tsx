@@ -9,6 +9,9 @@ export default function GameHud() {
     (game) => game.world.character?.currentBucketKey ?? "",
   );
   const zoneName = useGame((game) => game.world.character?.zone?.name ?? "");
+  const userCount = useGame(
+    (game) => game.world.character?.zone?.userCount ?? 0,
+  );
 
   const isReady = name.length > 0;
 
@@ -37,6 +40,7 @@ export default function GameHud() {
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
             Bucket: {currentBucketKey}
+            <br />- Users: {userCount}
           </p>
         </div>
 

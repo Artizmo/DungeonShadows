@@ -168,7 +168,7 @@ export default class Network {
   ): void {
     if (this.connections.get(characterId) === closingSocket) {
       this.connections.delete(characterId);
-      this.events.emit("connection_closed", characterId);
+      this.events.emit("connection_closed", { characterId });
     }
   }
 

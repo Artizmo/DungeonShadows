@@ -20,7 +20,8 @@ export enum ActionType {
   MOVE = 1,
   CAST = 2,
   JOIN = 3,
-  ZONE_UPDATE = 4,
+  LEAVE = 4,
+  ZONE_UPDATE = 5,
 }
 
 export interface ActionPayload {

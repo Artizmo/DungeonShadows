@@ -72,14 +72,26 @@ export default class World {
     const currentBucketKey = `${currentBucketX}_${currentBucketY}`;
 
     // Track dynamic bucket migrations on the Zone
-    if (character.currentBucketKey !== currentBucketKey) {
-      if (character.currentBucketKey) {
-        const oldBucket = zone.buckets.get(character.currentBucketKey);
-        if (oldBucket) oldBucket.entities.delete(character.id);
-      }
-      const newBucket = zone.buckets.get(currentBucketKey);
-      if (newBucket) newBucket.entities.add(character.id);
+    const updateBucket = (
+      key: string | undefined,
+      delta: number,
+      add: boolean,
+    ) => {
+      if (!key) return;
+      const bucket = zone.buckets.get(key);
+      if (!bucket) return;
 
+      if (add) {
+        bucket.entities.add(character.id);
+      } else {
+        bucket.entities.delete(character.id);
+      }
+      bucket.userCount += delta;
+    };
+
+    if (character.currentBucketKey !== currentBucketKey) {
+      updateBucket(character.currentBucketKey, -1, false);
+      updateBucket(currentBucketKey, 1, true);
       character.currentBucketKey = currentBucketKey;
     }
 
@@ -155,8 +167,6 @@ export default class World {
     for (const bucketKey of toLoadKeys) {
       const bucket = zone.buckets.get(bucketKey);
       if (bucket) {
-        bucket.userCount++;
-
         const chunkData = await this.mapCache.getChunk(zone, bucketKey);
         if (chunkData) {
           chunks.push(chunkData);
@@ -175,5 +185,9 @@ export default class World {
 
   add(character: Character): void {
     this.characters.set(character.id, character);
+  }
+
+  remove(characterId: number): void {
+    this.characters.delete(characterId);
   }
 }

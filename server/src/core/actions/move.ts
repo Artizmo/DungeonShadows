@@ -55,7 +55,10 @@ export const Move: ActionHandler = {
         character,
         chunks,
         unchunks,
-        zone: { ...zone, buckets: Array.from(zone.buckets) },
+        zone: {
+          ...zone,
+          userCount: zone.buckets.get(character.currentBucketKey).userCount,
+        },
       }),
     );
   },

@@ -32,18 +32,11 @@ export const Join: ActionHandler = {
         actionType: ActionType.JOIN,
         character,
         chunks,
-        zone: { ...zone, buckets: Array.from(zone.buckets) },
+        zone: {
+          ...zone,
+          userCount: zone.buckets.get(character.currentBucketKey).userCount,
+        },
       }),
     );
-
-    // game.network.broadcast.sendTo(
-    //   character.id,
-    //   Serialize.data({
-    //     serverTick: game.loop.tick,
-    //     actionType: ActionType.LOAD_MAP,
-    //     character,
-    //     chunks: toLoadChunks,
-    //   }),
-    // );
   },
 };

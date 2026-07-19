@@ -33,6 +33,9 @@ export default class Game {
     this.network.events.on("new_connection", (character) => {
       this.onNewConnection(character);
     });
+    this.network.events.on("connection_closed", (character) => {
+      this.onCloseConnection(character);
+    });
   }
 
   async tick(tick: number) {
@@ -84,6 +87,12 @@ export default class Game {
 
   async onNewConnection(character: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.JOIN);
+
+    if (handler) await handler.execute({ data: character, game: this });
+  }
+
+  async onCloseConnection(character: Character): Promise<void> {
+    const handler = ActionRegistry.get(ActionType.LEAVE);
 
     if (handler) await handler.execute({ data: character, game: this });
   }
