@@ -1,11 +1,15 @@
 import type Zone from "~/core/Zone";
 
 export default class Area {
-  public id: string;
-  public zones: Map<string, Zone>;
+  id: string;
+  author: string;
+  description: string;
+  zones: Map<string, Zone>;
 
-  constructor(id: string) {
-    this.id = id;
+  constructor(area: Area) {
+    this.id = area.id;
+    this.author = area.author;
+    this.description = area.description;
     this.zones = new Map();
   }
   addZone(zone: Zone): void {

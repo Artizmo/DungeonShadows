@@ -669,17 +669,11 @@ ActionRegistry.set(ActionType.MOVE, {
         const radius = 16;
 
         const checkCollision = (cx: number, cy: number) => {
-            if (cx - radius < 0 || cx + radius > GAME_CONFIG.WORLD_WIDTH ||
+            /*if (cx - radius < 0 || cx + radius > GAME_CONFIG.WORLD_WIDTH ||
                 cy - radius < 0 || cy + radius > GAME_CONFIG.WORLD_HEIGHT) {
                 return true;
             }
-            const obstacles = world.getObstacles(entity.areaId!, entity.zoneId!);
-            for (const obs of obstacles) {
-                if (cx + radius > obs.x && cx - radius < obs.x + obs.w &&
-                    cy + radius > obs.y && cy - radius < obs.y + obs.h) {
-                    return true;
-                }
-            }
+            const*/
             return false;
         };
 
@@ -1070,7 +1064,7 @@ class ClientGame {
     public menuManager = new MenuManager();
     public virtualInputs = new Set<string>();
     public showTargetRange = false;
-    public showTorch = true;
+    public showTorch = false;
 
     public pendingActions: ActionRecord[] = [];
     public sequenceId = 0;
@@ -1346,10 +1340,10 @@ class ClientGame {
 
         if (this.localPlayerId) {
             const srvLocal = server.world.get(this.localPlayerId);
-            if (srvLocal) {
+            /*if (srvLocal) {
                 ctx.fillStyle = '#f43f5e';
                 ctx.beginPath(); ctx.arc(Math.round(srvLocal.x), Math.round(srvLocal.y), 14, 0, Math.PI * 2); ctx.fill();
-            }
+            }*/
         }
 
         for (const char of this.world.characters.values()) {
@@ -1357,9 +1351,9 @@ class ClientGame {
             const drawY = Math.round(char.y);
 
             if (char.id === this.localPlayerId) {
-                ctx.strokeStyle = '#34d399'; ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'; ctx.lineWidth = 3;
+                ctx.strokeStyle = '#000000'; ctx.fillStyle = 'rgba(52, 211, 153, 0.2)'; ctx.lineWidth = 1;
                 ctx.beginPath(); ctx.arc(drawX, drawY, 16, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-                ctx.fillStyle = '#34d399'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffffff'; ctx.font = '10px monospace'; ctx.textAlign = 'center';
                 ctx.fillText(char.id, drawX, drawY - 28);
                 ctx.fillText(`(${drawX}, ${drawY})`, drawX, drawY - 17);
                 ctx.textAlign = 'left';

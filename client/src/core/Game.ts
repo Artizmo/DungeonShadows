@@ -2,7 +2,7 @@ import World from "~/core/World";
 import Camera from "~/core/Camera";
 import GamepadController from "~/core/GamepadController";
 import KeyboardController from "~/core/KeyboardController";
-import { Serialize } from "~/shared/network/serialize";
+import { Serialize } from "~/shared/core/serialize";
 import { ActionRegistry } from "./actions";
 import type EventEmitter from "eventemitter3";
 import type Loop from "~/core/Loop";
@@ -11,35 +11,23 @@ import type Network from "~/core/Network";
 import {
   actionDictionary,
   inputDictionary,
-} from "~/core/commands/input-dictionary";
-import { CommandType } from "~/core/commands/index";
+} from "~/core/actions/input-dictionary";
+import { CommandType } from "~/core/actions/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
-import type { InputAction, WorldState } from "./types";
-import { Log } from "~/shared/core/Logger";
 
 export default class Game {
   events: EventEmitter;
-  world: World;
-  renderer: Renderer;
   loop: Loop;
   network: Network;
+  world: World;
+  renderer: Renderer;
+  camera: Camera = new Camera();
   gamepad: GamepadController;
   keyboard: KeyboardController;
-  camera: Camera = new Camera();
   sequenceId = 0;
   private activeCommands = new Set<CommandType>();
-  private inputHistory: Array<{
-    sequenceId: number;
-    tick: number;
-    actions: Set<ActionType>;
-    activeCommands: Set<CommandType>;
-  }> = [];
-  private stateHistory: Array<{
-    sequenceId: number;
-    tick: number;
-    actions: Set<ActionType>;
-    state: WorldState;
-  }> = [];
+  private readonly DELTA_TIME = 1 / 20;
+  private readonly MAX_INPUT_HISTORY = 10;
 
   constructor(
     world: World,
@@ -58,42 +46,28 @@ export default class Game {
     this.gamepad = gamepad;
     this.keyboard = keyboard;
 
-    this.loop.onUpdate = (deltaTime: number, alpha: number) =>
-      this.update(deltaTime, alpha);
-    this.loop.onTick = (tick: number) => this.tick(tick);
+    this.loop.onUpdate = (alpha: number) => this.update(alpha);
+    this.loop.onTick = () => this.tick();
   }
 
-  update(deltaTime: number, alpha: number): void {
+  update(alpha: number): void {
     if (!this.world.character) return;
 
     const { character } = this.world;
-    // 🟢 Decay the visual offset by ~15% per frame (or use exponential decay based on deltaTime)
-    character.visualOffset.x *= 0.85;
-    character.visualOffset.y *= 0.85;
+    const { position, prevPosition, renderPosition } = character;
 
-    // Flush small floating point dust to zero
-    if (Math.abs(character.visualOffset.x) < 0.01) character.visualOffset.x = 0;
-    if (Math.abs(character.visualOffset.y) < 0.01) character.visualOffset.y = 0;
-
-    // 🟢 Calculate final render position: standard LERP + decaying error offset
-    const lerpX =
-      character.prevPosition.x +
-      (character.position.x - character.prevPosition.x) * alpha;
-    const lerpY =
-      character.prevPosition.y +
-      (character.position.y - character.prevPosition.y) * alpha;
-
-    character.renderPosition.x = lerpX + character.visualOffset.x;
-    character.renderPosition.y = lerpY + character.visualOffset.y;
+    // 🟢 Calculate final render position and LERP
+    renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
+    renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
 
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(character, this.camera);
   }
 
-  tick(tick: number): void {
+  tick(): void {
     if (this.world.character) {
       this.events.emit("game_update");
-      this.world.character.tick(tick);
+      this.world.character.tick();
       this.processInputs();
     }
 
@@ -103,121 +77,107 @@ export default class Game {
 
       const data = Serialize.decode(packet);
 
-      // Check if this packet is a World State / Update from the server
-      if (data.category === PacketCategory.SNAPSHOT) {
-        this.handleServerReconciliation(data);
-      } else {
-        // Fallback for immediate non-movement action handlers
+      // 1. If it's an action response (like LOAD_MAP), run its visual/structural logic first
+      if (data.actionType) {
         const handler = ActionRegistry.get(data.actionType);
         const { character } = this.world;
         handler?.execute({ data, character, game: this });
+      }
+
+      // 2. Then, if it carries state data, apply your working reconciliation method
+      if (data.category === PacketCategory.SNAPSHOT || data.playerState) {
+        this.handleServerReconciliation(data);
       }
     }
   }
 
   private handleServerReconciliation(serverData: any): void {
+    if (!this.world.character) return;
+
     const { character } = this.world;
-    if (!character) return;
 
-    // 1. Drop all inputs that the server has already acknowledged and processed
-    this.inputHistory = this.inputHistory.filter(
-      (input) => input.sequenceId > serverData.lastProcessedSequenceId,
-    );
-
-    const MAX_HISTORY_TICKS = 100;
-    if (this.inputHistory.length > MAX_HISTORY_TICKS) {
-      this.inputHistory = this.inputHistory.slice(-MAX_HISTORY_TICKS); //
+    while (
+      this.world.character.inputHistory.length > 0 &&
+      (this.world.character.inputHistory[0].sequenceId <=
+        serverData.lastProcessedSequenceId ||
+        this.world.character.inputHistory.length > this.MAX_INPUT_HISTORY)
+    ) {
+      this.world.character.inputHistory.shift();
     }
 
-    // 2. 🟢 CACHE ORIGINAL PREDICTION STATES
-    // Capture where the renderer currently thinks we are before any coordinate modifications
-    const oldPredictedX = character.position.x;
-    const oldPredictedY = character.position.y;
-
-    // 3. Teleport local character to the absolute authoritative server baseline
+    // Set to authoritative server baseline
     character.position.x = serverData.playerState.x;
     character.position.y = serverData.playerState.y;
 
-    // 4. REPLAY all inputs that are still outstanding (not yet processed by server)
-    for (const savedInput of this.inputHistory) {
-      const FIXED_DELTA = 1 / 20;
-
+    // Replay all inputs that have not yet been processed by server
+    for (const savedInput of this.world.character.inputHistory) {
       const dataContext = {
         activeCommands: savedInput.activeCommands,
         speed: character.speed,
-        deltaTime: FIXED_DELTA,
+        deltaTime: this.DELTA_TIME,
       };
 
-      const handler = ActionRegistry.get(ActionType.MOVE);
+      const handler = ActionRegistry.get(savedInput.action);
       if (handler) {
         handler.execute({ data: dataContext, character, game: this });
       }
-    }
-
-    // 5. 🟢 VISUAL ERROR ABSORPTION
-    // Calculate how far the server correction shifted our physical body
-    const shiftX = oldPredictedX - character.position.x;
-    const shiftY = oldPredictedY - character.position.y;
-
-    // Add that exact shift into our visual offset so the rendered sprite does not move an inch!
-    if (Math.abs(shiftX) < 32 && Math.abs(shiftY) < 32) {
-      character.visualOffset.x += shiftX;
-      character.visualOffset.y += shiftY;
-    } else {
-      // Emergency snap if desync is massive (e.g., teleported or respawned)
-      character.visualOffset.x = 0;
-      character.visualOffset.y = 0;
     }
   }
 
   processInputs(): void {
     const { character } = this.world;
-    this.activeCommands.clear();
-
-    this.gamepad.update();
-    const rawKeyboard = this.keyboard.activeKeys;
-    const rawGamepad = this.gamepad.activeKeys;
+    const keyboard = this.keyboard.activeKeys;
+    const gamepad = this.gamepad.activeKeys;
     const context = "DEFAULT";
     const actionTypeQueue: Set<ActionType> = new Set();
 
-    const kMap = inputDictionary[context]?.["keyboard"];
-    if (kMap)
-      rawKeyboard.forEach((k) => {
-        if (kMap[k]) this.activeCommands.add(kMap[k]);
-      });
+    this.activeCommands.clear();
+    this.gamepad.update();
 
-    const gMap = inputDictionary[context]?.["gamepad"];
-    if (gMap)
-      rawGamepad.forEach((k) => {
-        if (gMap[k]) this.activeCommands.add(gMap[k]);
-      });
+    const inputControls = [
+      { input: keyboard, command: inputDictionary[context]?.["keyboard"] },
+      { input: gamepad, command: inputDictionary[context]?.["gamepad"] },
+    ];
+
+    inputControls.forEach(({ input, command }) => {
+      if (!command) return;
+
+      const uniqueInputs = new Set(input);
+
+      for (const k of uniqueInputs) {
+        const cmd = command[k];
+        if (cmd) {
+          this.activeCommands.add(cmd);
+        }
+      }
+    });
 
     for (const type of this.activeCommands) {
       const actionType = actionDictionary[type];
       if (actionType) actionTypeQueue.add(actionType);
     }
 
-    this.sequenceId++;
+    for (const action of actionTypeQueue) {
+      this.sequenceId++;
+      this.world.character.inputHistory.push({
+        sequenceId: this.sequenceId,
+        tick: this.loop.tick,
+        action,
+        activeCommands: new Set(this.activeCommands),
+      });
+    }
 
-    this.inputHistory.push({
-      sequenceId: this.sequenceId,
-      tick: this.loop.tick,
-      actions: new Set(actionTypeQueue),
-      activeCommands: new Set(this.activeCommands),
-    });
-
-    // 🟢 Only run prediction if there are actual actions to simulate
+    // 🟢 Client prediction from action queue O(A)
     if (actionTypeQueue.size > 0) {
       for (const actionType of actionTypeQueue) {
         const handler = ActionRegistry.get(actionType);
         if (!handler) continue;
 
-        const FIXED_DELTA = 1 / 20;
         handler.execute({
           data: {
             activeCommands: this.activeCommands,
             speed: character.speed,
-            deltaTime: FIXED_DELTA,
+            deltaTime: this.DELTA_TIME,
           },
           character,
           game: this,
@@ -231,26 +191,10 @@ export default class Game {
         characterId: character.id,
         sequenceId: this.sequenceId,
         tick: this.loop.tick,
-        actions: Array.from(new Set(actionTypeQueue)),
-        activeCommands: Array.from(new Set(this.activeCommands)),
+        actions: Array.from(actionTypeQueue),
+        activeCommands: Array.from(this.activeCommands),
       }),
     );
-
-    this.stateHistory.push({
-      sequenceId: this.sequenceId,
-      tick: this.loop.tick,
-      actions: new Set(actionTypeQueue),
-      state: {
-        character: {
-          stats: { ...character.stats },
-          position: { ...character.position },
-        },
-      },
-    });
-
-    if (this.stateHistory.length > 15) {
-      this.stateHistory.shift();
-    }
   }
 
   start(ticket: string): void {

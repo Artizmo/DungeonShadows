@@ -1,3 +1,8 @@
+export interface ICoords {
+  x: number;
+  y: number;
+}
+
 export interface QueueItem {
   tick: number;
   bytes: Uint8Array;
@@ -15,7 +20,8 @@ export enum ActionType {
   MOVE = 1,
   CAST = 2,
   JOIN = 3,
-  LOAD_MAP = 4,
+  LEAVE = 4,
+  ZONE_UPDATE = 5,
 }
 
 export interface ActionPayload {

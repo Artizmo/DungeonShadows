@@ -22,7 +22,7 @@ export interface ActionHandlerContext {
 export type ActionPhysicsContext = { x: number; y: number };
 
 export interface ActionHandler {
-  execute(actionHandlerContext: ActionHandlerContext): void;
+  execute(actionHandlerContext: ActionHandlerContext): Promise<void>;
   applyPhysics?(
     actionHandlerContext: ActionHandlerContext,
   ): ActionPhysicsContext;

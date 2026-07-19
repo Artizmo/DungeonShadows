@@ -5,7 +5,7 @@
   "zones": [
     {
       "id": "arena:sephus",
-      "zonePath": "./zones/arena.json"
+      "zonePath": "arena/arena.json"
     }
   ]
 }

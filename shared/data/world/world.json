@@ -3,7 +3,11 @@
   "areas": [
     {
       "id": "sephus",
-      "areaPath": "./areas/sephus/area.json"
+      "areaPath": "sephus/area.json"
+    },
+    {
+      "id": "alberlay-forest",
+      "areaPath": "alberlay-forest/area.json"
     }
   ]
 }

@@ -1,11 +1,9 @@
 export default class Loop {
   tick: number = 0;
+  onUpdate!: (alpha: number) => void;
+  onTick!: (tick: number) => void;
   private lastTime: number = 0;
   private accumulator: number = 0;
-
-  onUpdate!: (deltaTime: number, alpha: number) => void;
-  onTick!: (tick: number) => void;
-
   private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
 
   constructor() {
@@ -13,15 +11,14 @@ export default class Loop {
   }
 
   start() {
-    // Request animation frame passes a high-res timestamp automatically
     requestAnimationFrame((time) => {
       this.lastTime = time;
-      requestAnimationFrame(this.loop.bind(this));
+      requestAnimationFrame(this.loop);
     });
   }
 
-  private loop(currentTime: number) {
-    // 1. Calculate delta time (how long it took since the last display frame)
+  private loop = (currentTime: number) => {
+    // 1. Calculate delta time
     let deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;
 
@@ -32,10 +29,9 @@ export default class Loop {
     this.accumulator += deltaTime;
 
     // 3. Process Ticks (Fixed Timestep)
-    // Runs exactly enough times to catch up the simulation state to real-world time
     while (this.accumulator >= this.TICK_RATE_MS) {
       this.tick += 1;
-      this.onTick(this.tick);
+      this.onTick?.(this.tick); // Safe execution check
       this.accumulator -= this.TICK_RATE_MS;
     }
 
@@ -43,12 +39,9 @@ export default class Loop {
     const alpha = this.accumulator / this.TICK_RATE_MS;
 
     // 4. Process Visuals (Variable Timestep)
-    // This runs EVERY single frame at the native refresh rate of the monitor (60Hz, 144Hz, etc.)
-    // It updates LERP visual positions and renders the canvas.
-    if (this.onUpdate) {
-      this.onUpdate(deltaTime, alpha);
-    }
+    this.onUpdate?.(alpha);
 
-    requestAnimationFrame(this.loop.bind(this));
-  }
+    // Queue up the next frame cleanly using the cached function pointer
+    requestAnimationFrame(this.loop);
+  };
 }
