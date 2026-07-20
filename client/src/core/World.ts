@@ -14,9 +14,6 @@ export default class World {
     state: WorldState;
   }> = [];
 
-  addArea(area: Area): void {
-    this.areas.set(area.id, area);
-  }
   add(character: Character): void {
     this.character = character;
   }

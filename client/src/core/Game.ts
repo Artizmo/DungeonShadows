@@ -11,8 +11,8 @@ import type Network from "~/core/Network";
 import {
   actionDictionary,
   inputDictionary,
-} from "~/core/actions/input-dictionary";
-import { CommandType } from "~/core/actions/input-dictionary";
+} from "~/core/utils/input-dictionary";
+import { CommandType } from "~/core/utils/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
 
 export default class Game {
@@ -50,6 +50,87 @@ export default class Game {
     this.loop.onTick = () => this.tick();
   }
 
+  processInputs(): void {
+    const { character } = this.world;
+    const keyboard = this.keyboard.activeKeys;
+    const gamepad = this.gamepad.activeKeys;
+    const context = "DEFAULT";
+    const actionTypeQueue: Set<ActionType> = new Set();
+
+    this.activeCommands.clear();
+    this.gamepad.update();
+
+    // 🟢 Grab and process character input
+    const inputControllers = [
+      { control: keyboard, input: inputDictionary[context]?.["keyboard"] },
+      { control: gamepad, input: inputDictionary[context]?.["gamepad"] },
+    ];
+
+    inputControllers.forEach((inputController) => {
+      if (!inputController.input) return;
+
+      const inputCollection = new Set(inputController.control);
+      for (const input of inputCollection) {
+        const command = inputController.input[input];
+        if (command) {
+          this.activeCommands.add(command);
+        }
+      }
+    });
+
+    // 🟢 Collect actions
+    for (const command of this.activeCommands) {
+      const actionType = actionDictionary[command];
+      if (actionType) actionTypeQueue.add(actionType);
+    }
+
+    // 🟢 Add actions to history
+    const { tick } = this.loop;
+    const { inputHistory } = this.world.character;
+    const activeCommands = new Set(this.activeCommands);
+
+    // Increment sequenceId
+    this.sequenceId++;
+    const { sequenceId } = this;
+
+    for (const action of actionTypeQueue) {
+      inputHistory.push({
+        sequenceId,
+        tick,
+        action,
+        activeCommands,
+      });
+    }
+
+    // 🟢 Loop actions, update local state (client prediction)
+    if (actionTypeQueue.size > 0) {
+      for (const actionType of actionTypeQueue) {
+        const handler = ActionRegistry.get(actionType);
+        if (!handler) continue;
+
+        handler.execute({
+          data: {
+            activeCommands: this.activeCommands,
+            deltaTime: this.DELTA_TIME,
+          },
+          character,
+          game: this,
+        });
+      }
+    }
+
+    // 🟢 Send action request to the server for notary
+    this.network.send(
+      Serialize.action({
+        characterId: character.id,
+        sequenceId: this.sequenceId,
+        tick: this.loop.tick,
+        actions: Array.from(actionTypeQueue),
+        activeCommands: Array.from(this.activeCommands),
+      }),
+    );
+  }
+
   update(alpha: number): void {
     if (!this.world.character) return;
 
@@ -71,6 +152,7 @@ export default class Game {
       this.processInputs();
     }
 
+    // 🟢 Process incoming network packets at fixed tick rate
     while (this.network.packetQueue.length > 0) {
       const packet = this.network.packetQueue.shift();
       if (!packet) continue;
@@ -122,79 +204,6 @@ export default class Game {
         handler.execute({ data: dataContext, character, game: this });
       }
     }
-  }
-
-  processInputs(): void {
-    const { character } = this.world;
-    const keyboard = this.keyboard.activeKeys;
-    const gamepad = this.gamepad.activeKeys;
-    const context = "DEFAULT";
-    const actionTypeQueue: Set<ActionType> = new Set();
-
-    this.activeCommands.clear();
-    this.gamepad.update();
-
-    const inputControls = [
-      { input: keyboard, command: inputDictionary[context]?.["keyboard"] },
-      { input: gamepad, command: inputDictionary[context]?.["gamepad"] },
-    ];
-
-    inputControls.forEach(({ input, command }) => {
-      if (!command) return;
-
-      const uniqueInputs = new Set(input);
-
-      for (const k of uniqueInputs) {
-        const cmd = command[k];
-        if (cmd) {
-          this.activeCommands.add(cmd);
-        }
-      }
-    });
-
-    for (const type of this.activeCommands) {
-      const actionType = actionDictionary[type];
-      if (actionType) actionTypeQueue.add(actionType);
-    }
-
-    for (const action of actionTypeQueue) {
-      this.sequenceId++;
-      this.world.character.inputHistory.push({
-        sequenceId: this.sequenceId,
-        tick: this.loop.tick,
-        action,
-        activeCommands: new Set(this.activeCommands),
-      });
-    }
-
-    // 🟢 Client prediction from action queue O(A)
-    if (actionTypeQueue.size > 0) {
-      for (const actionType of actionTypeQueue) {
-        const handler = ActionRegistry.get(actionType);
-        if (!handler) continue;
-
-        handler.execute({
-          data: {
-            activeCommands: this.activeCommands,
-            speed: character.speed,
-            deltaTime: this.DELTA_TIME,
-          },
-          character,
-          game: this,
-        });
-      }
-    }
-
-    // 🟢 Always tell the server our latest sequenceId, even if actions array is empty []
-    this.network.send(
-      Serialize.action({
-        characterId: character.id,
-        sequenceId: this.sequenceId,
-        tick: this.loop.tick,
-        actions: Array.from(actionTypeQueue),
-        activeCommands: Array.from(this.activeCommands),
-      }),
-    );
   }
 
   start(ticket: string): void {

@@ -16,6 +16,13 @@ export default class Network {
   readonly events = new EventEmitter();
   private socket: ManagedWebSocket | null = null;
 
+  constructor() {
+    if (import.meta.hot) {
+      if (!this.socket) return;
+      this.socket.close(1000, "Component unmounted");
+    }
+  }
+
   connect(ticket: string): void {
     this.disconnect();
 
@@ -65,6 +72,7 @@ export default class Network {
     };
 
     ws.onclose = () => {
+      this.disconnect();
       Log.NETWORK.WARN("⚠️ Client disconnected from game server.");
     };
 
@@ -81,6 +89,8 @@ export default class Network {
 
   disconnect(): void {
     if (!this.socket) return;
+
+    this.events.emit("player_disconnect", this.characterId);
 
     this.socket.wasIntentionallyClosed = true;
     this.socket.onopen = null;
