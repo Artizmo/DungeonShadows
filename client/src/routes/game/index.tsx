@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useCallback, useEffect } from "react";
+import { createFileRoute, redirect, useRouter } from "@tanstack/react-router";
 import game from "~/core";
 import GameHud from "~/components/game/GameHud";
 import GameCanvas from "~/components/game/GameCanvas";
@@ -37,6 +37,19 @@ export const Route = createFileRoute("/game/")({
 });
 
 function GameComponent() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleDisconnect = () => {
+      router.navigate({ to: "/login" });
+    };
+    game.network.events.on("player_disconnect", handleDisconnect);
+
+    return () => {
+      game.network.events.off("player_disconnect", handleDisconnect);
+    };
+  }, []);
+
   // Bind canvas to the persistent engine singleton
   const handleEngineResize = useCallback((canvas: HTMLCanvasElement) => {
     game.handleBindCanvas(canvas);

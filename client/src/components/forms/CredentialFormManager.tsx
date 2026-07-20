@@ -9,8 +9,8 @@ interface CredentialFormManagerProps {
 export default function CredentialFormManager({
   onAuthSuccess,
 }: CredentialFormManagerProps) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("luke.skywalker@tatooine.net");
+  const [password, setPassword] = useState("password123");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 

@@ -9,6 +9,8 @@ import { ActionType } from "~/shared/core/types";
 export const Join: ActionHandler = {
   execute: async ({ data, game }): Promise<void> => {
     const { playerId, characterId } = data;
+    if (game.world.characters.has(characterId)) return;
+
     const [playerData, characterData] = await Promise.all([
       fetchPlayer(playerId),
       fetchCharacter(characterId),

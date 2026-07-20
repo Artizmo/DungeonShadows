@@ -5,7 +5,7 @@ import type { ActionHandler } from "~/core/actions/types";
 export const Leave: ActionHandler = {
   execute: async ({ data, game }): Promise<void> => {
     const character = game.world.characters.get(data.characterId);
-    const player = await fetchPlayer(character.playerId);
+    if (!character) return;
 
     game.world.remove(character.id);
     game.world.areas
@@ -18,6 +18,7 @@ export const Leave: ActionHandler = {
       .zones.get(character.zone.id)
       .buckets.get(character.currentBucketKey).userCount--;
 
+    const player = await fetchPlayer(character.playerId);
     Log.NETWORK.INFO(`${player.fullName} has disconnected!`);
   },
 };
