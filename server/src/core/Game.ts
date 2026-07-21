@@ -5,18 +5,21 @@ import type Character from "~/core/Character";
 import { Serialize } from "~/shared/core/serialize";
 import { ActionRegistry } from "./actions";
 import { ActionType } from "~/shared/core/types";
+import type StateManager from "~/core/StateManager";
 
 export default class Game {
   readonly loop: Loop;
   network: Network;
   world: World;
   isReady = false;
+  private stateManager: StateManager;
   private readonly DELTA_TIME = 1 / 20;
 
-  constructor(loop: Loop, network: Network, world: World) {
+  constructor(loop: Loop, network: Network, world: World, stateManager: StateManager) {
     this.loop = loop;
     this.network = network;
     this.world = world;
+    this.stateManager = stateManager;
   }
 
   public start(): void {
@@ -38,25 +41,25 @@ export default class Game {
     });
   }
 
-  async tick(tick: number) {
-    // 1. Process ALL pending inputs from clients first
-    while (this.network.packetQueue.length > 0) {
-      const queueItem = this.network.packetQueue.shift();
-      if (!queueItem) continue;
+  tick(tick: number): void {
+    // 1. Process client input queue
+    const packets = this.network.packetQueue;
+    this.network.packetQueue = [];
 
+    for (let i = 0; i < packets.length; i++) {
+      const queueItem = packets[i];
       const data = Serialize.decode(queueItem.bytes);
       const character = this.world.characters.get(data.characterId);
 
       if (!character) continue;
       if (data.sequenceId <= character.lastProcessedSequenceId) continue;
 
-      // 2. Notarize the client's actions
       if (data.actions && data.actions.length > 0) {
         for (const actionType of data.actions) {
           const handler = ActionRegistry.get(actionType);
           if (!handler) continue;
 
-          await handler.execute({
+          handler.execute({
             data: {
               activeCommands: new Set(data.activeCommands),
               deltaTime: this.DELTA_TIME,
@@ -70,19 +73,32 @@ export default class Game {
       character.lastProcessedSequenceId = data.sequenceId;
     }
 
-    // 3. Broadcast the Authoritative State to ALL active characters in the world
-    // This maintains the continuous downstream heartbeat
+    // 2. Uniform Snapshot / Heartbeat Loop
     for (const character of this.world.characters.values()) {
+      const isDirty = this.world.dirtyEntities.has(character);
+
+      // Extract delta if dirty; otherwise send an empty state slice
+      const { flags, state } = isDirty ? this.stateManager.getDirtyState(character) : {};
       const updatePayload = Serialize.snapshot({
-        playerState: { x: character.position.x, y: character.position.y },
+        tick,
+        state,
+        flags,
         lastProcessedSequenceId: character.lastProcessedSequenceId,
       });
 
-      // Simulating network latency
+      // Reset dirty state on entity
+      if (isDirty) {
+        character.dirtyFlags = 0;
+      }
+
+      // Buffer packet for network dispatch
       setTimeout(() => {
         this.network.broadcast.sendTo(character.id, updatePayload);
       }, 38);
     }
+
+    // Clear tracking set after all snapshots are queued
+    this.world.dirtyEntities.clear();
   }
 
   async onNewConnection(character: Character): Promise<void> {

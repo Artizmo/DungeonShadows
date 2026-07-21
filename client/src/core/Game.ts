@@ -14,6 +14,7 @@ import {
 } from "~/core/utils/input-dictionary";
 import { CommandType } from "~/core/utils/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
+import type { StateManager } from "~/core/StateManager";
 
 export default class Game {
   events: EventEmitter;
@@ -24,6 +25,7 @@ export default class Game {
   camera: Camera = new Camera();
   gamepad: GamepadController;
   keyboard: KeyboardController;
+  stateManager: StateManager;
   sequenceId = 0;
   private activeCommands = new Set<CommandType>();
   private readonly DELTA_TIME = 1 / 20;
@@ -37,6 +39,7 @@ export default class Game {
     events: EventEmitter,
     gamepad: GamepadController,
     keyboard: KeyboardController,
+    stateManager: StateManager,
   ) {
     this.events = events;
     this.world = world;
@@ -45,6 +48,7 @@ export default class Game {
     this.network = network;
     this.gamepad = gamepad;
     this.keyboard = keyboard;
+    this.stateManager = stateManager;
 
     this.loop.onUpdate = (alpha: number) => this.update(alpha);
     this.loop.onTick = () => this.tick();
@@ -113,7 +117,6 @@ export default class Game {
             activeCommands: this.activeCommands,
             deltaTime: this.DELTA_TIME,
           },
-          character,
           game: this,
         });
       }
@@ -167,7 +170,7 @@ export default class Game {
       }
 
       // 🟢 Process state snapshot server responses with reconciliation
-      if (data.category === PacketCategory.SNAPSHOT || data.playerState) {
+      if (data.category === PacketCategory.SNAPSHOT) {
         this.handleServerReconciliation(data);
       }
     }
@@ -175,35 +178,41 @@ export default class Game {
 
   private handleServerReconciliation(serverData: any): void {
     if (!this.world.character) return;
-
     const { character } = this.world;
 
+    // 1. Purge acknowledged inputs from history
     while (
-      this.world.character.pendingActions.length > 0 &&
-      (this.world.character.pendingActions[0].sequenceId <=
+      character.pendingActions.length > 0 &&
+      (character.pendingActions[0].sequenceId <=
         serverData.lastProcessedSequenceId ||
-        this.world.character.pendingActions.length > this.MAX_INPUT_HISTORY)
+        character.pendingActions.length > this.MAX_INPUT_HISTORY)
     ) {
-      this.world.character.pendingActions.shift();
+      character.pendingActions.shift();
     }
 
-    // Set to authoritative server baseline
-    character.position.x = serverData.playerState.x;
-    character.position.y = serverData.playerState.y;
+    // 2. StateManager captures prediction & sets authoritative baseline
+    // Returns false if server delta contains no character update
+    // if (!this.stateManager.setState(character, serverData)) return;
+    if (!serverData.state?.character) return;
+    this.stateManager.setState(character, serverData);
 
-    // Replay all inputs that have not yet been processed by server
-    for (const savedInput of this.world.character.pendingActions) {
-      const dataContext = {
-        activeCommands: savedInput.activeCommands,
-        speed: character.speed,
-        deltaTime: this.DELTA_TIME,
-      };
-
+    // 3. Replay pending actions on top of server baseline
+    for (const savedInput of character.pendingActions) {
       const handler = ActionRegistry.get(savedInput.action);
       if (handler) {
-        handler.execute({ data: dataContext, character, game: this });
+        handler.execute({
+          data: {
+            activeCommands: savedInput.activeCommands,
+            deltaTime: this.DELTA_TIME,
+          },
+          character,
+          game: this,
+        });
       }
     }
+
+    // 4. StateManager compares replayed state vs internal predicted state
+    this.stateManager.reconcile(character);
   }
 
   start(ticket: string): void {

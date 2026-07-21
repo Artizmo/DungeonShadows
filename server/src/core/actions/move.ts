@@ -11,9 +11,8 @@ export interface Coords {
 
 export const Move: ActionHandler = {
   execute: async ({ data, character, game }): Promise<void> => {
-    if (!game || !character) return;
+    if (!character) return;
 
-    // const velocity = Move.applyPhysics!({ data });
     const { lastProcessedSequenceId, speed } = character;
     const { activeCommands, deltaTime } = data;
     let dx = 0;
@@ -25,23 +24,24 @@ export const Move: ActionHandler = {
     if (activeCommands.has(CommandType.MOVE_LEFT)) dx -= 1;
     if (activeCommands.has(CommandType.MOVE_RIGHT)) dx += 1;
 
-    // 🟢 SAFE CODES: Calculate true vector length
+    // SAFE CODES: Calculate true vector length
     const length = Math.sqrt(dx * dx + dy * dy);
 
     if (length > 0) {
-      // 🟢 Force a pure directional unit vector regardless of raw hardware magnitude
+      // Force a pure directional unit vector regardless of raw hardware magnitude
       dx /= length;
       dy /= length;
     }
 
-    // 🟢 The Golden Formula: Direction * Time Slice * Real Speed Value
+    // The Golden Formula: Direction * Time Slice * Real Speed Value
     // If speed = 300 and deltaTime = 1/60, this returns exactly 5 pixels per tick.
     const velocity = {
       x: dx * deltaTime * speed,
       y: dy * deltaTime * speed,
     };
 
-    character.move(velocity);
+    // 🟢 Update local state
+    game.world.moveCharacter(character.id, velocity);
 
     // Limit movement to the bounds of the curernt zone map
     if (character.zone && character.zone.map) {
@@ -56,9 +56,9 @@ export const Move: ActionHandler = {
       if (character.position.y > maxBoundY) character.position.y = maxBoundY;
     }
 
-    const { chunks, unchunks, zone } =
-      await game.world.handleCharacterSpatialUpdate(character);
+    const { chunks, unchunks, zone } = await game.world.handleCharacterSpatialUpdate(character);
 
+    // [ ] remove this
     game.network.broadcast.sendTo(
       character.id,
       Serialize.data({

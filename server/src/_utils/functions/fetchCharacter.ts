@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { Log } from "~/shared/core/Logger";
-import type Character from "~/core/Character";
+import Character from "~/core/Character";
 import Player from "~/core/Player";
 
 export async function fetchCharacter(characterId: number): Promise<Character> {
@@ -25,7 +25,7 @@ export async function fetchCharacter(characterId: number): Promise<Character> {
       throw new Error("Character data corrupt.");
     }
 
-    return characterRecord;
+    return new Character(characterRecord);
   } catch (error: any) {
     Log.NETWORK.ERROR(
       `Failed to fetch data for characterId ${characterId}: ${error.message}`,

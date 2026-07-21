@@ -2,9 +2,11 @@ import type { ActionHandler } from "~/core/actions/types";
 import { CommandType } from "../utils/input-dictionary";
 
 export const Move: ActionHandler = {
-  execute: ({ data, character, game }): void => {
-    if (!game || !character) return;
+  execute: ({ data, game }): void => {
+    if (!game?.world) return;
+    if (!game.world.character) return;
 
+    const { character } = game.world;
     const { activeCommands, deltaTime } = data;
     let dx = 0;
     let dy = 0;

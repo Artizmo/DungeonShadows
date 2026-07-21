@@ -4,12 +4,14 @@ import type Character from "~/core/Character";
 import MapCache, { type Chunk } from "~/core/MapCache";
 import { Log } from "~/shared/core/Logger";
 import type Zone from "./Zone";
+import type { ICoords } from "~/shared/core/types";
 
 export default class World {
   name: string;
   areas = new Map<string, Area>();
   characters = new Map<number, Character>();
   mapCache: MapCache = new MapCache();
+  dirtyEntities = new Set<any>();
   private readonly CHUNK_SIZE = 256;
 
   async initialize(configFilePath: string) {
@@ -23,9 +25,7 @@ export default class World {
       Log.WORLD.INFO("Initializing world architecture layers...");
 
       for (const { areaPath } of areas) {
-        const areaData = JSON.parse(
-          await readFile(`../shared/data/world/areas/${areaPath}`, "utf-8"),
-        );
+        const areaData = JSON.parse(await readFile(`../shared/data/world/areas/${areaPath}`, "utf-8"));
         const area = new Area(areaData);
         await area.initialize(areaData.zones);
 
@@ -49,9 +49,7 @@ export default class World {
     unchunks: string[];
     currentBucketKey: string;
   }> {
-    const zone = this.areas
-      .get(character.zone.areaId)
-      .getZone(character.zone.id);
+    const zone = this.areas.get(character.zone.areaId).getZone(character.zone.id);
 
     // 1. Enforce Absolute Map Boundaries for the Character
     // Allows the entity to walk completely off-screen, up to the exact pixel edge of the map
@@ -72,11 +70,7 @@ export default class World {
     const currentBucketKey = `${currentBucketX}_${currentBucketY}`;
 
     // Track dynamic bucket migrations on the Zone
-    const updateBucket = (
-      key: string | undefined,
-      delta: number,
-      add: boolean,
-    ) => {
+    const updateBucket = (key: string | undefined, delta: number, add: boolean) => {
       if (!key) return;
       const bucket = zone.buckets.get(key);
       if (!bucket) return;
@@ -114,22 +108,10 @@ export default class World {
     const serverCameraMaxY = finalCamY + CLIENT_MAX_HEIGHT;
 
     // Calculate intersecting camera buckets using the locked viewport limits
-    const startBucketX = Math.max(
-      0,
-      Math.floor(serverCameraMinX / this.CHUNK_SIZE) - bufferRadius,
-    );
-    const endBucketX = Math.min(
-      Math.ceil(zone.map.width / this.CHUNK_SIZE) - 1,
-      Math.ceil(serverCameraMaxX / this.CHUNK_SIZE) + bufferRadius,
-    );
-    const startBucketY = Math.max(
-      0,
-      Math.floor(serverCameraMinY / this.CHUNK_SIZE) - bufferRadius,
-    );
-    const endBucketY = Math.min(
-      Math.ceil(zone.map.height / this.CHUNK_SIZE) - 1,
-      Math.ceil(serverCameraMaxY / this.CHUNK_SIZE) + bufferRadius,
-    );
+    const startBucketX = Math.max(0, Math.floor(serverCameraMinX / this.CHUNK_SIZE) - bufferRadius);
+    const endBucketX = Math.min(Math.ceil(zone.map.width / this.CHUNK_SIZE) - 1, Math.ceil(serverCameraMaxX / this.CHUNK_SIZE) + bufferRadius);
+    const startBucketY = Math.max(0, Math.floor(serverCameraMinY / this.CHUNK_SIZE) - bufferRadius);
+    const endBucketY = Math.min(Math.ceil(zone.map.height / this.CHUNK_SIZE) - 1, Math.ceil(serverCameraMaxY / this.CHUNK_SIZE) + bufferRadius);
 
     // 4. Gather the entire active Area of Interest (AOI) set
     const currentAOI = new Set<string>();
@@ -192,5 +174,17 @@ export default class World {
 
   remove(characterId: number): void {
     this.characters.delete(characterId);
+  }
+
+  moveCharacter(characterId: number, velocity: ICoords): void {
+    if (!characterId) return;
+    if (!velocity) return;
+    if (velocity.x === 0 && velocity.y === 0) return;
+
+    const character = this.characters.get(characterId);
+    if (!character) return;
+
+    character.move(velocity);
+    this.dirtyEntities.add(character);
   }
 }
