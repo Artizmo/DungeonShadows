@@ -43,6 +43,19 @@ export const Move: ActionHandler = {
 
     character.move(velocity);
 
+    // Limit movement to the bounds of the curernt zone map
+    if (character.zone && character.zone.map) {
+      const minBoundX = 0;
+      const minBoundY = 0;
+      const maxBoundX = character.zone.map.width;
+      const maxBoundY = character.zone.map.height;
+
+      if (character.position.x < minBoundX) character.position.x = minBoundX;
+      if (character.position.x > maxBoundX) character.position.x = maxBoundX;
+      if (character.position.y < minBoundY) character.position.y = minBoundY;
+      if (character.position.y > maxBoundY) character.position.y = maxBoundY;
+    }
+
     const { chunks, unchunks, zone } =
       await game.world.handleCharacterSpatialUpdate(character);
 

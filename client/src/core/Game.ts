@@ -159,14 +159,14 @@ export default class Game {
 
       const data = Serialize.decode(packet);
 
-      // 1. If it's an action response (like LOAD_MAP), run its visual/structural logic first
+      // 🟢 Process event-driven server responses directly
       if (data.actionType) {
         const handler = ActionRegistry.get(data.actionType);
         const { character } = this.world;
         handler?.execute({ data, character, game: this });
       }
 
-      // 2. Then, if it carries state data, apply your working reconciliation method
+      // 🟢 Process state snapshot server responses with reconciliation
       if (data.category === PacketCategory.SNAPSHOT || data.playerState) {
         this.handleServerReconciliation(data);
       }
