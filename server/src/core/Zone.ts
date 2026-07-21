@@ -10,6 +10,7 @@ export default class Zone {
   id: string;
   name: string;
   areaId: string;
+  mapName: string;
   map: {
     width: number;
     height: number;

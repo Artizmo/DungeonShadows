@@ -1,6 +1,6 @@
 import type { ActionType, ICoords } from "~/shared/core/types";
 import Zone from "~/core/Zone";
-import type { CommandType } from "./actions/input-dictionary";
+import type { CommandType } from "./utils/input-dictionary";
 
 export default class Character {
   id: number;
@@ -18,7 +18,7 @@ export default class Character {
     maxMana: number;
   };
   isAlive: boolean;
-  inputHistory: Array<{
+  pendingActions: Array<{
     sequenceId: number;
     tick: number;
     action: ActionType;

@@ -9,20 +9,16 @@ import { ActionType } from "~/shared/core/types";
 export const Join: ActionHandler = {
   execute: async ({ data, game }): Promise<void> => {
     const { playerId, characterId } = data;
-    const [playerData, characterData] = await Promise.all([
-      fetchPlayer(playerId),
-      fetchCharacter(characterId),
-    ]);
-    const player = new Player(playerData);
+    if (game.world.characters.has(characterId)) return;
+
+    const [player, character] = await Promise.all([fetchPlayer(playerId), fetchCharacter(characterId)]);
     Log.NETWORK.INFO(`${player.fullName} has connected!`);
 
-    characterData.cameraWidth = data.camera.width;
-    characterData.cameraHeight = data.camera.height;
-    const character = new Character(characterData);
-    const { chunks, zone } =
-      await game.world.handleCharacterSpatialUpdate(character);
-
     character.playerId = player.id;
+    character.cameraWidth = data.camera.width;
+    character.cameraHeight = data.camera.height;
+    const { chunks, zone } = await game.world.handleCharacterSpatialUpdate(character);
+
     game.world.add(character);
 
     game.network.broadcast.sendTo(

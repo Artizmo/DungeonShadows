@@ -1,27 +1,25 @@
 import type { ActionHandler } from "~/core/actions/types";
-import { CommandType } from "./input-dictionary";
-
-export interface Coords {
-  x: number;
-  y: number;
-}
+import { CommandType } from "../utils/input-dictionary";
 
 export const Move: ActionHandler = {
-  execute: ({ data, character, game }): Coords => {
-    if (!game || !character) return { x: 0, y: 0 };
+  execute: ({ data, game }): void => {
+    if (!game?.world) return;
+    if (!game.world.character) return;
 
-    // 1. Get the processed velocity vector for this step
-    const { activeCommands, deltaTime, speed } = data;
+    const { character } = game.world;
+    const { activeCommands, deltaTime } = data;
     let dx = 0;
     let dy = 0;
 
-    // Extract intentions
+    // 🟢 Grab direction vectors
     if (activeCommands.has(CommandType.MOVE_UP)) dy -= 1;
     if (activeCommands.has(CommandType.MOVE_DOWN)) dy += 1;
     if (activeCommands.has(CommandType.MOVE_LEFT)) dx -= 1;
     if (activeCommands.has(CommandType.MOVE_RIGHT)) dx += 1;
 
-    // Calculate true vector length
+    // 🟢 Normalizing all movement directions as 1 unit of movement
+    // ie. moving diagonally would be at the same rate as moving along the x and y axes
+    // [Link to Ref 1001](References.md#ref-1001)
     const length = Math.sqrt(dx * dx + dy * dy);
 
     if (length > 0) {
@@ -29,15 +27,16 @@ export const Move: ActionHandler = {
       dy /= length;
     }
 
-    // The Golden Formula: Direction * Time Slice * Real Speed Value
+    // 🟢 Grab the velocity vector (direction * time slice * speed)
     const velocity = {
-      x: dx * deltaTime * speed,
-      y: dy * deltaTime * speed,
+      x: dx * deltaTime * character.speed,
+      y: dy * deltaTime * character.speed,
     };
 
+    // 🟢 Update local state
     character.move(velocity);
 
-    // 🟢 FIX: Enforce identical boundary constraints locally during prediction/replay loops
+    // Limit movement to the bounds of the curernt zone map
     if (character.zone && character.zone.map) {
       const minBoundX = 0;
       const minBoundY = 0;
@@ -49,7 +48,5 @@ export const Move: ActionHandler = {
       if (character.position.y < minBoundY) character.position.y = minBoundY;
       if (character.position.y > maxBoundY) character.position.y = maxBoundY;
     }
-
-    return velocity;
   },
 };

@@ -1,6 +1,14 @@
 import type Zone from "~/core/Zone";
 import type { ActionRecord, ICoords } from "~/shared/core/types";
 
+export enum CharacterDirtyFlag {
+  NONE = 0,
+  POSITION = 1 << 0, // x, y, rotation
+  STATS = 1 << 1, // hp, mana, stamina
+  COMBAT = 1 << 2, // casting, targeting
+  EQUIPMENT = 1 << 3, // gear, weapons
+}
+
 export default class Character {
   id: number;
   playerId: number;
@@ -19,6 +27,7 @@ export default class Character {
   // 🟢 Track active chunks currently loaded on the client side
   activeAOI: Set<string> = new Set();
   currentBucketKey: string | null = null;
+  dirtyFlags: CharacterDirtyFlag = CharacterDirtyFlag.NONE;
 
   constructor(character: Character) {
     this.id = character.id;
@@ -54,5 +63,6 @@ export default class Character {
   move(velocity: { x: number; y: number }): void {
     this.position.x += velocity.x;
     this.position.y += velocity.y;
+    this.dirtyFlags |= CharacterDirtyFlag.POSITION;
   }
 }

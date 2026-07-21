@@ -11,9 +11,10 @@ import type Network from "~/core/Network";
 import {
   actionDictionary,
   inputDictionary,
-} from "~/core/actions/input-dictionary";
-import { CommandType } from "~/core/actions/input-dictionary";
+} from "~/core/utils/input-dictionary";
+import { CommandType } from "~/core/utils/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
+import type { StateManager } from "~/core/StateManager";
 
 export default class Game {
   events: EventEmitter;
@@ -24,6 +25,7 @@ export default class Game {
   camera: Camera = new Camera();
   gamepad: GamepadController;
   keyboard: KeyboardController;
+  stateManager: StateManager;
   sequenceId = 0;
   private activeCommands = new Set<CommandType>();
   private readonly DELTA_TIME = 1 / 20;
@@ -37,6 +39,7 @@ export default class Game {
     events: EventEmitter,
     gamepad: GamepadController,
     keyboard: KeyboardController,
+    stateManager: StateManager,
   ) {
     this.events = events;
     this.world = world;
@@ -45,9 +48,90 @@ export default class Game {
     this.network = network;
     this.gamepad = gamepad;
     this.keyboard = keyboard;
+    this.stateManager = stateManager;
 
     this.loop.onUpdate = (alpha: number) => this.update(alpha);
     this.loop.onTick = () => this.tick();
+  }
+
+  processInputs(): void {
+    const { character } = this.world;
+    const keyboard = this.keyboard.activeKeys;
+    const gamepad = this.gamepad.activeKeys;
+    const context = "DEFAULT";
+    const actionTypeQueue: Set<ActionType> = new Set();
+
+    this.activeCommands.clear();
+    this.gamepad.update();
+
+    // 🟢 Grab and process character input
+    const inputControllers = [
+      { control: keyboard, input: inputDictionary[context]?.["keyboard"] },
+      { control: gamepad, input: inputDictionary[context]?.["gamepad"] },
+    ];
+
+    inputControllers.forEach((inputController) => {
+      if (!inputController.input) return;
+
+      const inputCollection = new Set(inputController.control);
+      for (const input of inputCollection) {
+        const command = inputController.input[input];
+        if (command) {
+          this.activeCommands.add(command);
+        }
+      }
+    });
+
+    // 🟢 Collect actions
+    for (const command of this.activeCommands) {
+      const actionType = actionDictionary[command];
+      if (actionType) actionTypeQueue.add(actionType);
+    }
+
+    // 🟢 Add actions to history
+    const { tick } = this.loop;
+    const { pendingActions } = this.world.character;
+    const activeCommands = new Set(this.activeCommands);
+
+    // Increment sequenceId
+    this.sequenceId++;
+    const { sequenceId } = this;
+
+    for (const action of actionTypeQueue) {
+      pendingActions.push({
+        sequenceId,
+        tick,
+        action,
+        activeCommands,
+      });
+    }
+
+    // 🟢 Loop actions, update local state (client prediction)
+    if (actionTypeQueue.size > 0) {
+      for (const actionType of actionTypeQueue) {
+        const handler = ActionRegistry.get(actionType);
+        if (!handler) continue;
+
+        handler.execute({
+          data: {
+            activeCommands: this.activeCommands,
+            deltaTime: this.DELTA_TIME,
+          },
+          game: this,
+        });
+      }
+    }
+
+    // 🟢 Send action request to the server for notary
+    this.network.send(
+      Serialize.action({
+        characterId: character.id,
+        sequenceId: this.sequenceId,
+        tick: this.loop.tick,
+        actions: Array.from(actionTypeQueue),
+        activeCommands: Array.from(this.activeCommands),
+      }),
+    );
   }
 
   update(alpha: number): void {
@@ -71,21 +155,22 @@ export default class Game {
       this.processInputs();
     }
 
+    // 🟢 Process incoming network packets at fixed tick rate
     while (this.network.packetQueue.length > 0) {
       const packet = this.network.packetQueue.shift();
       if (!packet) continue;
 
       const data = Serialize.decode(packet);
 
-      // 1. If it's an action response (like LOAD_MAP), run its visual/structural logic first
+      // 🟢 Process event-driven server responses directly
       if (data.actionType) {
         const handler = ActionRegistry.get(data.actionType);
         const { character } = this.world;
         handler?.execute({ data, character, game: this });
       }
 
-      // 2. Then, if it carries state data, apply your working reconciliation method
-      if (data.category === PacketCategory.SNAPSHOT || data.playerState) {
+      // 🟢 Process state snapshot server responses with reconciliation
+      if (data.category === PacketCategory.SNAPSHOT) {
         this.handleServerReconciliation(data);
       }
     }
@@ -93,90 +178,31 @@ export default class Game {
 
   private handleServerReconciliation(serverData: any): void {
     if (!this.world.character) return;
-
     const { character } = this.world;
 
+    // 1. Purge acknowledged inputs from history
     while (
-      this.world.character.inputHistory.length > 0 &&
-      (this.world.character.inputHistory[0].sequenceId <=
+      character.pendingActions.length > 0 &&
+      (character.pendingActions[0].sequenceId <=
         serverData.lastProcessedSequenceId ||
-        this.world.character.inputHistory.length > this.MAX_INPUT_HISTORY)
+        character.pendingActions.length > this.MAX_INPUT_HISTORY)
     ) {
-      this.world.character.inputHistory.shift();
+      character.pendingActions.shift();
     }
 
-    // Set to authoritative server baseline
-    character.position.x = serverData.playerState.x;
-    character.position.y = serverData.playerState.y;
+    // 2. StateManager captures prediction & sets authoritative baseline
+    // Returns false if server delta contains no character update
+    // if (!this.stateManager.setState(character, serverData)) return;
+    if (!serverData.state?.character) return;
+    this.stateManager.setState(character, serverData);
 
-    // Replay all inputs that have not yet been processed by server
-    for (const savedInput of this.world.character.inputHistory) {
-      const dataContext = {
-        activeCommands: savedInput.activeCommands,
-        speed: character.speed,
-        deltaTime: this.DELTA_TIME,
-      };
-
+    // 3. Replay pending actions on top of server baseline
+    for (const savedInput of character.pendingActions) {
       const handler = ActionRegistry.get(savedInput.action);
       if (handler) {
-        handler.execute({ data: dataContext, character, game: this });
-      }
-    }
-  }
-
-  processInputs(): void {
-    const { character } = this.world;
-    const keyboard = this.keyboard.activeKeys;
-    const gamepad = this.gamepad.activeKeys;
-    const context = "DEFAULT";
-    const actionTypeQueue: Set<ActionType> = new Set();
-
-    this.activeCommands.clear();
-    this.gamepad.update();
-
-    const inputControls = [
-      { input: keyboard, command: inputDictionary[context]?.["keyboard"] },
-      { input: gamepad, command: inputDictionary[context]?.["gamepad"] },
-    ];
-
-    inputControls.forEach(({ input, command }) => {
-      if (!command) return;
-
-      const uniqueInputs = new Set(input);
-
-      for (const k of uniqueInputs) {
-        const cmd = command[k];
-        if (cmd) {
-          this.activeCommands.add(cmd);
-        }
-      }
-    });
-
-    for (const type of this.activeCommands) {
-      const actionType = actionDictionary[type];
-      if (actionType) actionTypeQueue.add(actionType);
-    }
-
-    for (const action of actionTypeQueue) {
-      this.sequenceId++;
-      this.world.character.inputHistory.push({
-        sequenceId: this.sequenceId,
-        tick: this.loop.tick,
-        action,
-        activeCommands: new Set(this.activeCommands),
-      });
-    }
-
-    // 🟢 Client prediction from action queue O(A)
-    if (actionTypeQueue.size > 0) {
-      for (const actionType of actionTypeQueue) {
-        const handler = ActionRegistry.get(actionType);
-        if (!handler) continue;
-
         handler.execute({
           data: {
-            activeCommands: this.activeCommands,
-            speed: character.speed,
+            activeCommands: savedInput.activeCommands,
             deltaTime: this.DELTA_TIME,
           },
           character,
@@ -185,16 +211,8 @@ export default class Game {
       }
     }
 
-    // 🟢 Always tell the server our latest sequenceId, even if actions array is empty []
-    this.network.send(
-      Serialize.action({
-        characterId: character.id,
-        sequenceId: this.sequenceId,
-        tick: this.loop.tick,
-        actions: Array.from(actionTypeQueue),
-        activeCommands: Array.from(this.activeCommands),
-      }),
-    );
+    // 4. StateManager compares replayed state vs internal predicted state
+    this.stateManager.reconcile(character);
   }
 
   start(ticket: string): void {
