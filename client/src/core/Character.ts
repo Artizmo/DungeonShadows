@@ -18,7 +18,7 @@ export default class Character {
     maxMana: number;
   };
   isAlive: boolean;
-  inputHistory: Array<{
+  pendingActions: Array<{
     sequenceId: number;
     tick: number;
     action: ActionType;

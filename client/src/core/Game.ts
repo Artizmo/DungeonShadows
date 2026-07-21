@@ -86,7 +86,7 @@ export default class Game {
 
     // 🟢 Add actions to history
     const { tick } = this.loop;
-    const { inputHistory } = this.world.character;
+    const { pendingActions } = this.world.character;
     const activeCommands = new Set(this.activeCommands);
 
     // Increment sequenceId
@@ -94,7 +94,7 @@ export default class Game {
     const { sequenceId } = this;
 
     for (const action of actionTypeQueue) {
-      inputHistory.push({
+      pendingActions.push({
         sequenceId,
         tick,
         action,
@@ -179,12 +179,12 @@ export default class Game {
     const { character } = this.world;
 
     while (
-      this.world.character.inputHistory.length > 0 &&
-      (this.world.character.inputHistory[0].sequenceId <=
+      this.world.character.pendingActions.length > 0 &&
+      (this.world.character.pendingActions[0].sequenceId <=
         serverData.lastProcessedSequenceId ||
-        this.world.character.inputHistory.length > this.MAX_INPUT_HISTORY)
+        this.world.character.pendingActions.length > this.MAX_INPUT_HISTORY)
     ) {
-      this.world.character.inputHistory.shift();
+      this.world.character.pendingActions.shift();
     }
 
     // Set to authoritative server baseline
@@ -192,7 +192,7 @@ export default class Game {
     character.position.y = serverData.playerState.y;
 
     // Replay all inputs that have not yet been processed by server
-    for (const savedInput of this.world.character.inputHistory) {
+    for (const savedInput of this.world.character.pendingActions) {
       const dataContext = {
         activeCommands: savedInput.activeCommands,
         speed: character.speed,
