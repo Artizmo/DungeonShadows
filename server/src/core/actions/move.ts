@@ -56,7 +56,8 @@ export const Move: ActionHandler = {
       if (character.position.y > maxBoundY) character.position.y = maxBoundY;
     }
 
-    const { chunks, unchunks, zone } = await game.world.handleCharacterSpatialUpdate(character);
+    const { chunks, unchunks, zone } =
+      await game.world.handleCharacterSpatialUpdate(character);
 
     // [ ] remove this
     game.network.broadcast.sendTo(
@@ -72,7 +73,7 @@ export const Move: ActionHandler = {
           ...zone,
           userCount: zone.buckets.get(character.currentBucketKey).userCount,
         },
-      }),
+      })
     );
   },
 };

@@ -7,6 +7,6 @@ export const Cast: ActionHandler = {
 
     const { character } = game.world;
 
-    console.log("bingo ooo cast spooky spell!", character.name);
+    // console.log("bingo ooo cast spooky spell!", character.name);
   },
 };

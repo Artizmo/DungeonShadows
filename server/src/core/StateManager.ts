@@ -1,38 +1,45 @@
 import Character, { CharacterDirtyFlag } from "~/core/Character";
-import type { WorldState } from "~/shared/core/types";
+import Npc from "./Npc";
+import { FLAG_NONE, FLAG_POSITION } from "~/shared/core/constants";
 
 export default class StateManager {
+  // Returns a formatted delta object, but DOES NOT reset flags
   getDirtyState(entity: any): Record<string, any> | null {
-    if (entity.dirtyFlags === 0) return null;
-
-    let state: Record<string, any> | null = null;
-    let flags: CharacterDirtyFlag;
+    if (entity.dirtyFlags === FLAG_NONE) return null;
 
     if (entity instanceof Character) {
-      state = this.getCharacterDelta(entity);
-      flags = entity.dirtyFlags;
-      entity.dirtyFlags = CharacterDirtyFlag.NONE;
+      return this.getCharacterDelta(entity);
+    }
+    if (entity instanceof Npc) {
+      return this.getNpcDelta(entity);
     }
 
-    return {
-      state,
-      flags,
-    };
+    return null;
   }
-  private getCharacterDelta(character: Character): WorldState {
-    let delta: WorldState = {};
-    const flags = character.dirtyFlags;
 
-    if (flags & CharacterDirtyFlag.POSITION) {
-      const {
-        position: { x, y },
-      } = character;
+  private getCharacterDelta(character: Character): Record<string, any> {
+    const delta: Record<string, any> = {
+      id: character.id,
+      type: "character",
+    };
 
-      delta = {
-        character: { position: { x, y } },
-      };
+    if (character.dirtyFlags & CharacterDirtyFlag.POSITION) {
+      delta.position = { x: character.position.x, y: character.position.y };
     }
+    return delta;
+  }
 
+  private getNpcDelta(npc: Npc): Record<string, any> {
+    const delta: Record<string, any> = {
+      id: npc.id,
+      width: npc.width,
+      height: npc.height,
+      type: "npc",
+    };
+
+    if (npc.dirtyFlags & FLAG_POSITION) {
+      delta.position = { x: npc.position.x, y: npc.position.y };
+    }
     return delta;
   }
 }

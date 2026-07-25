@@ -1,6 +1,5 @@
-import { Log } from "~/shared/core/Logger";
-
 export interface Bucket {
+  key: string;
   entities: Set<number>; // Set of Character/Entity IDs inside this specific cell
   staticObjects: any[]; // Colliders, interactables, or specific tile data
   userCount: number; // Ref-count: How many player viewports overlap this bucket
@@ -19,8 +18,8 @@ export default class Zone {
     lastProcessedDate: Date;
   };
   userCount = 0;
-
-  // Key: "X_Y" (e.g., "0_0", "3_4"), Value: Spatial Bucket state
+  cols: number = 0;
+  rows: number = 0;
   buckets: Map<string, Bucket>;
 
   constructor(zone: Zone) {
@@ -36,22 +35,20 @@ export default class Zone {
    * This partitions the map vectors without loading any actual images into RAM.
    */
   public async initBucketGrid(): Promise<void> {
-    const cols = Math.ceil(this.map.width / 256);
-    const rows = Math.ceil(this.map.height / 256);
+    this.cols = Math.ceil(this.map.width / 256);
+    this.rows = Math.ceil(this.map.height / 256);
 
-    for (let x = 0; x < cols; x++) {
-      for (let y = 0; y < rows; y++) {
-        this.buckets.set(`${x}_${y}`, {
+    for (let x = 0; x < this.cols; x++) {
+      for (let y = 0; y < this.rows; y++) {
+        const key = `${x}_${y}`;
+        this.buckets.set(key, {
+          key,
           entities: new Set<number>(),
           staticObjects: [],
           userCount: 0,
         });
       }
     }
-
-    Log.WORLD.INFO(
-      `[Zone: ${this.id}] Grid generated: ${cols}x${rows} (${this.buckets.size} buckets total).`,
-    );
   }
 
   /**

@@ -5,7 +5,7 @@ export default class ServerLoop {
   private isRunning: boolean = false;
   private timeoutId: NodeJS.Timeout | null = null;
 
-  onTick!: (tick: number) => void;
+  onTick!: (tick: number, deltaTime: number) => void;
 
   private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
 
@@ -50,7 +50,7 @@ export default class ServerLoop {
     while (this.accumulator >= this.TICK_RATE_MS) {
       this.tick += 1;
       if (this.onTick) {
-        this.onTick(this.tick);
+        this.onTick(this.tick, deltaTime);
       }
       this.accumulator -= this.TICK_RATE_MS;
     }
