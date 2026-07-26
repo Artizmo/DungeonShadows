@@ -18,6 +18,21 @@ export interface WorldState {
       y: number;
     };
   };
+  npcs?: {
+    id: number;
+    name: string;
+    level: number;
+    position?: {
+      x: number;
+      y: number;
+    };
+    renderPosition?: {
+      x: number;
+      y: number;
+    };
+    width: number;
+    height: number;
+  }[];
 }
 
 export interface ICoords {
@@ -26,7 +41,7 @@ export interface ICoords {
 }
 
 export interface QueueItem {
-  tick: number;
+  pulse: number;
   bytes: Uint8Array;
 }
 

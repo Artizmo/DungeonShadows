@@ -16,17 +16,28 @@ interface IChunkTexture {
   y: number;
   img: HTMLImageElement;
   loaded: boolean;
-  objectUrl?: string; // 🟢 Track URL for safe middle-of-load evictions
+  objectUrl?: string;
 }
+
+export interface IRenderableEntity {
+  id: number;
+  name: string;
+  level: number;
+  type: string; // "npc" | "character" | "item"
+  position: { x: number; y: number };
+  width?: number;
+  height?: number;
+  isTargeted?: boolean;
+}
+
+// Helper type to extend entities with calculated screen coordinates during the render tick
+type VisibleEntity = IRenderableEntity & { drawX: number; drawY: number };
 
 export default class Renderer {
   canvas: HTMLCanvasElement | null = null;
   ctx: CanvasRenderingContext2D | null = null;
   private readonly CHUNK_SIZE = 256;
   private chunkTextures: Map<string, IChunkTexture> = new Map();
-
-  // private readonly MAX_WIDTH = 1920;
-  // private readonly MAX_HEIGHT = 896;
 
   public get width(): number {
     return this.canvas ? this.canvas.width : 0;
@@ -50,19 +61,15 @@ export default class Renderer {
   public loadMap(chunks: IMapChunk[], unchunks: string[]): void {
     if (!chunks || !Array.isArray(chunks)) return;
 
-    // 🟢 Deletes zone bucket image chunks safely
+    // Safely delete zone bucket image chunks out of view
     if (unchunks) {
       for (const key of unchunks) {
         const entry = this.chunkTextures.get(key);
         if (entry) {
-          // 1. Strip callbacks so we don't trigger updates on dead elements
           entry.img.onload = null;
           entry.img.onerror = null;
-
-          // 2. Clear src to prompt immediate GPU/browser texture release
           entry.img.src = "";
 
-          // 3. Revoke Object URL if it hasn't loaded or been cleaned up yet
           if (entry.objectUrl) {
             URL.revokeObjectURL(entry.objectUrl);
           }
@@ -85,7 +92,7 @@ export default class Renderer {
         y: chunk.y,
         img: img,
         loaded: false,
-        objectUrl: url, // Store the reference immediately
+        objectUrl: url,
       };
 
       this.chunkTextures.set(chunkKey, textureEntry);
@@ -94,7 +101,7 @@ export default class Renderer {
         textureEntry.loaded = true;
         if (textureEntry.objectUrl) {
           URL.revokeObjectURL(textureEntry.objectUrl);
-          delete textureEntry.objectUrl; // Dereference once revoked
+          delete textureEntry.objectUrl;
         }
       };
 
@@ -110,11 +117,80 @@ export default class Renderer {
     }
   }
 
-  public render(character: Character, camera: ICamera): void {
+  // ==========================================
+  // MASTER RENDER PIPELINE
+  // ==========================================
+  public render(
+    character: Character,
+    camera: ICamera,
+    entities: Map<number, IRenderableEntity> | IRenderableEntity[] = []
+  ): void {
     if (!this.canvas || !this.ctx) return;
 
+    // 1. CLEAR SCREEN
     this.ctx.fillStyle = "#11111b";
     this.ctx.fillRect(0, 0, this.width, this.height);
+
+    // 2. CULLING PASS: Pre-filter to save CPU
+    const visibleEntities = this.getVisibleEntities(entities, camera);
+
+    // 3. BASE WORLD PASS
+    this.renderMapChunks(camera);
+
+    // 4. ENTITY BODIES PASS
+    this.renderEntityBodies(visibleEntities);
+    if (character) this.renderCharacter(character, camera);
+
+    // 5. DYNAMIC LIGHTING PASS (Placeholder for future)
+    // this.renderLighting(visibleEntities, character, camera);
+
+    // 6. UI / OVERLAYS PASS (Drawn on top of lighting/shadows)
+    // this.renderEntityOverlays(visibleEntities);
+  }
+
+  // ==========================================
+  // PIPELINE METHODS
+  // ==========================================
+
+  private getVisibleEntities(
+    entities: Map<number, IRenderableEntity> | IRenderableEntity[],
+    camera: ICamera
+  ): VisibleEntity[] {
+    const visible: VisibleEntity[] = [];
+    const entityList = entities instanceof Map ? entities.values() : entities;
+
+    const camX = Math.round(camera.x);
+    const camY = Math.round(camera.y);
+
+    // 🟢 Buffer zone: render entities up to 128 pixels off-screen
+    // so they can smoothly slide into the viewport without popping.
+    const cullBuffer = 64;
+
+    for (const entity of entityList) {
+      const width = entity.width || 32;
+      const height = entity.height || 32;
+
+      const drawX = Math.round(entity.position.x - camX);
+      const drawY = Math.round(entity.position.y - camY);
+
+      // Frustum Culling with buffer
+      if (
+        drawX + width < -cullBuffer ||
+        drawY + height < -cullBuffer ||
+        drawX > this.width + cullBuffer ||
+        drawY > this.height + cullBuffer
+      ) {
+        continue;
+      }
+
+      visible.push({ ...entity, drawX, drawY });
+    }
+
+    return visible;
+  }
+
+  private renderMapChunks(camera: ICamera): void {
+    if (!this.ctx) return;
 
     const camX = Math.round(camera.x);
     const camY = Math.round(camera.y);
@@ -125,6 +201,7 @@ export default class Renderer {
       const drawX = chunk.x * this.CHUNK_SIZE - camX;
       const drawY = chunk.y * this.CHUNK_SIZE - camY;
 
+      // Culling for map chunks
       if (
         drawX + this.CHUNK_SIZE < 0 ||
         drawY + this.CHUNK_SIZE < 0 ||
@@ -136,55 +213,84 @@ export default class Renderer {
 
       this.ctx.drawImage(chunk.img, drawX, drawY);
 
-      // 🔴 DEBUG OVERLAY: Draw Red Chunk Border
+      // Map Chunk Debug Overlay
       this.ctx.strokeStyle = "rgba(255, 0, 0, 0.8)";
       this.ctx.lineWidth = 1;
       this.ctx.strokeRect(drawX, drawY, this.CHUNK_SIZE, this.CHUNK_SIZE);
 
-      // Set up text styling first so measurements are accurate
       this.ctx.font = "bold 12px monospace";
       const labelText = `[${chunk.x}, ${chunk.y}]`;
-
-      // Calculate background badge sizing dynamically
       const textMetrics = this.ctx.measureText(labelText);
+
       const paddingX = 6;
       const paddingY = 4;
-
       const badgeW = textMetrics.width + paddingX * 2;
-      const badgeH = 12 + paddingY * 2; // 12px matches font size
+      const badgeH = 12 + paddingY * 2;
       const badgeX = drawX + 4;
       const badgeY = drawY + 4;
 
-      // 1. Draw solid dark background box
-      this.ctx.fillStyle = "rgba(17, 17, 27, 0.85)"; // Matches your canvas clear color
+      this.ctx.fillStyle = "rgba(17, 17, 27, 0.85)";
       this.ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
 
-      // 2. Draw a subtle border around the text box
       this.ctx.strokeStyle = "#00ffff";
       this.ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
 
-      // 3. Draw the bold red text on top
       this.ctx.fillStyle = "#ffffff";
-      this.ctx.fillText(labelText, badgeX + paddingX, badgeY + paddingY + 10); // +10 aligns text baseline
+      this.ctx.fillText(labelText, badgeX + paddingX, badgeY + paddingY + 10);
     }
+  }
 
-    if (character) {
-      this.renderCharacter(character, camera);
+  renderEntityBodies(entities: VisibleEntity[]): void {
+    if (!this.ctx) return;
+
+    for (const entity of entities) {
+      this.ctx.save();
+
+      if (entity.type === "npc") {
+        this.ctx.fillStyle = "rgba(235, 77, 75, 1.0)";
+      } else if (entity.type === "character") {
+        this.ctx.fillStyle = "rgba(46, 204, 113, 1.0)";
+      } else {
+        this.ctx.fillStyle = "rgba(241, 196, 15, 1.0)"; // items/objects
+      }
+
+      this.ctx.beginPath();
+      this.ctx.arc(entity.drawX, entity.drawY, 16, 0, Math.PI * 2);
+      this.ctx.fillStyle = "rgba(235, 77, 75, 1.0)";
+      this.ctx.fill();
+      this.ctx.strokeStyle = "#ffffff";
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+
+      this.ctx.font = "bold 12px courier new";
+      const labelText = `(${entity.level}) ${entity.name}`;
+      const textMetrics = this.ctx.measureText(labelText);
+
+      const paddingX = 6;
+      const paddingY = 4;
+      const badgeW = textMetrics.width + paddingX * 2;
+      const badgeH = 12 + paddingY * 2;
+      const badgeX = entity.drawX - 30;
+      const badgeY = entity.drawY - 40;
+
+      this.ctx.fillStyle = "rgba(33, 27, 16, 0.75)";
+      this.ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+
+      this.ctx.strokeStyle = "rgba(17, 17, 27, 1)";
+      this.ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+
+      this.ctx.fillStyle = "#ffd83f";
+      this.ctx.fillText(labelText, badgeX + paddingX, badgeY + paddingY + 10);
+
+      this.ctx.restore();
     }
   }
 
   public renderCharacter(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
-    const worldX = character.renderPosition.x;
-    const worldY = character.renderPosition.y;
-
-    const relativeX = worldX - camera.x;
-    const relativeY = worldY - camera.y;
-
-    const drawX = Math.round(relativeX);
-    const drawY = Math.round(relativeY);
-
+    const drawX = character.renderPosition.x - camera.x;
+    const drawY = character.renderPosition.y - camera.y;
     const radius = 16;
 
     this.ctx.beginPath();
@@ -192,6 +298,7 @@ export default class Renderer {
     this.ctx.fillStyle = "#1b4d3e";
     this.ctx.fill();
     this.ctx.strokeStyle = "#ffffff";
+    this.ctx.lineWidth = 2;
     this.ctx.stroke();
   }
 }

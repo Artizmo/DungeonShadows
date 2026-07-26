@@ -50,7 +50,6 @@
 [x] Draw map grid/tiles.
 [x] Draw local player at predicted coordinates.
 [ ] Draw entities at interpolated coordinates.
-[ ] Execute `game.update(renderDelta)` for visual effects.
 
 [o] Zoning
 [x] Build $O(1)$ zone bucket logic using hash map exchanges.
@@ -62,8 +61,32 @@
 
 ### **End-to-End Testing**
 
-[ ] Verify server tick logs every 50ms.
+[ ] Verify server pulse logs every 50ms.
 [ ] Verify multi-client connection and initial state sync.
 [ ] Confirm visual rendering of map and player tokens.
 [ ] Validate local prediction and remote interpolation.
 [ ] Perform reconciliation check by forcing server-side disagreement.
+
+### **Content Editor**
+
+[ ] Create a map editor
+  [ ] Upload map webp files
+  [ ] Map fixed collisions
+  [ ] Assign to area zones
+  [ ] Delegate as main or aux maps
+  [ ] Load dynamic items (quests, furniture, act items)
+  [ ] Set permanent items (Maybe the same process as dynamic?)
+[ ] Create a entity editor
+  [ ] Design items, npcs, rooms
+  [ ] Assign acts
+[ ] Act editor
+  [ ] Create acts by id, assign to areas
+  [ ] Act types (active, passive)
+  [ ] Timer and frequency settings
+  [ ] { entity, world, deltaTime } interface
+[ ] Replicate the UI from test denoting server loads and debug data
+  [ ] Allow server to play the game with full priveleges
+  [ ] Restore, create, remove entities/characters
+  [ ] Reload zones
+  [ ] System messages
+  [ ] Restart servers (login, web, game)

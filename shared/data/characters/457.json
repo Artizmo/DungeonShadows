@@ -5,21 +5,18 @@
   "level": 12,
   "isAlive": true,
   "position": {
-    "x": 1848,
-    "y": 738
+    "x": 375,
+    "y": 345
   },
-  "zone": {
-    "id": "arena:sephus",
-    "areaId": "sephus",
-    "mapName": "arena"
-  },
+  "areaId": "sephus",
+  "zoneId": "arena:sephus",
   "stats": {
     "hp": 213,
     "maxHp": 847,
     "mana": 150,
     "maxMana": 150
   },
-  "speed": 200,
+  "speed": 185,
   "inventory": [],
   "updatedAt": "2026-06-12T03:52:39.844Z"
 }

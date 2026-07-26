@@ -5,13 +5,10 @@ export default function GameHud() {
   const name = useGame((game) => game.world.character?.name ?? "");
   const posX = useGame((game) => game.world.character?.position.x ?? 0);
   const posY = useGame((game) => game.world.character?.position.y ?? 0);
-  const currentBucketKey = useGame(
-    (game) => game.world.character?.currentBucketKey ?? "",
+  const currentBucketId = useGame(
+    (game) => game.world.character?.currentBucketId ?? ""
   );
   const zoneName = useGame((game) => game.world.character?.zone?.name ?? "");
-  const userCount = useGame(
-    (game) => game.world.character?.zone?.userCount ?? 0,
-  );
 
   const isReady = name.length > 0;
 
@@ -39,8 +36,13 @@ export default function GameHud() {
             Zone: {zoneName}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Bucket: {currentBucketKey}
-            <br />- Users: {userCount}
+            Current Bucket: {currentBucketId}
+          </p>
+          <p className="text-xs text-indigo-400 font-mono mt-0.5">
+            Camera Dimensions: {currentBucketId}
+          </p>
+          <p className="text-xs text-indigo-400 font-mono mt-0.5">
+            ┗━ Entities: {currentBucketId}
           </p>
         </div>
 

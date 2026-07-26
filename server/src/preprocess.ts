@@ -143,7 +143,7 @@ async function processAreas(basePath = "../shared/data/world/areas") {
           const imagePath = path.resolve(zoneDir, mapName);
           const chunksOutputDir = path.join(zoneDir, "chunks");
 
-          console.log(`Processing Zone: ${zone.name}`);
+          console.log(`🌳 Processing Zone: ${zone.name}`);
 
           // 1. Process image chunks
           const chunkResult = await chunkImage(imagePath, chunksOutputDir);

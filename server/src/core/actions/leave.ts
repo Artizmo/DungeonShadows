@@ -7,17 +7,7 @@ export const Leave: ActionHandler = {
     const character = game.world.characters.get(data.characterId);
     if (!character) return;
 
-    game.world.remove(character.id);
-    game.world.areas
-      .get(character.zone.areaId)
-      .zones.get(character.zone.id)
-      .buckets.get(character.currentBucketKey)
-      .entities.clear();
-    game.world.areas
-      .get(character.zone.areaId)
-      .zones.get(character.zone.id)
-      .buckets.get(character.currentBucketKey).userCount--;
-
+    game.world.removeCharacter(character.id);
     const player = await fetchPlayer(character.playerId);
     Log.NETWORK.INFO(`${player.fullName} has disconnected!`);
   },

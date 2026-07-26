@@ -39,7 +39,7 @@ export default class Game {
     events: EventEmitter,
     gamepad: GamepadController,
     keyboard: KeyboardController,
-    stateManager: StateManager,
+    stateManager: StateManager
   ) {
     this.events = events;
     this.world = world;
@@ -130,7 +130,7 @@ export default class Game {
         tick: this.loop.tick,
         actions: Array.from(actionTypeQueue),
         activeCommands: Array.from(this.activeCommands),
-      }),
+      })
     );
   }
 
@@ -145,7 +145,11 @@ export default class Game {
     renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
 
     this.camera.update(character, this.renderer.canvas!);
-    this.renderer.render(character, this.camera);
+    this.renderer.render(
+      this.world.character,
+      this.camera,
+      this.world.entities // The renderer will now draw them!
+    );
   }
 
   tick(): void {
