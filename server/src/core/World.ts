@@ -6,21 +6,29 @@ import type Zone from "./Zone";
 import type { ICoords } from "~/shared/core/types";
 import {
   CHUNK_SIZE,
+  FLAG_ACTIVE,
   FLAG_DIRTY,
   FLAG_SPAWNED,
   MAX_ENTITIES,
 } from "~/shared/core/constants";
 import Npc from "./Npc";
 import { fetchWorld, type WorldData } from "~/_utils/functions/fetchWorld";
-import { isEntityInCamera } from "~/_utils/functions/isEntityInCamera";
+import { isEntityInCamera } from "~/_utils/functions/CameraFunctions";
 import { getCameraBounds } from "~/_utils/functions/getCameraBounds";
+import {
+  calculateAOIBuckets,
+  clampPosition,
+  getBucketKey,
+  getSetDifferences,
+} from "~/_utils/functions/AOIFunctions";
 
 export default class World {
   name: string = "";
 
   // High-level entities & spatial lookups
-  characters = new Map<number, Character>();
   areas = new Map<string, Area>();
+  zones = new Map<string, Zone>();
+  characters = new Map<number, Character>();
   mapCache = new MapCache();
   entityCompendium = new Map<number, Npc>();
 
@@ -58,6 +66,7 @@ export default class World {
       const worldData: WorldData = await fetchWorld(worldPath);
       this.name = worldData.name;
       this.areas = worldData.areas;
+      this.zones = worldData.zones;
       this.entityCompendium = worldData.entities;
       for (const entityId of this.entityCompendium.keys()) {
         this.entityIds[this.entityCount++] = entityId;
@@ -69,20 +78,17 @@ export default class World {
   }
 
   /**
-   * 🟢 ZERO-ALLOCATION 100k AOI Pipeline.
+   * 🟢 Update Character AOI.
    * Runs in sub-millisecond execution time.
    */
-  public refreshCharacterAOI(): void {
+  updateCharacterAOI(): void {
     // Reset active flags and refresh with new flags
     this.activeFlags.fill(0);
     this.activeEntityCount = 0;
 
     const cameraPadding = 32;
-
     for (const character of this.characters.values()) {
-      const zone = this.areas
-        .get(character.zone.areaId)
-        ?.getZone(character.zone.id);
+      const zone = this.getZone(character.zoneId);
 
       if (!zone) continue;
 
@@ -101,18 +107,16 @@ export default class World {
       );
 
       // Scan active buckets
-      for (const bucketKey of character.activeAOI) {
-        const bucket = zone.buckets.get(bucketKey);
+      for (const bucketKey of character.AOIBucketKeys) {
+        const bucket = zone.getBucket(bucketKey);
         if (!bucket) continue;
 
         for (const entityId of bucket.entities) {
-          // Skip if already active
-          if (this.activeFlags[entityId] === 1) continue;
+          if (this.activeFlags[entityId] === FLAG_ACTIVE) continue;
 
           const entity = this.entityCompendium.get(entityId);
           if (!entity) continue;
 
-          // Check if entity is in camera view and add to active
           if (
             isEntityInCamera(
               camMinX,
@@ -125,7 +129,7 @@ export default class World {
               entity.height
             )
           ) {
-            this.activeFlags[entityId] = 1; // Active
+            this.activeFlags[entityId] = FLAG_ACTIVE;
             this.activeEntityIds[this.activeEntityCount++] = entityId;
           }
         }
@@ -133,118 +137,83 @@ export default class World {
     }
   }
 
-  public async handleCharacterSpatialUpdate(
+  /**
+   * 🟢 Update Character AOI.
+   */
+  async updateCharacterSpatialZone(
     character: Character,
     bufferRadius: number = 1
   ): Promise<{
     zone: Zone;
     chunks: Chunk[];
     unchunks: string[];
-    currentBucketKey: string;
+    currentBucketId: string;
   }> {
-    const zone = this.areas
-      .get(character.zone.areaId)
-      ?.getZone(character.zone.id);
-
+    const zone = this.areas.get(character.areaId).getZone(character.zoneId);
     if (!zone) throw new Error("Zone not found");
 
-    const entityPadding = 0;
-    const minBoundX = entityPadding;
-    const minBoundY = entityPadding;
-    const maxBoundX = zone.map.width - entityPadding;
-    const maxBoundY = zone.map.height - entityPadding;
+    // Clamp character to map borders
+    clampPosition(character.position, zone.map.width, zone.map.height, 0);
 
-    if (character.position.x < minBoundX) character.position.x = minBoundX;
-    if (character.position.x > maxBoundX) character.position.x = maxBoundX;
-    if (character.position.y < minBoundY) character.position.y = minBoundY;
-    if (character.position.y > maxBoundY) character.position.y = maxBoundY;
+    // Identify which bucket the character is in
+    const currentBucketId = getBucketKey(
+      character.position.x,
+      character.position.y
+    );
 
-    const currentBucketX = Math.floor(character.position.x / CHUNK_SIZE);
-    const currentBucketY = Math.floor(character.position.y / CHUNK_SIZE);
-    const currentBucketKey = `${currentBucketX}_${currentBucketY}`;
-
+    // Update world bucket state
     const updateBucket = (
       key: string | undefined,
-      delta: number,
-      add: boolean
+      deltaCount: number,
+      addEntity: boolean
     ) => {
       if (!key) return;
       const bucket = zone.buckets.get(key);
       if (!bucket) return;
 
-      if (add) bucket.entities.add(character.id);
+      if (addEntity) bucket.entities.add(character.id);
       else bucket.entities.delete(character.id);
 
-      bucket.userCount += delta;
+      bucket.userCount += deltaCount;
     };
 
-    if (character.currentBucketKey !== currentBucketKey) {
-      updateBucket(character.currentBucketKey, -1, false);
-      updateBucket(currentBucketKey, 1, true);
-      character.currentBucketKey = currentBucketKey;
+    // Move character between physical buckets if they crossed a line
+    if (character.currentBucketId !== currentBucketId) {
+      updateBucket(character.currentBucketId, -1, false);
+      updateBucket(currentBucketId, 1, true);
+      character.currentBucketId = currentBucketId;
     }
 
-    const CLIENT_MAX_WIDTH = character.cameraWidth;
-    const CLIENT_MAX_HEIGHT = character.cameraHeight;
-
-    let targetCamX = character.position.x - CLIENT_MAX_WIDTH / 2;
-    let targetCamY = character.position.y - CLIENT_MAX_HEIGHT / 2;
-
-    const maxCamX = Math.max(0, zone.map.width - CLIENT_MAX_WIDTH);
-    const maxCamY = Math.max(0, zone.map.height - CLIENT_MAX_HEIGHT);
-    const finalCamX = Math.max(0, Math.min(targetCamX, maxCamX));
-    const finalCamY = Math.max(0, Math.min(targetCamY, maxCamY));
-
-    const serverCameraMinX = finalCamX;
-    const serverCameraMaxX = finalCamX + CLIENT_MAX_WIDTH;
-    const serverCameraMinY = finalCamY;
-    const serverCameraMaxY = finalCamY + CLIENT_MAX_HEIGHT;
-
-    const startBucketX = Math.max(
-      0,
-      Math.floor(serverCameraMinX / CHUNK_SIZE) - bufferRadius
-    );
-    const endBucketX = Math.min(
-      Math.ceil(zone.map.width / CHUNK_SIZE) - 1,
-      Math.ceil(serverCameraMaxX / CHUNK_SIZE) + bufferRadius
-    );
-    const startBucketY = Math.max(
-      0,
-      Math.floor(serverCameraMinY / CHUNK_SIZE) - bufferRadius
-    );
-    const endBucketY = Math.min(
-      Math.ceil(zone.map.height / CHUNK_SIZE) - 1,
-      Math.ceil(serverCameraMaxY / CHUNK_SIZE) + bufferRadius
+    // Calculate the new AOI
+    const currentAOI = calculateAOIBuckets(
+      character.position.x,
+      character.position.y,
+      character.cameraWidth,
+      character.cameraHeight,
+      zone.map.width,
+      zone.map.height,
+      bufferRadius
     );
 
-    const currentAOI = new Set<string>();
-    for (let x = startBucketX; x <= endBucketX; x++) {
-      for (let y = startBucketY; y <= endBucketY; y++) {
-        currentAOI.add(`${x}_${y}`);
-      }
-    }
+    // Find which chunks fell out of view, and which are newly visible
+    const { removed: unchunks, added: toLoadKeys } = getSetDifferences(
+      character.AOIBucketKeys,
+      currentAOI
+    );
 
-    const unchunks: string[] = [];
-    const toLoadKeys: string[] = [];
-
-    for (const key of character.activeAOI) {
-      if (!currentAOI.has(key)) unchunks.push(key);
-    }
-
+    // Apply the new AOI state to the character
+    character.AOIBucketKeys.clear();
     for (const key of currentAOI) {
-      if (!character.activeAOI.has(key)) toLoadKeys.push(key);
+      character.AOIBucketKeys.add(key);
     }
 
-    character.activeAOI.clear();
-    for (const key of currentAOI) {
-      character.activeAOI.add(key);
-    }
-
+    // Decrement users in old chunks
     for (const bucketKey of unchunks) {
       const bucket = zone.buckets.get(bucketKey);
       if (bucket) bucket.userCount--;
     }
 
+    // Cache and load new chunks
     const chunks: Chunk[] = [];
     for (const bucketKey of toLoadKeys) {
       const bucket = zone.buckets.get(bucketKey);
@@ -257,83 +226,92 @@ export default class World {
       }
     }
 
-    return { chunks, unchunks, zone, currentBucketKey };
+    return { chunks, unchunks, zone, currentBucketId };
   }
 
+  /**
+   * 🟢 Spawn entity using current entity position or new position.
+   */
   public spawn(
     entity: any,
-    areaId: string,
-    zoneId: string,
-    x: number,
-    y: number
+    zoneId: string = null,
+    x: number = null,
+    y: number = null
   ): void {
-    entity.position.x = x;
-    entity.position.y = y;
+    if (x && y) {
+      entity.position.x = x;
+      entity.position.y = y;
+    }
+    if (zoneId) {
+      entity.zoneId = zoneId;
+    }
 
-    const area = this.areas.get(areaId);
-    if (!area) return;
+    const zone = this.getZone(entity.zoneId);
+    const bucketId = zone.getBucketIdByCoords(
+      entity.position.x,
+      entity.position.y
+    );
+    let bucket = zone.getBucket(bucketId);
 
-    const zone = area.getZone(zoneId);
-    if (!zone) return;
-
-    const bucketX = Math.floor(x / CHUNK_SIZE);
-    const bucketY = Math.floor(y / CHUNK_SIZE);
-    const bucketKey = `${bucketX}_${bucketY}`;
-
-    let bucket = zone.buckets.get(bucketKey);
     if (!bucket) {
       bucket = {
-        key: bucketKey,
+        id: bucketId,
         entities: new Set<number>(),
         staticObjects: [],
         userCount: 0,
       };
-      zone.buckets.set(bucketKey, bucket);
+      zone.buckets.set(bucket.id, bucket);
     }
 
     bucket.entities.add(entity.id);
-    entity.currentBucketKey = bucketKey;
-
-    // FIX: Register newly spawned entity into the cold path!
+    entity.currentBucketId = bucketId;
     this.entityIds[this.entityCount++] = entity.id;
-
     this.entityFlags[entity.id] |= FLAG_SPAWNED | FLAG_DIRTY;
   }
 
+  /**
+   * 🟢 Get the current state for a character's AOI
+   */
   public getAOIState(character: Character): any[] {
-    const zone = this.areas
-      .get(character.zone.areaId)
-      ?.getZone(character.zone.id);
+    const zone = this.getZone(character.zoneId);
     if (!zone) return [];
 
     const visibleEntities: any[] = [];
-    for (const bucketKey of character.activeAOI) {
+    for (const bucketKey of character.AOIBucketKeys) {
       const bucket = zone.buckets.get(bucketKey);
       if (!bucket) continue;
+
       for (const entityId of bucket.entities) {
         if (entityId === character.id) continue;
+
         const entity =
           this.entityCompendium.get(entityId) || this.characters.get(entityId);
-        if (entity) {
-          visibleEntities.push({
-            id: entity.id,
-            name: entity.name,
-            level: entity.level,
-            type: entity instanceof Character ? "character" : "npc",
-            position: { x: entity.position.x, y: entity.position.y },
-          });
-        }
+        if (!entity) continue;
+
+        visibleEntities.push({
+          id: entity.id,
+          name: entity.name,
+          level: entity.level,
+          type: entity instanceof Character ? "character" : "npc",
+          position: { x: entity.position.x, y: entity.position.y },
+        });
       }
     }
     return visibleEntities;
   }
 
-  add(character: Character): void {
+  addCharacter(character: Character): void {
     this.characters.set(character.id, character);
   }
 
-  remove(characterId: number): void {
+  removeCharacter(characterId: number): void {
     this.characters.delete(characterId);
+  }
+
+  getZone(zoneId: string): Zone {
+    if (!zoneId) return;
+
+    return this.zones.get(zoneId);
   }
 
   moveCharacter(characterId: number, velocity: ICoords): void {

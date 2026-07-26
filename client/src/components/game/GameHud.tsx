@@ -5,8 +5,8 @@ export default function GameHud() {
   const name = useGame((game) => game.world.character?.name ?? "");
   const posX = useGame((game) => game.world.character?.position.x ?? 0);
   const posY = useGame((game) => game.world.character?.position.y ?? 0);
-  const currentBucketKey = useGame(
-    (game) => game.world.character?.currentBucketKey ?? "",
+  const currentBucketId = useGame(
+    (game) => game.world.character?.currentBucketId ?? ""
   );
   const zoneName = useGame((game) => game.world.character?.zone?.name ?? "");
 
@@ -36,13 +36,13 @@ export default function GameHud() {
             Zone: {zoneName}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Current Bucket: {currentBucketKey}
+            Current Bucket: {currentBucketId}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Camera Dimensions: {currentBucketKey}
+            Camera Dimensions: {currentBucketId}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            ┗━ Entities: {currentBucketKey}
+            ┗━ Entities: {currentBucketId}
           </p>
         </div>
 

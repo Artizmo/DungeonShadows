@@ -41,7 +41,7 @@ export interface ICoords {
 }
 
 export interface QueueItem {
-  tick: number;
+  pulse: number;
   bytes: Uint8Array;
 }
 

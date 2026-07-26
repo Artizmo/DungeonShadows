@@ -27,7 +27,7 @@ export default class Character {
   speed = 1;
   sequenceId: number = 0;
   isMoving: boolean = false;
-  currentBucketKey: string;
+  currentBucketId: string;
 
   constructor(character: Character) {
     this.id = character.id;
@@ -40,7 +40,7 @@ export default class Character {
     this.prevPosition = { ...character.position };
     this.renderPosition = { ...this.position };
     this.speed = character.speed;
-    this.currentBucketKey = character.currentBucketKey;
+    this.currentBucketId = character.currentBucketId;
   }
 
   tick() {

@@ -289,8 +289,8 @@ export default class Renderer {
   public renderCharacter(character: Character, camera: ICamera): void {
     if (!this.canvas || !this.ctx) return;
 
-    const drawX = Math.round(character.renderPosition.x - camera.x);
-    const drawY = Math.round(character.renderPosition.y - camera.y);
+    const drawX = character.renderPosition.x - camera.x;
+    const drawY = character.renderPosition.y - camera.y;
     const radius = 16;
 
     this.ctx.beginPath();

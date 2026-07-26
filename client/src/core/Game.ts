@@ -143,7 +143,7 @@ export default class Game {
     // 🟢 Calculate final render position and LERP
     renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
     renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
-    // console.log("bingo this.world.entities", this.world.entities);
+
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(
       this.world.character,

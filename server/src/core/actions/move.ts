@@ -44,11 +44,12 @@ export const Move: ActionHandler = {
     game.world.moveCharacter(character.id, velocity);
 
     // Limit movement to the bounds of the curernt zone map
-    if (character.zone && character.zone.map) {
+    const zone = game.world.getZone(character.zoneId);
+    if (zone?.map) {
       const minBoundX = 0;
       const minBoundY = 0;
-      const maxBoundX = character.zone.map.width;
-      const maxBoundY = character.zone.map.height;
+      const maxBoundX = zone.map.width;
+      const maxBoundY = zone.map.height;
 
       if (character.position.x < minBoundX) character.position.x = minBoundX;
       if (character.position.x > maxBoundX) character.position.x = maxBoundX;
@@ -56,8 +57,7 @@ export const Move: ActionHandler = {
       if (character.position.y > maxBoundY) character.position.y = maxBoundY;
     }
 
-    const { chunks, unchunks, zone } =
-      await game.world.handleCharacterSpatialUpdate(character);
+    const spatialZone = await game.world.updateCharacterSpatialZone(character);
 
     // [ ] remove this
     game.network.broadcast.sendTo(
@@ -67,11 +67,10 @@ export const Move: ActionHandler = {
         serverTick: game.loop.tick,
         actionType: ActionType.ZONE_UPDATE,
         character,
-        chunks,
-        unchunks,
+        chunks: spatialZone.chunks,
+        unchunks: spatialZone.unchunks,
         zone: {
-          ...zone,
-          userCount: zone.buckets.get(character.currentBucketKey).userCount,
+          ...spatialZone.zone,
         },
       })
     );

@@ -7,8 +7,7 @@ export const Leave: ActionHandler = {
     const character = game.world.characters.get(data.characterId);
     if (!character) return;
 
-    game.world.remove(character.id);
-
+    game.world.removeCharacter(character.id);
     const player = await fetchPlayer(character.playerId);
     Log.NETWORK.INFO(`${player.fullName} has disconnected!`);
   },

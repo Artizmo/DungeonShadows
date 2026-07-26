@@ -1,4 +1,3 @@
-import type Zone from "~/core/Zone";
 import type { ActionRecord, ICoords } from "~/shared/core/types";
 
 export enum CharacterDirtyFlag {
@@ -15,7 +14,8 @@ export default class Character {
   name: string;
   level: number;
   stats: { hp: number; maxHp: number; mana: number; maxMana: number };
-  zone: Zone;
+  areaId: string;
+  zoneId: string;
   cameraWidth: number;
   cameraHeight: number;
   position: ICoords;
@@ -24,9 +24,8 @@ export default class Character {
   speed = 1;
   sequenceId = 0;
   lastProcessedSequenceId = 0;
-  // 🟢 Track active chunks currently loaded on the client side
-  activeAOI: Set<string> = new Set();
-  currentBucketKey: string | null = null;
+  AOIBucketKeys: Set<string> = new Set();
+  currentBucketId: string | null = null;
   dirtyFlags: CharacterDirtyFlag = CharacterDirtyFlag.NONE;
 
   constructor(character: Character) {
@@ -34,15 +33,13 @@ export default class Character {
     this.playerId = character.playerId;
     this.name = character.name;
     this.level = character.level;
-    this.zone = character.zone;
+    this.areaId = character.areaId;
+    this.zoneId = character.zoneId;
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };
     this.speed = character.speed;
-    this.currentBucketKey = character.currentBucketKey || null;
-    this.activeAOI = character.activeAOI
-      ? new Set(character.activeAOI)
-      : new Set();
+    this.currentBucketId = character.currentBucketId || null;
     this.cameraWidth = character.cameraWidth;
     this.cameraHeight = character.cameraHeight;
   }

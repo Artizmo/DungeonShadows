@@ -1,5 +1,7 @@
+import type Npc from "./Npc";
+
 export interface Bucket {
-  key: string;
+  id: string;
   entities: Set<number>; // Set of Character/Entity IDs inside this specific cell
   staticObjects: any[]; // Colliders, interactables, or specific tile data
   userCount: number; // Ref-count: How many player viewports overlap this bucket
@@ -9,7 +11,6 @@ export default class Zone {
   id: string;
   name: string;
   areaId: string;
-  mapName: string;
   map: {
     width: number;
     height: number;
@@ -17,7 +18,6 @@ export default class Zone {
     totalChunks: number;
     lastProcessedDate: Date;
   };
-  userCount = 0;
   cols: number = 0;
   rows: number = 0;
   buckets: Map<string, Bucket>;
@@ -40,9 +40,9 @@ export default class Zone {
 
     for (let x = 0; x < this.cols; x++) {
       for (let y = 0; y < this.rows; y++) {
-        const key = `${x}_${y}`;
-        this.buckets.set(key, {
-          key,
+        const id = `${x}_${y}`;
+        this.buckets.set(id, {
+          id,
           entities: new Set<number>(),
           staticObjects: [],
           userCount: 0,
@@ -51,19 +51,22 @@ export default class Zone {
     }
   }
 
-  /**
-   * O(1) mathematical lookup to fetch a bucket by its grid coordinates.
-   */
-  public getBucket(x: number, y: number): Bucket | undefined {
-    return this.buckets.get(`${x}_${y}`);
+  getBucket(key: string): Bucket {
+    if (!key) return;
+
+    return this.buckets.get(key);
   }
 
-  /**
-   * Helper to fetch a bucket directly using raw pixel coordinates.
-   */
-  public getBucketByPixels(pixelX: number, pixelY: number): Bucket | undefined {
-    const bucketX = Math.floor(pixelX / 256);
-    const bucketY = Math.floor(pixelY / 256);
-    return this.getBucket(bucketX, bucketY);
+  getBucketIdByCoords(x: number, y: number): string {
+    if (!x || !y) return;
+
+    return `${Math.floor(x / 256)}_${Math.floor(y / 256)}`;
+  }
+
+  getBucketByCoords(x: number, y: number): Bucket {
+    const bucketId = this.getBucketIdByCoords(x, y);
+    if (!bucketId) return;
+
+    return this.buckets.get(bucketId);
   }
 }

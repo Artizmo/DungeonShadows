@@ -61,7 +61,7 @@
 
 ### **End-to-End Testing**
 
-[ ] Verify server tick logs every 50ms.
+[ ] Verify server pulse logs every 50ms.
 [ ] Verify multi-client connection and initial state sync.
 [ ] Confirm visual rendering of map and player tokens.
 [ ] Validate local prediction and remote interpolation.

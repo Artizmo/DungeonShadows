@@ -17,7 +17,7 @@ export default class ActsManager {
 
   tick(tick: number, deltaTime: number): void {
     // 1. Populate world.activeEntityIds with entities near players
-    this.world.refreshCharacterAOI();
+    this.world.updateCharacterAOI();
 
     // 2. HOT PATH (Entities on screen) - Executes EVERY tick
     const totalActive = this.world.activeEntityCount;

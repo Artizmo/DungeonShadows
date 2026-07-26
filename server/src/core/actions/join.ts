@@ -19,24 +19,18 @@ export const Join: ActionHandler = {
     character.cameraHeight = camera.height;
 
     // 1. Add character to character map & spawn in spatial bucket
-    game.world.add(character);
-    game.world.spawn(
-      character,
-      character.zone.areaId,
-      character.zone.id,
-      character.position.x,
-      character.position.y
-    );
+    game.world.addCharacter(character);
+    game.world.spawn(character);
 
     // 2. Calculate the character's activeAOI buckets and fetch map chunks
     const { chunks, zone } =
-      await game.world.handleCharacterSpatialUpdate(character);
+      await game.world.updateCharacterSpatialZone(character);
 
     // 3. Gather full initial state for ALL entities currently inside their activeAOI
     const initialEntities = game.world.getAOIState(character);
 
     // 4. Send complete baseline packet to the client
-    const currentBucket = zone.buckets.get(character.currentBucketKey);
+    const currentBucket = zone.buckets.get(character.currentBucketId);
 
     game.network.broadcast.sendTo(
       character.id,
@@ -45,10 +39,10 @@ export const Join: ActionHandler = {
         actionType: ActionType.JOIN,
         character,
         chunks,
-        entities: [...initialEntities], // Complete baseline state for immediate rendering!
+        entities: [...initialEntities],
         zone: {
           ...zone,
-          userCount: currentBucket ? currentBucket.userCount : 0,
+          buckets: Array.from(zone.buckets),
         },
       })
     );

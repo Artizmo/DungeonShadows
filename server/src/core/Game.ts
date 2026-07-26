@@ -105,7 +105,7 @@ export default class Game {
         const state = this.stateManager.getDirtyState(entity);
         if (!state) continue;
 
-        const bucketKey = entity.currentBucketKey;
+        const bucketKey = entity.currentBucketId;
         if (!bucketKey) continue;
 
         if (!bucketDeltas.has(bucketKey)) {
@@ -123,7 +123,7 @@ export default class Game {
     for (const character of this.world.characters.values()) {
       const visibleEntities: any[] = [];
 
-      for (const bucketKey of character.activeAOI) {
+      for (const bucketKey of character.AOIBucketKeys) {
         if (bucketDeltas.has(bucketKey)) {
           visibleEntities.push(...bucketDeltas.get(bucketKey)!);
         }

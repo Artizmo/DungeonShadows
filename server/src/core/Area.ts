@@ -19,30 +19,6 @@ export default class Area {
     this.description = areaData.description;
   }
 
-  public async loadZones(zonesConfig: ZoneConfig[]): Promise<void> {
-    for (const [index, zoneConfig] of zonesConfig.entries()) {
-      if (!zoneConfig) continue;
-
-      const isLast = index === zonesConfig.length - 1;
-      const branchChar = isLast ? "└──" : "├──";
-
-      const zoneData = JSON.parse(
-        await readFile(
-          `../shared/data/world/areas/${this.id}/zones/${zoneConfig.zonePath}`,
-          "utf-8"
-        )
-      );
-
-      const zone = new Zone(zoneData);
-      await zone.initBucketGrid();
-      this.addZone(zone);
-
-      Log.WORLD.INFO(
-        `${branchChar} ${zone.name}: ${zone.cols}x${zone.rows}, ${zone.buckets.size} buckets.`
-      );
-    }
-  }
-
   public addZone(zone: Zone): void {
     this.zones.set(zone.id, zone);
   }

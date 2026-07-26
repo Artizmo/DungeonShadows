@@ -1,4 +1,4 @@
-export default class ServerLoop {
+export default class Loop {
   tick: number = 0;
   private lastTime: bigint = 0n;
   private accumulator: number = 0; // in milliseconds

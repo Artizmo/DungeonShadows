@@ -5,14 +5,11 @@
   "level": 24,
   "isAlive": true,
   "position": {
-    "x": 1964,
-    "y": 834
+    "x": 20,
+    "y": 20
   },
-  "zone": {
-    "id": "arena:sephus",
-    "areaId": "sephus",
-    "mapName": "arena"
-  },
+  "areaId": "sephus",
+  "zoneId": "arena:sephus",
   "stats": {
     "hp": 1209,
     "maxHp": 1209,
