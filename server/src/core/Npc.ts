@@ -9,8 +9,8 @@ export default class Npc {
   position: ICoords;
   areaId: string;
   zoneId: string;
-  // width: 32;
-  // height: 32;
+  width: 32;
+  height: 32;
   acts: string[];
   currentBucketId: string | null = null;
   dirtyFlags: number = 0;
