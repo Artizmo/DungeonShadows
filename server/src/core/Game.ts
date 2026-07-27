@@ -1,6 +1,6 @@
 import ActsManager from "~/core/ActsManager";
 import { Serialize } from "~/shared/core/serialize";
-import { ActionRegistry } from "./actions";
+import { ActionRegistry } from "./handlers";
 import { ActionType } from "~/shared/core/types";
 import type Loop from "~/core/Loop";
 import type Network from "~/core/Network";
@@ -154,13 +154,13 @@ export default class Game {
   }
 
   async onNewConnection(character: Character): Promise<void> {
-    const handler = ActionRegistry.get(ActionType.JOIN);
+    const handler = ActionRegistry.get(ActionType.CONNECT);
 
     if (handler) await handler.execute({ data: character, game: this });
   }
 
   async onCloseConnection(character: Character): Promise<void> {
-    const handler = ActionRegistry.get(ActionType.LEAVE);
+    const handler = ActionRegistry.get(ActionType.DISCONNECT);
 
     if (handler) await handler.execute({ data: character, game: this });
   }

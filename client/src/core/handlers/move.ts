@@ -1,4 +1,4 @@
-import type { ActionHandler } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
 import { CommandType } from "../utils/input-dictionary";
 
 export const Move: ActionHandler = {

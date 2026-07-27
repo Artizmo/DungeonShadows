@@ -1,8 +1,8 @@
 import Character from "~/core/Character";
-import type { ActionHandler } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
 import Zone from "../Zone";
 
-export const Join: ActionHandler = {
+export const Connect: ActionHandler = {
   execute: ({ data, game }): void => {
     if (!game) return;
 

@@ -62,7 +62,7 @@ export default class Network {
       // 3. Guard: Validate Ticket Presence
       if (!ticket || ticket === "undefined" || ticket === "[object Object]") {
         Log.NETWORK.WARN(
-          `Connection rejected: Malformed ticket. Received: "${ticket}"`,
+          `Connection rejected: Malformed ticket. Received: "${ticket}"`
         );
         socket.close(4001, "Unauthorized: Ticket Missing");
         return;
@@ -91,7 +91,6 @@ export default class Network {
           playerId: unknown;
           characterId: unknown;
         };
-        const playerId = Number(decoded.playerId);
         const characterId = Number(decoded.characterId);
 
         // 6. Evict Existing Stale Connections
@@ -109,7 +108,6 @@ export default class Network {
 
         this.events.emit("new_connection", {
           characterId,
-          playerId,
           camera: { width, height },
         });
 
@@ -138,7 +136,7 @@ export default class Network {
 
         socket.on("error", (error) => {
           Log.NETWORK.ERROR(
-            `Socket error for CID ${characterId}: ${error.message}`,
+            `Socket error for CID ${characterId}: ${error.message}`
           );
         });
       } catch (err) {
@@ -146,10 +144,10 @@ export default class Network {
           JSON.stringify({
             type: "INVALID_JWT",
             data: "You do not have a valid ticket.",
-          }),
+          })
         );
         Log.NETWORK.WARN(
-          `Connection rejected: Invalid ticket signature. ${err}`,
+          `Connection rejected: Invalid ticket signature. ${err}`
         );
         socket.close(4001, "Unauthorized: Invalid Ticket");
       }
@@ -164,7 +162,7 @@ export default class Network {
 
   private handleSocketClose(
     characterId: number,
-    closingSocket: WebSocket,
+    closingSocket: WebSocket
   ): void {
     if (this.connections.get(characterId) === closingSocket) {
       this.connections.delete(characterId);

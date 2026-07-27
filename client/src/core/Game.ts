@@ -3,7 +3,7 @@ import Camera from "~/core/Camera";
 import GamepadController from "~/core/GamepadController";
 import KeyboardController from "~/core/KeyboardController";
 import { Serialize } from "~/shared/core/serialize";
-import { ActionRegistry } from "./actions";
+import { ActionRegistry } from "./handlers";
 import type EventEmitter from "eventemitter3";
 import type Loop from "~/core/Loop";
 import type Renderer from "~/core/Renderer";

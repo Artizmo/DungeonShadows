@@ -5,7 +5,6 @@ import { Log } from "~/shared/core/Logger";
 import type Zone from "./Zone";
 import type { ICoords } from "~/shared/core/types";
 import {
-  CHUNK_SIZE,
   FLAG_ACTIVE,
   FLAG_DIRTY,
   FLAG_SPAWNED,
@@ -300,6 +299,23 @@ export default class World {
     return visibleEntities;
   }
 
+  async connectCharacter(character: Character): Promise<void> {
+    if (this.characters.has(character.id)) return;
+
+    this.addCharacter(character);
+    this.spawn(character);
+  }
+
+  moveCharacter(characterId: number, velocity: ICoords): void {
+    if (!characterId || !velocity || (velocity.x === 0 && velocity.y === 0))
+      return;
+    const character = this.characters.get(characterId);
+    if (!character) return;
+
+    character.move(velocity);
+    this.entityFlags[characterId] |= FLAG_DIRTY;
+  }
+
   addCharacter(character: Character): void {
     this.characters.set(character.id, character);
   }
@@ -312,15 +328,5 @@ export default class World {
     if (!zoneId) return;
 
     return this.zones.get(zoneId);
-  }
-
-  moveCharacter(characterId: number, velocity: ICoords): void {
-    if (!characterId || !velocity || (velocity.x === 0 && velocity.y === 0))
-      return;
-    const character = this.characters.get(characterId);
-    if (!character) return;
-
-    character.move(velocity);
-    this.entityFlags[characterId] |= FLAG_DIRTY;
   }
 }

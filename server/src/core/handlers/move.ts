@@ -1,6 +1,6 @@
 import { Log } from "~/shared/core/Logger";
-import type { ActionHandler } from "~/core/actions/types";
-import { CommandType } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
+import { CommandType } from "~/core/handlers/types";
 import { Serialize } from "~/shared/core/serialize";
 import { ActionType } from "~/shared/core/types";
 
@@ -59,7 +59,6 @@ export const Move: ActionHandler = {
 
     const spatialZone = await game.world.updateCharacterSpatialZone(character);
 
-    // [ ] remove this
     game.network.broadcast.sendTo(
       character.id,
       Serialize.data({

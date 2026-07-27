@@ -22,7 +22,8 @@
     "data/mock",
     "../shared/**/*",
     "../client/src/core/_utils/inputBindings.ts",
-    "../client/src/core/actions"
+    "../client/src/core/handlers",
+    "../client/src/core/utils/input-dictionary.ts"
   ],
   "exclude": ["node_modules", "build", "src/data/saved"]
 }

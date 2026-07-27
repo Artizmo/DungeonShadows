@@ -1,4 +1,4 @@
-import type { ActionHandler } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
 
 export const Cast: ActionHandler = {
   execute: ({ game }): void => {
