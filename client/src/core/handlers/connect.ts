@@ -1,9 +1,9 @@
 import Character from "~/core/Character";
-import type { ActionHandler } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
 import Zone from "../Zone";
 
-export const Join: ActionHandler = {
-  execute: ({ data, game }): void => {
+export const Connect: ActionHandler = {
+  handle: ({ data, game }): void => {
     if (!game) return;
 
     const { chunks, unchunks, entities } = data;

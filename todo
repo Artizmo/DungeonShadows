@@ -1,92 +1,88 @@
-### **Phase 1: Client Prediction**
+[x] CLIENT PREDICTION
+[x] -Capture player input and flag keys.
+[x] -Normalize position vector for consistent movement speed.
+[x] -Increment `sequenceId` for the character.
+[x] -Store input snapshot and ID in `pendingActions`.
+[x] -Apply local prediction immediately.
 
-[x] Capture player input and flag keys.
-[x] Normalize position vector for consistent movement speed.
-[x] Increment `sequenceId` for the character.
-[x] Store input snapshot and ID in `pendingActions`.
-[x] Apply local prediction immediately.
+[x] BINARY TRANSMISSION
+[x] -Poll `pendingActions` for unbroadcasted inputs.
+[x] -Serialize data into a byte array.
+[x] -Dispatch binary buffer via WebSocket.
+[x] -Serialize current $(X, Y)$ coordinates and `lastProcessedId`.
+[x] -Broadcast binary payload to the client.
 
-### **Phase 2: Client Binary Transmission**
+[x] SERVER AUTHORITY/RECONCILIATION
+[x] -Overwrite local coordinates with server's ground truth.
+[x] -Pluck processed actions from `pendingActions` based on `lastProcessedId`.
+[x] -Re-simulate any remaining pending actions on top of the corrected state.
+[x] -Deserialize incoming byte array.
+[x] -Validate move legality and collisions.
+[x] -Mutate state on the authoritative server.
+[x] -Update player record with `lastProcessedId`.
 
-[x] Poll `pendingActions` for unbroadcasted inputs.
-[x] Serialize data into a byte array.
-[x] Dispatch binary buffer via WebSocket.
+[x] CLIENT RENDERING
+[x] -Calculate camera focus offset.
+[x] -Draw background map.
+[x] -Render character at reconciled coordinates.
 
-### **Phase 3: Server Authority**
+[ ] ENTITY INTERPOLATION
+[ ] -Buffer recent server snapshots.
+[ ] -Define `renderTime` in the past for buffering.
+[ ] -Identify snapshots bracketing the `renderTime`.
+[ ] -Perform linear interpolation (Lerp) for entity positions.
+[x] -Confirm that my snapshots are being sent with only delta state from the statemanager. I shouldn't see any snapshot state being sent over if nothing has happened with state.
+[ ] -Separate the movement physics that both characters and npcs use.
+[ ] -Have characters handle their own dirty flags but have entities use the world.entityFlags. I'm not sure on this one. I dont want world.entityflags fight npc.dirtyFlags. Maybe neither character nor npc have dirtyFlags. Maybe they all use world.entityFlags?
+[ ] -I need to write clear and concise wander act that is readable and abstracted such that it can be written like:
+const randomTime = random time from 5-10s
+if randomTime
+const x, y = random coords
+walkTo(x, y)
+[ ] -If entities are in a character's AOI, they're on the screen and visible and should be placed in the activeEntities group, using the fixed tick rate (20hz) and not the passive 1.5hz one.
+[ ] -Interpolate the entity on the client side. snapshots should only come through with delta position data for the entity when he moves. all other snapshots should be empty except for the lastSequenceId.
 
-[x] Deserialize incoming byte array.
-[x] Validate move legality and collisions.
-[x] Mutate state on the authoritative server.
-[x] Update player record with `lastProcessedId`.
+[x] RENDERING
+[x] -Initialize `Renderer` class with HTML `<canvas>`.
+[x] -Clear canvas during `requestAnimationFrame`.
+[x] -Draw map grid/tiles.
+[x] -Draw local player at predicted coordinates.
+[x] -Draw entities at interpolated coordinates.
 
-### **Phase 4: Server Binary Transmission**
+[x] ZONING
+[x] -Build $O(1)$ zone bucket logic using hash map exchanges.
+[x] -Evict unused buckets, maps, etc.
+[x] -Debug to confirm character buckets change and are accurate
+[x] -Server state should be empty if nothing has changed.
+[x] -Implement pendingState to collect only the state that has changed.
+[x] -PendingState should take into account zone buckets and character camera
 
-[x] Serialize current $(X, Y)$ coordinates and `lastProcessedId`.
-[x] Broadcast binary payload to the client.
+[ ] E2E TESTING
+[ ] -Verify server pulse logs every 50ms.
+[ ] -Verify multi-client connection and initial state sync.
+[ ] -Confirm visual rendering of map and player tokens.
+[ ] -Validate local prediction and remote interpolation.
+[ ] -Perform reconciliation check by forcing server-side disagreement.
 
-### **Phase 5: Server Reconciliation**
-
-[x] Overwrite local coordinates with server's ground truth.
-[x] Pluck processed actions from `pendingActions` based on `lastProcessedId`.
-[x] Re-simulate any remaining pending actions on top of the corrected state.
-
-### **Phase 6: Client Smooth Rendering**
-
-[x] Calculate camera focus offset.
-[x] Draw background map.
-[x] Render character at reconciled coordinates.
-
-### **Phase 7: Entity Interpolation**
-
-[ ] Buffer recent server snapshots.
-[ ] Define `renderTime` in the past for buffering.
-[ ] Identify snapshots bracketing the `renderTime`.
-[ ] Perform linear interpolation (Lerp) for entity positions.
-
-### **Phase 8: Rendering & Update Loop**
-
-[x] Initialize `Renderer` class with HTML `<canvas>`.
-[x] Clear canvas during `requestAnimationFrame`.
-[x] Draw map grid/tiles.
-[x] Draw local player at predicted coordinates.
-[ ] Draw entities at interpolated coordinates.
-
-[o] Zoning
-[x] Build $O(1)$ zone bucket logic using hash map exchanges.
-[x] Evict unused buckets, maps, etc.
-[x] Debug to confirm character buckets change and are accurate
-[o] Server state should be empty if nothing has changed.
-[ ] Implement pendingState to collect only the state that has changed.
-[ ] PendingState should take into account zone buckets and character camera
-
-### **End-to-End Testing**
-
-[ ] Verify server pulse logs every 50ms.
-[ ] Verify multi-client connection and initial state sync.
-[ ] Confirm visual rendering of map and player tokens.
-[ ] Validate local prediction and remote interpolation.
-[ ] Perform reconciliation check by forcing server-side disagreement.
-
-### **Content Editor**
-
-[ ] Create a map editor
-  [ ] Upload map webp files
-  [ ] Map fixed collisions
-  [ ] Assign to area zones
-  [ ] Delegate as main or aux maps
-  [ ] Load dynamic items (quests, furniture, act items)
-  [ ] Set permanent items (Maybe the same process as dynamic?)
-[ ] Create a entity editor
-  [ ] Design items, npcs, rooms
-  [ ] Assign acts
-[ ] Act editor
-  [ ] Create acts by id, assign to areas
-  [ ] Act types (active, passive)
-  [ ] Timer and frequency settings
-  [ ] { entity, world, deltaTime } interface
-[ ] Replicate the UI from test denoting server loads and debug data
-  [ ] Allow server to play the game with full priveleges
-  [ ] Restore, create, remove entities/characters
-  [ ] Reload zones
-  [ ] System messages
-  [ ] Restart servers (login, web, game)
+[ ] CONTENT EDITOR
+[ ] -Create a map editor
+[ ] -Upload map webp files
+[ ] -Map fixed collisions
+[ ] -Assign to area zones
+[ ] -Delegate as main or aux maps
+[ ] -Load dynamic items (quests, furniture, act items)
+[ ] -Set permanent items (Maybe the same process as dynamic?)
+[ ] -Create a entity editor
+[ ] -Design items, npcs, rooms
+[ ] -Assign acts
+[ ] -Act editor
+[ ] -Create acts by id, assign to areas
+[ ] -Act types (active, passive)
+[ ] -Timer and frequency settings
+[ ] -{ entity, world, deltaTime } interface
+[ ] -Replicate the UI from test denoting server loads and debug data
+[ ] -Allow server to play the game with full priveleges
+[ ] -Restore, create, remove entities/characters
+[ ] -Reload zones
+[ ] -System messages
+[ ] -Restart servers (login, web, game)

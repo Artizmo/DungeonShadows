@@ -17,14 +17,12 @@ export class StateManager {
   private readonly replayedBuffer = new Float64Array(StateIndex.BUFFER_SIZE);
   private hasActivePrediction = false;
 
-  setState(character: Character, serverData: any): void {
-    const serverCharState = serverData.state.character;
-
+  setState(character: Character, serverCharState: any): void {
     // 1. Cache local prediction into typed array
     this.serializeTo(character, this.predictedBuffer);
     this.hasActivePrediction = true;
 
-    // 2. Apply server baseline directly
+    // 🟢 2. Apply server baseline directly from delta format
     if (serverCharState.position) {
       if (serverCharState.position.x !== undefined)
         character.position.x = serverCharState.position.x;
@@ -53,14 +51,14 @@ export class StateManager {
     // 2. Direct O(1) array index math calculation
     const posError = Math.hypot(
       this.replayedBuffer[StateIndex.X] - this.predictedBuffer[StateIndex.X],
-      this.replayedBuffer[StateIndex.Y] - this.predictedBuffer[StateIndex.Y],
+      this.replayedBuffer[StateIndex.Y] - this.predictedBuffer[StateIndex.Y]
     );
     const hpError = Math.abs(
-      this.replayedBuffer[StateIndex.HP] - this.predictedBuffer[StateIndex.HP],
+      this.replayedBuffer[StateIndex.HP] - this.predictedBuffer[StateIndex.HP]
     );
     const manaError = Math.abs(
       this.replayedBuffer[StateIndex.MANA] -
-        this.predictedBuffer[StateIndex.MANA],
+        this.predictedBuffer[StateIndex.MANA]
     );
 
     const errorDistance = posError + hpError + manaError;

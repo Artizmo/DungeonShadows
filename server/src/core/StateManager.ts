@@ -1,45 +1,125 @@
-import Character, { CharacterDirtyFlag } from "~/core/Character";
+// StateManager.ts
+
+import {
+  FLAG_DESPAWN,
+  FLAG_DIRTY,
+  FLAG_NONE,
+  FLAG_POSITION,
+  FLAG_SPAWNED,
+} from "~/shared/core/constants";
+import type World from "./World";
+import Character from "./Character";
 import Npc from "./Npc";
-import { FLAG_NONE, FLAG_POSITION } from "~/shared/core/constants";
 
 export default class StateManager {
-  // Returns a formatted delta object, but DOES NOT reset flags
-  getDirtyState(entity: any): Record<string, any> | null {
-    if (entity.dirtyFlags === FLAG_NONE) return null;
+  private world: World;
+  private clientAckedEntities: Map<number, Set<number>> = new Map();
 
-    if (entity instanceof Character) {
-      return this.getCharacterDelta(entity);
-    }
-    if (entity instanceof Npc) {
-      return this.getNpcDelta(entity);
-    }
-
-    return null;
+  constructor(world: World) {
+    this.world = world;
   }
 
-  private getCharacterDelta(character: Character): Record<string, any> {
+  public getDirtyState(
+    entity: Character | Npc,
+    overrideFlags?: number
+  ): Record<string, any> | null {
+    const flags =
+      overrideFlags ?? this.world.entityFlags[entity.id] ?? FLAG_NONE;
+
+    if (flags === FLAG_NONE) return null;
+
+    const isCharacter = entity instanceof Character;
+    const isNpc = entity instanceof Npc;
+    if (!isCharacter && !isNpc) return null;
+
+    if (flags & FLAG_DESPAWN) {
+      return {
+        id: entity.id,
+        flags: FLAG_DESPAWN,
+        type: isCharacter ? "character" : "npc",
+      };
+    }
+
     const delta: Record<string, any> = {
-      id: character.id,
-      type: "character",
+      id: entity.id,
+      flags: flags,
+      type: isCharacter ? "character" : "npc",
     };
 
-    if (character.dirtyFlags & CharacterDirtyFlag.POSITION) {
-      delta.position = { x: character.position.x, y: character.position.y };
+    if (flags & FLAG_SPAWNED) {
+      delta.name = entity.name;
+      delta.level = entity.level;
+      delta.width = entity.width;
+      delta.height = entity.height;
     }
+
+    if (flags & (FLAG_POSITION | FLAG_SPAWNED)) {
+      delta.position = { x: entity.position.x, y: entity.position.y };
+    }
+
     return delta;
   }
 
-  private getNpcDelta(npc: Npc): Record<string, any> {
-    const delta: Record<string, any> = {
-      id: npc.id,
-      width: npc.width,
-      height: npc.height,
-      type: "npc",
-    };
+  public buildSnapshots(): Map<number, any[]> {
+    const recipientSnapshots = new Map<number, any[]>();
 
-    if (npc.dirtyFlags & FLAG_POSITION) {
-      delta.position = { x: npc.position.x, y: npc.position.y };
+    for (const player of this.world.characters.values()) {
+      const playerFlags = this.world.entityFlags[player.id] ?? FLAG_NONE;
+      if (playerFlags & FLAG_DESPAWN) {
+        this.clientAckedEntities.delete(player.id);
+        continue;
+      }
+
+      let ackedSet = this.clientAckedEntities.get(player.id);
+      if (!ackedSet) {
+        ackedSet = new Set<number>();
+        this.clientAckedEntities.set(player.id, ackedSet);
+      }
+
+      const visibleDeltas: any[] = [];
+
+      // 🟢 Read directly from World's spatial map
+      const currentVisible =
+        this.world.getPlayerVisibleEntities(player.id) ?? new Set<number>();
+
+      // 1. DETECT AOI EXITS -> Send FLAG_DESPAWN
+      for (const previousId of ackedSet) {
+        if (!currentVisible.has(previousId)) {
+          visibleDeltas.push({
+            id: previousId,
+            flags: FLAG_DESPAWN,
+            type: this.world.characters.has(previousId) ? "character" : "npc",
+          });
+        }
+      }
+
+      // 2. DETECT AOI ENTERS & DIRTY UPDATES
+      for (const entityId of currentVisible) {
+        const isSelf = entityId === player.id;
+        const isNewToPlayer = !ackedSet.has(entityId);
+        const entityFlags = this.world.entityFlags[entityId] ?? FLAG_NONE;
+
+        if (isNewToPlayer || (entityFlags & FLAG_DIRTY) !== 0) {
+          const entity = isSelf
+            ? player
+            : (this.world.characters.get(entityId) ??
+              this.world.entityCompendium.get(entityId));
+
+          if (entity) {
+            const effectiveFlags = isNewToPlayer
+              ? entityFlags | FLAG_SPAWNED | FLAG_POSITION
+              : entityFlags;
+
+            const delta = this.getDirtyState(entity, effectiveFlags);
+            if (delta) visibleDeltas.push(delta);
+          }
+        }
+      }
+
+      this.clientAckedEntities.set(player.id, new Set(currentVisible));
+      recipientSnapshots.set(player.id, visibleDeltas);
     }
-    return delta;
+
+    return recipientSnapshots;
   }
 }

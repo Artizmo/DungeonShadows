@@ -1,16 +1,9 @@
 import type { ActionRecord, ICoords } from "~/shared/core/types";
-
-export enum CharacterDirtyFlag {
-  NONE = 0,
-  POSITION = 1 << 0, // x, y, rotation
-  STATS = 1 << 1, // hp, mana, stamina
-  COMBAT = 1 << 2, // casting, targeting
-  EQUIPMENT = 1 << 3, // gear, weapons
-}
+import type Player from "~/core/Player";
 
 export default class Character {
   id: number;
-  playerId: number;
+  player: Player;
   name: string;
   level: number;
   stats: { hp: number; maxHp: number; mana: number; maxMana: number };
@@ -18,6 +11,8 @@ export default class Character {
   zoneId: string;
   cameraWidth: number;
   cameraHeight: number;
+  width: 32;
+  height: 32;
   position: ICoords;
   isAlive: boolean;
   pendingActions: ActionRecord[] = [];
@@ -26,11 +21,10 @@ export default class Character {
   lastProcessedSequenceId = 0;
   AOIBucketKeys: Set<string> = new Set();
   currentBucketId: string | null = null;
-  dirtyFlags: CharacterDirtyFlag = CharacterDirtyFlag.NONE;
 
   constructor(character: Character) {
     this.id = character.id;
-    this.playerId = character.playerId;
+    this.player = character.player;
     this.name = character.name;
     this.level = character.level;
     this.areaId = character.areaId;
@@ -38,6 +32,8 @@ export default class Character {
     this.isAlive = character.isAlive;
     this.stats = { ...character.stats };
     this.position = { ...character.position };
+    this.width = character.width;
+    this.height = character.height;
     this.speed = character.speed;
     this.currentBucketId = character.currentBucketId || null;
     this.cameraWidth = character.cameraWidth;
@@ -60,6 +56,5 @@ export default class Character {
   move(velocity: { x: number; y: number }): void {
     this.position.x += velocity.x;
     this.position.y += velocity.y;
-    this.dirtyFlags |= CharacterDirtyFlag.POSITION;
   }
 }

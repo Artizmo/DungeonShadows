@@ -41,7 +41,7 @@ export interface ICoords {
 }
 
 export interface QueueItem {
-  pulse: number;
+  tick: number;
   bytes: Uint8Array;
 }
 
@@ -54,10 +54,10 @@ export enum PacketCategory {
 
 export enum ActionType {
   GAME = 0,
-  MOVE = 1,
-  CAST = 2,
-  JOIN = 3,
-  LEAVE = 4,
+  CONNECT = 1,
+  DISCONNECT = 2,
+  MOVE = 3,
+  CAST = 4,
   ZONE_UPDATE = 5,
 }
 

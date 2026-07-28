@@ -1,8 +1,8 @@
-import type { ActionHandler } from "~/core/actions/types";
+import type { ActionHandler } from "~/core/handlers/types";
 import { CommandType } from "../utils/input-dictionary";
 
 export const Move: ActionHandler = {
-  execute: ({ data, game }): void => {
+  handle: ({ data, game }): void => {
     if (!game?.world) return;
     if (!game.world.character) return;
 
