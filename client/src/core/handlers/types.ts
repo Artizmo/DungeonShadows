@@ -8,5 +8,5 @@ export interface ActionHandlerContext {
 }
 
 export interface ActionHandler {
-  execute(actionHandlerContext: ActionHandlerContext): void;
+  handle(actionHandlerContext: ActionHandlerContext): void;
 }

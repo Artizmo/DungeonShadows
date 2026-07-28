@@ -6,6 +6,7 @@ import Player from "~/core/Player";
 
 export async function fetchCharacter(
   characterId: number,
+  playerId: number,
   defaultCamera: { width: number; height: number }
 ): Promise<Character> {
   if (!characterId) {
@@ -29,6 +30,8 @@ export async function fetchCharacter(
     }
 
     const character = new Character(characterRecord);
+    const player = await fetchPlayer(playerId);
+    character.player = player;
     character.cameraWidth = defaultCamera.width;
     character.cameraHeight = defaultCamera.height;
 

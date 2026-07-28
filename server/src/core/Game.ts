@@ -7,7 +7,7 @@ import type Network from "~/core/Network";
 import type World from "~/core/World";
 import type Character from "~/core/Character";
 import type StateManager from "~/core/StateManager";
-import { FLAG_DIRTY } from "~/shared/core/constants";
+import { FLAG_POSITION } from "~/shared/core/constants";
 
 export default class Game {
   readonly loop: Loop;
@@ -51,7 +51,7 @@ export default class Game {
     });
   }
 
-  tick(tick: number, deltaTime: number): void {
+  async tick(tick: number, deltaTime: number): Promise<void> {
     this.actsManager.tick(tick, deltaTime);
 
     // 1. Process client input queue
@@ -71,10 +71,11 @@ export default class Game {
           const handler = ActionRegistry.get(actionType);
           if (!handler) continue;
 
-          handler.execute({
+          handler.handle({
             data: {
               activeCommands: new Set(data.activeCommands),
               deltaTime: this.DELTA_TIME,
+              sequenceId: data.sequenceId,
             },
             character,
             game: this,
@@ -85,83 +86,72 @@ export default class Game {
       character.lastProcessedSequenceId = data.sequenceId;
     }
 
-    // 2. Uniform Snapshot / Heartbeat Loop
+    // 2. World Streaming (Spatial Updates & Chunk Delivery)
+    const streamingPromises = [];
 
-    // Phase A: Group dirty states by spatial bucket using activeEntityIds & entityFlags
-    const bucketDeltas = new Map<string, any[]>();
+    for (const character of this.world.characters.values()) {
+      if ((this.world.entityFlags[character.id] & FLAG_POSITION) !== 0) {
+        streamingPromises.push(
+          (async () => {
+            const spatialZone =
+              await this.world.updateCharacterSpatialZone(character);
 
-    for (let i = 0; i < this.world.activeEntityCount; i++) {
-      const entityId = this.world.activeEntityIds[i];
-
-      // Check if entity is marked with FLAG_DIRTY
-      if ((this.world.entityFlags[entityId] & FLAG_DIRTY) !== 0) {
-        // Lookup entity (Check characters first, then compendium)
-        const entity =
-          this.world.characters.get(entityId) ||
-          this.world.entityCompendium.get(entityId);
-
-        if (!entity) continue;
-
-        const state = this.stateManager.getDirtyState(entity);
-        if (!state) continue;
-
-        const bucketKey = entity.currentBucketId;
-        if (!bucketKey) continue;
-
-        if (!bucketDeltas.has(bucketKey)) {
-          bucketDeltas.set(bucketKey, []);
-        }
-
-        bucketDeltas.get(bucketKey)!.push({
-          ...state,
-          flags: this.world.entityFlags[entityId], // Send actual bitmask flags
-        });
+            if (
+              spatialZone.chunks.length > 0 ||
+              spatialZone.unchunks.length > 0
+            ) {
+              this.network.broadcast.sendTo(
+                character.id,
+                Serialize.data({
+                  actionType: ActionType.ZONE_UPDATE,
+                  serverTick: tick,
+                  chunks: spatialZone.chunks,
+                  unchunks: spatialZone.unchunks,
+                  zone: { ...spatialZone.zone },
+                })
+              );
+            }
+          })()
+        );
       }
     }
 
-    // Phase B: Dispatch tailored snapshots to connected characters based on AOI
-    for (const character of this.world.characters.values()) {
-      const visibleEntities: any[] = [];
+    if (streamingPromises.length > 0) {
+      await Promise.all(streamingPromises);
+    }
 
-      for (const bucketKey of character.AOIBucketKeys) {
-        if (bucketDeltas.has(bucketKey)) {
-          visibleEntities.push(...bucketDeltas.get(bucketKey)!);
-        }
-      }
+    // 3. Delegate Snapshot Building to StateManager
+    const recipientSnapshots = this.stateManager.buildSnapshots();
 
-      // Skip sending empty snapshots if nothing changed around them
-      if (visibleEntities.length === 0) continue;
+    // 4. Dispatch Tailored Snapshots
+    for (const [recipientId, deltas] of recipientSnapshots.entries()) {
+      // if (deltas.length === 0) continue;
+
+      const recipientCharacter = this.world.characters.get(recipientId);
+      if (!recipientCharacter) continue;
 
       const updatePayload = Serialize.snapshot({
         tick,
-        lastProcessedSequenceId: character.lastProcessedSequenceId,
-        entities: visibleEntities,
+        lastProcessedSequenceId: recipientCharacter.lastProcessedSequenceId,
+        entities: deltas,
       });
 
-      // Send payload to nearby player
       setTimeout(() => {
-        this.network.broadcast.sendTo(character.id, updatePayload);
+        this.network.broadcast.sendTo(recipientId, updatePayload);
       }, 38);
     }
 
-    // Phase C: Strip away the FLAG_DIRTY bit from active entities
-    for (let i = 0; i < this.world.activeEntityCount; i++) {
-      const entityId = this.world.activeEntityIds[i];
-
-      // Bitwise AND NOT clears ONLY the DIRTY flag, keeping FLYING, INVISIBLE, SPAWNED, etc.
-      this.world.entityFlags[entityId] &= ~FLAG_DIRTY;
-    }
+    // 5. Cleanup Dirty Flags and Despawn Memory
+    this.world.postTickCleanup();
   }
 
   async onNewConnection(character: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.CONNECT);
-
-    if (handler) await handler.execute({ data: character, game: this });
+    if (handler) await handler.handle({ data: character, game: this });
   }
 
   async onCloseConnection(character: Character): Promise<void> {
     const handler = ActionRegistry.get(ActionType.DISCONNECT);
-
-    if (handler) await handler.execute({ data: character, game: this });
+    if (handler) await handler.handle({ data: character, game: this });
   }
 }

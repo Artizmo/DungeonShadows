@@ -91,6 +91,7 @@ export default class Network {
           playerId: unknown;
           characterId: unknown;
         };
+        const playerId = Number(decoded.playerId);
         const characterId = Number(decoded.characterId);
 
         // 6. Evict Existing Stale Connections
@@ -108,6 +109,7 @@ export default class Network {
 
         this.events.emit("new_connection", {
           characterId,
+          playerId,
           camera: { width, height },
         });
 

@@ -1,77 +1,22 @@
-import { Log } from "~/shared/core/Logger";
 import type { ActionHandler } from "~/core/handlers/types";
 import { CommandType } from "~/core/handlers/types";
-import { Serialize } from "~/shared/core/serialize";
-import { ActionType } from "~/shared/core/types";
-
-export interface Coords {
-  x: number;
-  y: number;
-}
+import type { Vector2D } from "~/lib/movement";
 
 export const Move: ActionHandler = {
-  execute: async ({ data, character, game }): Promise<void> => {
-    if (!character) return;
-
-    const { lastProcessedSequenceId, speed } = character;
+  handle: ({ data, character, game }): void => {
     const { activeCommands, deltaTime } = data;
-    let dx = 0;
-    let dy = 0;
-
-    // Extract intentions
-    if (activeCommands.has(CommandType.MOVE_UP)) dy -= 1;
-    if (activeCommands.has(CommandType.MOVE_DOWN)) dy += 1;
-    if (activeCommands.has(CommandType.MOVE_LEFT)) dx -= 1;
-    if (activeCommands.has(CommandType.MOVE_RIGHT)) dx += 1;
-
-    // SAFE CODES: Calculate true vector length
-    const length = Math.sqrt(dx * dx + dy * dy);
-
-    if (length > 0) {
-      // Force a pure directional unit vector regardless of raw hardware magnitude
-      dx /= length;
-      dy /= length;
-    }
-
-    // The Golden Formula: Direction * Time Slice * Real Speed Value
-    // If speed = 300 and deltaTime = 1/60, this returns exactly 5 pixels per tick.
-    const velocity = {
-      x: dx * deltaTime * speed,
-      y: dy * deltaTime * speed,
+    const directionVector: Vector2D = {
+      x: 0,
+      y: 0,
     };
 
+    // 🟢 Get direction vector
+    if (activeCommands.has(CommandType.MOVE_UP)) directionVector.y -= 1;
+    if (activeCommands.has(CommandType.MOVE_DOWN)) directionVector.y += 1;
+    if (activeCommands.has(CommandType.MOVE_LEFT)) directionVector.x -= 1;
+    if (activeCommands.has(CommandType.MOVE_RIGHT)) directionVector.x += 1;
+
     // 🟢 Update local state
-    game.world.moveCharacter(character.id, velocity);
-
-    // Limit movement to the bounds of the curernt zone map
-    const zone = game.world.getZone(character.zoneId);
-    if (zone?.map) {
-      const minBoundX = 0;
-      const minBoundY = 0;
-      const maxBoundX = zone.map.width;
-      const maxBoundY = zone.map.height;
-
-      if (character.position.x < minBoundX) character.position.x = minBoundX;
-      if (character.position.x > maxBoundX) character.position.x = maxBoundX;
-      if (character.position.y < minBoundY) character.position.y = minBoundY;
-      if (character.position.y > maxBoundY) character.position.y = maxBoundY;
-    }
-
-    const spatialZone = await game.world.updateCharacterSpatialZone(character);
-
-    game.network.broadcast.sendTo(
-      character.id,
-      Serialize.data({
-        lastProcessedSequenceId,
-        serverTick: game.loop.tick,
-        actionType: ActionType.ZONE_UPDATE,
-        character,
-        chunks: spatialZone.chunks,
-        unchunks: spatialZone.unchunks,
-        zone: {
-          ...spatialZone.zone,
-        },
-      })
-    );
+    game.world.moveCharacter(character.id, directionVector, deltaTime);
   },
 };

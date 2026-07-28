@@ -1,7 +1,7 @@
 import type { ActionHandler } from "~/core/handlers/types";
 
 export const Cast: ActionHandler = {
-  execute: ({ game }): void => {
+  handle: ({ game }): void => {
     if (!game) return;
     if (!game.world.character) return;
 

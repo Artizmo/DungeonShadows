@@ -17,7 +17,7 @@ async function init() {
     const network = new Network(config);
     const world = new World();
     await world.load(worldPath);
-    const stateManager = new StateManager();
+    const stateManager = new StateManager(world);
     const game = new Game(loop, network, world, stateManager);
     game.start();
     Log.SYSTEM.INFO(`${config.name} is online!`);

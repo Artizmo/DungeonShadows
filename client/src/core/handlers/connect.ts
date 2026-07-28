@@ -3,7 +3,7 @@ import type { ActionHandler } from "~/core/handlers/types";
 import Zone from "../Zone";
 
 export const Connect: ActionHandler = {
-  execute: ({ data, game }): void => {
+  handle: ({ data, game }): void => {
     if (!game) return;
 
     const { chunks, unchunks, entities } = data;

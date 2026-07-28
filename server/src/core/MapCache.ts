@@ -68,7 +68,7 @@ export default class MapCache {
       return this.loadingPromises.get(key);
     }
 
-    // 3. Queue disk read
+    // 3. Queue non-blocking disk read
     const loadPromise = this.readChunkFromDisk(zone, chunkKey)
       .then((chunk) => {
         if (chunk) {
@@ -98,7 +98,6 @@ export default class MapCache {
     const [strX, strY] = chunkKey.split("_");
     const gridX = parseInt(strX, 10);
     const gridY = parseInt(strY, 10);
-
     const chunkFilePath = path.resolve(
       process.cwd(),
       `../shared/data/world/areas/${zone.areaId}/zones/${zone.name}/chunks/${gridX}_${gridY}.webp`
@@ -139,14 +138,17 @@ export default class MapCache {
   }
 
   private startCleanupLoop(): void {
-    setInterval(() => {
-      const now = Date.now();
-      for (const [key, entry] of this.cache.entries()) {
-        if (now - entry.lastAccessed > this.TTL_MS) {
-          this.cache.delete(key);
+    setInterval(
+      () => {
+        const now = Date.now();
+        for (const [key, entry] of this.cache.entries()) {
+          if (now - entry.lastAccessed > this.TTL_MS) {
+            this.cache.delete(key);
+          }
         }
-      }
-    }, 1000 * 60 * 5);
+      },
+      1000 * 60 * 5
+    );
   }
 }
 
