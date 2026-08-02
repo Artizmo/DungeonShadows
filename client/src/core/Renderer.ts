@@ -162,9 +162,7 @@ export default class Renderer {
     const camX = Math.round(camera.x);
     const camY = Math.round(camera.y);
 
-    // 🟢 Buffer zone: render entities up to 128 pixels off-screen
-    // so they can smoothly slide into the viewport without popping.
-    const cullBuffer = 64;
+    const cullBuffer = 128; // Increased buffer to prevent popping
 
     for (const entity of entityList) {
       const width = entity.width || 32;
@@ -173,12 +171,12 @@ export default class Renderer {
       const drawX = Math.round(entity.position.x - camX);
       const drawY = Math.round(entity.position.y - camY);
 
-      // Frustum Culling with buffer
+      // 🟢 Fixed AABB (Axis-Aligned Bounding Box) screen frustum culling
       if (
         drawX + width < -cullBuffer ||
         drawY + height < -cullBuffer ||
-        drawX > this.width + cullBuffer ||
-        drawY > this.height + cullBuffer
+        drawX - width > this.width + cullBuffer ||
+        drawY - height > this.height + cullBuffer
       ) {
         continue;
       }

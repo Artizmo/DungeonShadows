@@ -11,6 +11,8 @@ export default class Character {
   position: ICoords;
   prevPosition: ICoords;
   renderPosition: ICoords;
+  cameraWidth: number;
+  cameraHeight: number;
   stats: {
     hp: number;
     maxHp: number;
@@ -28,6 +30,7 @@ export default class Character {
   sequenceId: number = 0;
   isMoving: boolean = false;
   currentBucketId: string;
+  AOIBucketKeys: [];
 
   constructor(character: Character) {
     this.id = character.id;
@@ -38,9 +41,12 @@ export default class Character {
     this.stats = { ...character.stats };
     this.position = { ...character.position };
     this.prevPosition = { ...character.position };
+    this.cameraWidth = character.cameraWidth;
+    this.cameraHeight = character.cameraHeight;
     this.renderPosition = { ...this.position };
     this.speed = character.speed;
     this.currentBucketId = character.currentBucketId;
+    this.AOIBucketKeys = character.AOIBucketKeys;
   }
 
   tick() {

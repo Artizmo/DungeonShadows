@@ -8,6 +8,10 @@ export default function GameHud() {
   const currentBucketId = useGame(
     (game) => game.world.character?.currentBucketId ?? ""
   );
+
+  const cameraWidth = useGame((game) => game.world.character?.cameraWidth);
+  const cameraHeight = useGame((game) => game.world.character?.cameraHeight);
+  const AOIBucketKeys = useGame((game) => game.world.character?.AOIBucketKeys);
   const zoneName = useGame((game) => game.world.character?.zone?.name ?? "");
 
   const isReady = name.length > 0;
@@ -30,19 +34,19 @@ export default function GameHud() {
             Name: {name}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Position: {posX}, {posY}
+            Camera: {cameraWidth}, {cameraHeight}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
             Zone: {zoneName}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Current Bucket: {currentBucketId}
+            ┗━ Position: {posX}, {posY}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            Camera Dimensions: {currentBucketId}
+            ┗━ Bucket: {currentBucketId}
           </p>
           <p className="text-xs text-indigo-400 font-mono mt-0.5">
-            ┗━ Entities: {currentBucketId}
+            ┗━ AOI Buckets: {AOIBucketKeys?.length}
           </p>
         </div>
 

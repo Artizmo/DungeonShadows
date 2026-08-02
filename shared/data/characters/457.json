@@ -1,13 +1,13 @@
 {
   "id": 457,
   "name": "Eldrin Sunstrider",
+  "type": 0,
   "playerId": 1,
   "level": 12,
   "isAlive": true,
-  "position": {
-    "x": 1088,
-    "y": 345
-  },
+  "x": 1800,
+  "y": 400,
+  "rotation": 0,
   "areaId": "sephus",
   "zoneId": "arena:sephus",
   "stats": {
@@ -16,7 +16,7 @@
     "mana": 150,
     "maxMana": 150
   },
-  "speed": 185,
+  "speed": 250,
   "inventory": [],
   "updatedAt": "2026-06-12T03:52:39.844Z"
 }

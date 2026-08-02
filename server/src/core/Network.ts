@@ -4,7 +4,6 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import { Log } from "~/shared/core/Logger";
 import Broadcaster from "./Broadcaster";
-import type { QueueItem } from "~/shared/core/types";
 
 dotenv.config();
 
@@ -14,17 +13,33 @@ declare module "ws" {
   }
 }
 
+// 1. Pre-allocated packet slot structure to avoid inline object literal creation
+export interface PacketSlot {
+  tick: number;
+  buffer: Buffer | null;
+}
+
+const MAX_QUEUE_SIZE = 10000; // Upper capacity bound for raw packets per frame
+
 export default class Network {
   readonly events = new EventEmitter();
   readonly socketServer: WebSocketServer;
   readonly connections = new Map<number, WebSocket>();
   readonly broadcast = new Broadcaster(this.connections);
 
-  packetQueue: QueueItem[] = [];
+  // 2. Pre-allocated packet queue pool (Zero GC during game tick)
+  public packetQueue: PacketSlot[] = new Array(MAX_QUEUE_SIZE);
+  public packetCount = 0;
+
   private getTick: () => number = () => 0;
   private pingInterval: NodeJS.Timeout;
 
   constructor(config: { port: number }) {
+    // Instantiate slot objects ONCE during boot
+    for (let i = 0; i < MAX_QUEUE_SIZE; i++) {
+      this.packetQueue[i] = { tick: 0, buffer: null };
+    }
+
     this.socketServer = new WebSocketServer({ port: config.port });
 
     // Keep-alive heartbeat loop
@@ -33,7 +48,7 @@ export default class Network {
         if (socket.readyState === WebSocket.OPEN) {
           if (!socket.isAlive) {
             Log.NETWORK.WARN(`Player ${id} timed out.`);
-            socket.terminate(); // Triggers "close" event cleanly
+            socket.terminate();
             continue;
           }
 
@@ -97,8 +112,6 @@ export default class Network {
         // 6. Evict Existing Stale Connections
         const staleSocket = this.connections.get(characterId);
         if (staleSocket) {
-          // Temporarily remove listener to prevent the old socket's close event
-          // from deleting the Map key we are about to overwrite.
           staleSocket.removeAllListeners("close");
           staleSocket.close(4000, "Evicted by new session handshake");
         }
@@ -107,7 +120,7 @@ export default class Network {
         socket.isAlive = true;
         this.connections.set(characterId, socket);
 
-        this.events.emit("new_connection", {
+        this.events.emit("connect", {
           characterId,
           playerId,
           camera: { width, height },
@@ -115,21 +128,19 @@ export default class Network {
 
         socket.on("pong", () => {
           socket.isAlive = true;
-          Log.NETWORK.INFO(`Received PONG from characterId ${characterId}`);
         });
 
-        socket.on("message", (message, isBinary) => {
-          try {
-            if (!message || !isBinary) return;
+        // 🟢 ZERO-GC MESSAGE LISTENER
+        socket.on("message", (message: Buffer, isBinary: boolean) => {
+          if (!isBinary || !message) return;
 
-            const bytes = new Uint8Array(message as Buffer);
-            this.packetQueue.push({
-              tick: this.getTick(),
-              bytes,
-            });
-          } catch (err) {
-            Log.NETWORK.ERROR(`Failed to handle incoming packet: ${err}`);
-          }
+          // Prevent queue overflow under heavy attack/load
+          if (this.packetCount >= MAX_QUEUE_SIZE) return;
+
+          // Mutate existing pre-allocated slot instance (NO NEW OBJECTS CREATED)
+          const slot = this.packetQueue[this.packetCount++];
+          slot.tick = this.getTick();
+          slot.buffer = message; // Direct reference to ws Buffer
         });
 
         socket.on("close", () => {
@@ -162,13 +173,21 @@ export default class Network {
     this.getTick = callback;
   }
 
+  // 🟢 ZERO-ALLOCATION QUEUE FLUSH (Call this at the end of World.tick())
+  public clearPacketQueue(): void {
+    for (let i = 0; i < this.packetCount; i++) {
+      this.packetQueue[i].buffer = null;
+    }
+    this.packetCount = 0;
+  }
+
   private handleSocketClose(
     characterId: number,
     closingSocket: WebSocket
   ): void {
     if (this.connections.get(characterId) === closingSocket) {
       this.connections.delete(characterId);
-      this.events.emit("connection_closed", { characterId });
+      this.events.emit("disconnect", { characterId });
     }
   }
 

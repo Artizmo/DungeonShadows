@@ -86,3 +86,12 @@ walkTo(x, y)
 [ ] -Reload zones
 [ ] -System messages
 [ ] -Restart servers (login, web, game)
+
+[ ] Refactor action handlers
+shared/
+ └── features/
+      ├── movement/
+      │    ├── movement.math.ts     <-- Shared math & rules
+      │    ├── movement.client.ts   <-- Client prediction & input handling
+      │    ├── movement.server.ts   <-- Server validation & state mutation
+      │    └── index.ts             <-- Clean exports

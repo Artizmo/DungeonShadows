@@ -32,8 +32,10 @@ export async function fetchCharacter(
     const character = new Character(characterRecord);
     const player = await fetchPlayer(playerId);
     character.player = player;
-    character.cameraWidth = defaultCamera.width;
-    character.cameraHeight = defaultCamera.height;
+    character.camera = {
+      width: defaultCamera.width,
+      height: defaultCamera.height,
+    };
 
     return character;
   } catch (error: any) {

@@ -1,14 +1,24 @@
-import { useSyncExternalStore, useCallback } from "react";
+// ~/hooks/useGame.ts
+import { useSyncExternalStore, useCallback, useRef } from "react";
 import gameEngine from "~/core";
 import type Game from "~/core/Game";
 
 export function useGame<T>(selector: (game: Game) => T): T {
+  const selectorRef = useRef(selector);
+  selectorRef.current = selector;
+
   const subscribe = useCallback((callback: () => void) => {
-    gameEngine.events.on("game_update", callback);
+    const handleUpdate = () => callback();
+    gameEngine.events.on("game_update", handleUpdate);
     return () => {
-      gameEngine.events.off("game_update", callback);
+      gameEngine.events.off("game_update", handleUpdate);
     };
   }, []);
 
-  return useSyncExternalStore(subscribe, () => selector(gameEngine));
+  // 🟢 Pure snapshot getter without cached ref pollution
+  const getSnapshot = useCallback(() => {
+    return selectorRef.current(gameEngine);
+  }, []);
+
+  return useSyncExternalStore(subscribe, getSnapshot);
 }

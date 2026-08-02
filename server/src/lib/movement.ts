@@ -1,7 +1,4 @@
-export interface Vector2D {
-  x: number;
-  y: number;
-}
+import type { Vector2D } from "~/shared/core/types";
 
 /**
  * Calculates normalized 2D movement velocity

@@ -1,13 +1,13 @@
 {
   "id": 456,
   "name": "Brytagg, the Grim",
+  "type": 0,
   "playerId": 21,
   "level": 24,
   "isAlive": true,
-  "position": {
-    "x": 20,
-    "y": 20
-  },
+  "x": 1750,
+  "y": 400,
+  "rotation": 0,
   "areaId": "sephus",
   "zoneId": "arena:sephus",
   "stats": {
@@ -16,7 +16,7 @@
     "mana": 12,
     "maxMana": 12
   },
-  "speed": 200,
+  "speed": 250,
   "inventory": [],
   "updatedAt": "2026-06-12T03:52:39.844Z"
 }

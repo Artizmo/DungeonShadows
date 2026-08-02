@@ -1,5 +1,6 @@
 export default class Loop {
   tick: number = 0;
+  tickRate: number = 0;
   onUpdate!: (alpha: number) => void;
   onTick!: (tick: number) => void;
   private lastTime: number = 0;
@@ -7,6 +8,7 @@ export default class Loop {
   private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
 
   constructor() {
+    this.tickRate = this.TICK_RATE_MS / 1000; // Tick rate in seconds
     this.start();
   }
 

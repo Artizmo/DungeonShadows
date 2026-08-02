@@ -7,7 +7,7 @@ export const Move: ActionHandler = {
     if (!game.world.character) return;
 
     const { character } = game.world;
-    const { activeCommands, deltaTime } = data;
+    const { activeCommands, tickRate } = data;
     let dx = 0;
     let dy = 0;
 
@@ -29,8 +29,8 @@ export const Move: ActionHandler = {
 
     // 🟢 Grab the velocity vector (direction * time slice * speed)
     const velocity = {
-      x: dx * deltaTime * character.speed,
-      y: dy * deltaTime * character.speed,
+      x: dx * tickRate * character.speed,
+      y: dy * tickRate * character.speed,
     };
 
     // 🟢 Update local state

@@ -1,5 +1,5 @@
-import type Character from "../Character";
-import type Game from "../Game";
+import type { Entity } from "~/shared/core/types";
+import type World from "../World";
 
 export enum CommandType {
   MOVE_UP = "MOVE_UP",
@@ -12,15 +12,14 @@ export enum CommandType {
   UI_DOWN = "UI_DOWN",
   UI_SELECT = "UI_SELECT",
 }
-
-export interface ActionHandlerContext {
-  data: any;
-  character?: Character;
-  game?: Game;
-}
-
 export type ActionPhysicsContext = { x: number; y: number };
 
-export interface ActionHandler {
-  handle(actionHandlerContext: ActionHandlerContext): void;
+export interface ActionHandler<TData = unknown> {
+  handle(
+    character: Entity,
+    data: TData,
+    sequenceId: number,
+    deltaTime: number,
+    world: World
+  ): void;
 }

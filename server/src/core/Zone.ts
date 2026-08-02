@@ -1,72 +1,84 @@
-import type Npc from "./Npc";
-
-export interface Bucket {
-  id: string;
-  entities: Set<number>; // Set of Character/Entity IDs inside this specific cell
-  staticObjects: any[]; // Colliders, interactables, or specific tile data
-  userCount: number; // Ref-count: How many player viewports overlap this bucket
-}
+import { CHUNK_SIZE, MAX_ENTITIES_PER_BUCKET } from "~/shared/core/constants";
+import type { ICamera, Vector2D } from "~/shared/core/types";
 
 export default class Zone {
-  id: string;
-  name: string;
-  areaId: string;
-  map: {
+  public id: string;
+  public name: string;
+  public areaId: string;
+  public map: {
     width: number;
     height: number;
     file: string;
     totalChunks: number;
     lastProcessedDate: Date;
   };
-  cols: number = 0;
-  rows: number = 0;
-  buckets: Map<string, Bucket>;
 
-  constructor(zone: Zone) {
-    this.id = zone.id;
-    this.name = zone.name;
-    this.areaId = zone.areaId;
-    this.map = { ...zone.map };
-    this.buckets = new Map();
+  public cols: number = 0;
+  public rows: number = 0;
+  public totalBuckets: number = 0;
+
+  // --- FLAT MEMORY (Allocated once per zone instance) ---
+  public readonly bucketEntities: Int32Array;
+  public readonly bucketEntityCounts: Int32Array;
+  public readonly bucketUserCounts: Int32Array;
+
+  constructor(zoneData: Partial<Zone>) {
+    this.id = zoneData.id!;
+    this.name = zoneData.name!;
+    this.areaId = zoneData.areaId!;
+    this.map = { ...zoneData.map! };
+
+    this.cols = Math.ceil(this.map.width / CHUNK_SIZE);
+    this.rows = Math.ceil(this.map.height / CHUNK_SIZE);
+    this.totalBuckets = this.cols * this.rows;
+
+    // Direct TypedArray allocations — simple, clean, zero complex pool math!
+    this.bucketEntities = new Int32Array(
+      this.totalBuckets * MAX_ENTITIES_PER_BUCKET
+    ).fill(-1);
+    this.bucketEntityCounts = new Int32Array(this.totalBuckets).fill(0);
+    this.bucketUserCounts = new Int32Array(this.totalBuckets).fill(0);
   }
 
-  /**
-   * Generates the 256x256 pixel abstract spatial partition grid.
-   * This partitions the map vectors without loading any actual images into RAM.
-   */
-  public async initBucketGrid(): Promise<void> {
-    this.cols = Math.ceil(this.map.width / 256);
-    this.rows = Math.ceil(this.map.height / 256);
+  // --- FAST NUMERIC SPATIAL LOOKUPS (Zero Strings!) ---
 
-    for (let x = 0; x < this.cols; x++) {
-      for (let y = 0; y < this.rows; y++) {
-        const id = `${x}_${y}`;
-        this.buckets.set(id, {
-          id,
-          entities: new Set<number>(),
-          staticObjects: [],
-          userCount: 0,
-        });
+  public getBucketIndexByCoords(x: number, y: number): number {
+    const col = (x / 256) | 0;
+    const row = (y / 256) | 0;
+
+    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
+
+    return col + row * this.cols;
+  }
+
+  // --- ZERO-GC SPATIAL MUTATIONS ---
+
+  public addEntity(bucketIndex: number, entityId: number): void {
+    if (bucketIndex < 0 || bucketIndex >= this.totalBuckets) return;
+
+    const count = this.bucketEntityCounts[bucketIndex];
+    if (count >= MAX_ENTITIES_PER_BUCKET) return;
+
+    const offset = bucketIndex * MAX_ENTITIES_PER_BUCKET + count;
+    this.bucketEntities[offset] = entityId;
+    this.bucketEntityCounts[bucketIndex]++;
+  }
+
+  public removeEntity(bucketIndex: number, entityId: number): void {
+    if (bucketIndex < 0 || bucketIndex >= this.totalBuckets) return;
+
+    const count = this.bucketEntityCounts[bucketIndex];
+    const baseOffset = bucketIndex * MAX_ENTITIES_PER_BUCKET;
+
+    for (let i = 0; i < count; i++) {
+      if (this.bucketEntities[baseOffset + i] === entityId) {
+        // Swap-and-Pop O(1)
+        const lastEntityId = this.bucketEntities[baseOffset + count - 1];
+        this.bucketEntities[baseOffset + i] = lastEntityId;
+        this.bucketEntities[baseOffset + count - 1] = -1;
+        this.bucketEntityCounts[bucketIndex]--;
+        return;
       }
     }
-  }
-
-  getBucket(key: string): Bucket {
-    if (!key) return;
-
-    return this.buckets.get(key);
-  }
-
-  getBucketIdByCoords(x: number, y: number): string {
-    if (!x || !y) return;
-
-    return `${Math.floor(x / 256)}_${Math.floor(y / 256)}`;
-  }
-
-  getBucketByCoords(x: number, y: number): Bucket {
-    const bucketId = this.getBucketIdByCoords(x, y);
-    if (!bucketId) return;
-
-    return this.buckets.get(bucketId);
   }
 }

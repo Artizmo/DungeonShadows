@@ -1,125 +1,96 @@
-// StateManager.ts
+import {
+  MAX_ENTITIES,
+  MAX_ITEMS,
+  MAX_STRUCTURES,
+  MAX_CHUNKS,
+} from "~/shared/core/constants";
 
 import {
-  FLAG_DESPAWN,
-  FLAG_DIRTY,
-  FLAG_NONE,
-  FLAG_POSITION,
-  FLAG_SPAWNED,
-} from "~/shared/core/constants";
-import type World from "./World";
-import Character from "./Character";
-import Npc from "./Npc";
+  ChunkFlags,
+  EntityFlags,
+  ItemFlags,
+  StructureFlags,
+} from "~/shared/core/types";
+
+export class CharacterTargetState {
+  public readonly entities = new BitmaskTracker<EntityFlags>(MAX_ENTITIES);
+  public readonly items = new BitmaskTracker<ItemFlags>(MAX_ITEMS);
+  public readonly structures = new BitmaskTracker<StructureFlags>(
+    MAX_STRUCTURES
+  );
+  public readonly chunks = new BitmaskTracker<ChunkFlags>(MAX_CHUNKS);
+
+  /**
+   * Fast O(1) check to see if this character has any pending state to serialize.
+   */
+  public isDirty(): boolean {
+    return (
+      this.entities.count > 0 ||
+      this.items.count > 0 ||
+      this.structures.count > 0 ||
+      this.chunks.count > 0
+    );
+  }
+
+  public clear(): void {
+    this.entities.clear();
+    this.items.clear();
+    this.structures.clear();
+    this.chunks.clear();
+  }
+}
 
 export default class StateManager {
-  private world: World;
-  private clientAckedEntities: Map<number, Set<number>> = new Map();
+  private readonly targetStates: CharacterTargetState[] = [];
 
-  constructor(world: World) {
-    this.world = world;
+  constructor() {
+    // Pre-allocate target states up to MAX_ENTITIES for flat memory & zero GC
+    for (let i = 0; i < MAX_ENTITIES; i++) {
+      this.targetStates[i] = new CharacterTargetState();
+    }
   }
 
-  public getDirtyState(
-    entity: Character | Npc,
-    overrideFlags?: number
-  ): Record<string, any> | null {
-    const flags =
-      overrideFlags ?? this.world.entityFlags[entity.id] ?? FLAG_NONE;
-
-    if (flags === FLAG_NONE) return null;
-
-    const isCharacter = entity instanceof Character;
-    const isNpc = entity instanceof Npc;
-    if (!isCharacter && !isNpc) return null;
-
-    if (flags & FLAG_DESPAWN) {
-      return {
-        id: entity.id,
-        flags: FLAG_DESPAWN,
-        type: isCharacter ? "character" : "npc",
-      };
-    }
-
-    const delta: Record<string, any> = {
-      id: entity.id,
-      flags: flags,
-      type: isCharacter ? "character" : "npc",
-    };
-
-    if (flags & FLAG_SPAWNED) {
-      delta.name = entity.name;
-      delta.level = entity.level;
-      delta.width = entity.width;
-      delta.height = entity.height;
-    }
-
-    if (flags & (FLAG_POSITION | FLAG_SPAWNED)) {
-      delta.position = { x: entity.position.x, y: entity.position.y };
-    }
-
-    return delta;
+  /**
+   * Get character private target state tracker
+   */
+  public getTargetState(characterId: number): CharacterTargetState {
+    return this.targetStates[characterId];
   }
 
-  public buildSnapshots(): Map<number, any[]> {
-    const recipientSnapshots = new Map<number, any[]>();
+  /**
+   * Clear all target dirty flags for a given character ID
+   */
+  public clearTarget(characterId: number): void {
+    this.targetStates[characterId].clear();
+  }
+}
 
-    for (const player of this.world.characters.values()) {
-      const playerFlags = this.world.entityFlags[player.id] ?? FLAG_NONE;
-      if (playerFlags & FLAG_DESPAWN) {
-        this.clientAckedEntities.delete(player.id);
-        continue;
-      }
+/**
+ * Helper class to track dirty bitmask flags for flat typed arrays.
+ */
+export class BitmaskTracker<T extends number = number> {
+  public readonly flags: Int32Array;
+  public readonly dirtyList: Int32Array;
+  public count: number = 0;
 
-      let ackedSet = this.clientAckedEntities.get(player.id);
-      if (!ackedSet) {
-        ackedSet = new Set<number>();
-        this.clientAckedEntities.set(player.id, ackedSet);
-      }
+  constructor(capacity: number) {
+    this.flags = new Int32Array(capacity);
+    this.dirtyList = new Int32Array(capacity);
+  }
 
-      const visibleDeltas: any[] = [];
+  public mark(id: number, flag: T): void {
+    if (flag === 0) return;
 
-      // 🟢 Read directly from World's spatial map
-      const currentVisible =
-        this.world.getPlayerVisibleEntities(player.id) ?? new Set<number>();
-
-      // 1. DETECT AOI EXITS -> Send FLAG_DESPAWN
-      for (const previousId of ackedSet) {
-        if (!currentVisible.has(previousId)) {
-          visibleDeltas.push({
-            id: previousId,
-            flags: FLAG_DESPAWN,
-            type: this.world.characters.has(previousId) ? "character" : "npc",
-          });
-        }
-      }
-
-      // 2. DETECT AOI ENTERS & DIRTY UPDATES
-      for (const entityId of currentVisible) {
-        const isSelf = entityId === player.id;
-        const isNewToPlayer = !ackedSet.has(entityId);
-        const entityFlags = this.world.entityFlags[entityId] ?? FLAG_NONE;
-
-        if (isNewToPlayer || (entityFlags & FLAG_DIRTY) !== 0) {
-          const entity = isSelf
-            ? player
-            : (this.world.characters.get(entityId) ??
-              this.world.entityCompendium.get(entityId));
-
-          if (entity) {
-            const effectiveFlags = isNewToPlayer
-              ? entityFlags | FLAG_SPAWNED | FLAG_POSITION
-              : entityFlags;
-
-            const delta = this.getDirtyState(entity, effectiveFlags);
-            if (delta) visibleDeltas.push(delta);
-          }
-        }
-      }
-
-      this.clientAckedEntities.set(player.id, new Set(currentVisible));
-      recipientSnapshots.set(player.id, visibleDeltas);
+    if (this.flags[id] === 0) {
+      this.dirtyList[this.count++] = id;
     }
+    this.flags[id] |= flag;
+  }
 
-    return recipientSnapshots;
+  public clear(): void {
+    for (let i = 0; i < this.count; i++) {
+      this.flags[this.dirtyList[i]] = 0;
+    }
+    this.count = 0;
   }
 }

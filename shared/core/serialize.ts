@@ -7,16 +7,16 @@ export class Serialize {
   }
 
   static action(data: any): Uint8Array {
-    return encode({ category: PacketCategory.ACTION, ...data });
+    return encode({ category: PacketCategory.API, ...data });
   }
 
   static snapshot(data: any): Uint8Array {
     return encode({ category: PacketCategory.SNAPSHOT, ...data });
   }
 
-  static decode(bytes: Uint8Array): any {
+  static decode(buffer: Uint8Array): any {
     // decodeMulti parses sequentially. Calling .next().value grabs
     // the first valid object and ignores the remaining padding bytes.
-    return decodeMulti(bytes).next().value;
+    return decodeMulti(buffer).next().value;
   }
 }

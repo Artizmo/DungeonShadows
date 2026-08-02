@@ -1,60 +1,63 @@
-import type { ActionRecord, ICoords } from "~/shared/core/types";
+import type {
+  ActionRecord,
+  CharacterRecord,
+  ICamera,
+  Vector2D,
+} from "~/shared/core/types";
 import type Player from "~/core/Player";
+import type { Entity } from "~/shared/core/types";
 
-export default class Character {
+export default class Character implements Entity {
   id: number;
   player: Player;
   name: string;
   level: number;
-  stats: { hp: number; maxHp: number; mana: number; maxMana: number };
   areaId: string;
   zoneId: string;
-  cameraWidth: number;
-  cameraHeight: number;
-  width: 32;
-  height: 32;
-  position: ICoords;
-  isAlive: boolean;
+  camera: ICamera;
+  width = 32;
+  height = 32;
+  transform: {
+    position: Vector2D;
+    rotation: number;
+  };
   pendingActions: ActionRecord[] = [];
   speed = 1;
   sequenceId = 0;
-  lastProcessedSequenceId = 0;
-  AOIBucketKeys: Set<string> = new Set();
-  currentBucketId: string | null = null;
 
-  constructor(character: Character) {
-    this.id = character.id;
-    this.player = character.player;
-    this.name = character.name;
-    this.level = character.level;
-    this.areaId = character.areaId;
-    this.zoneId = character.zoneId;
-    this.isAlive = character.isAlive;
-    this.stats = { ...character.stats };
-    this.position = { ...character.position };
-    this.width = character.width;
-    this.height = character.height;
-    this.speed = character.speed;
-    this.currentBucketId = character.currentBucketId || null;
-    this.cameraWidth = character.cameraWidth;
-    this.cameraHeight = character.cameraHeight;
+  constructor(characterRecord: CharacterRecord) {
+    this.id = characterRecord.id;
+    this.name = characterRecord.name;
+    this.level = characterRecord.level;
+    this.areaId = characterRecord.areaId;
+    this.zoneId = characterRecord.zoneId;
+    this.transform = {
+      position: {
+        x: characterRecord.x,
+        y: characterRecord.y,
+      },
+      rotation: characterRecord.rotation,
+    };
+    this.width = characterRecord.width ?? this.width;
+    this.height = characterRecord.height ?? this.height;
+    this.speed = characterRecord.speed;
   }
 
   get cameraMinX() {
-    return this.position.x - this.cameraWidth / 2;
+    return this.transform.position.x - this.camera.width / 2;
   }
   get cameraMaxX() {
-    return this.position.x + this.cameraWidth / 2;
+    return this.transform.position.x + this.camera.width / 2;
   }
   get cameraMinY() {
-    return this.position.y - this.cameraHeight / 2;
+    return this.transform.position.y - this.camera.height / 2;
   }
   get cameraMaxY() {
-    return this.position.y + this.cameraHeight / 2;
+    return this.transform.position.y + this.camera.height / 2;
   }
 
   move(velocity: { x: number; y: number }): void {
-    this.position.x += velocity.x;
-    this.position.y += velocity.y;
+    this.transform.position.x += velocity.x;
+    this.transform.position.y += velocity.y;
   }
 }

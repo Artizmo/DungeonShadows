@@ -22,6 +22,8 @@ export class StateManager {
     this.serializeTo(character, this.predictedBuffer);
     this.hasActivePrediction = true;
 
+    character.AOIBucketKeys = serverCharState.AOIBucketKeys;
+
     // 🟢 2. Apply server baseline directly from delta format
     if (serverCharState.position) {
       if (serverCharState.position.x !== undefined)

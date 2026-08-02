@@ -1,13 +1,11 @@
 export default class Loop {
   tick: number = 0;
+  onTick!: (tick: number, tickRate: number) => void;
   private lastTime: bigint = 0n;
-  private accumulator: number = 0; // in milliseconds
+  private accumulator: number = 0; // in seconds
   private isRunning: boolean = false;
   private timeoutId: NodeJS.Timeout | null = null;
-
-  onTick!: (tick: number, deltaTime: number) => void;
-
-  private readonly TICK_RATE_MS = 1000 / 20; // Exactly 50ms (20 ticks/sec)
+  private readonly TICK_RATE_SEC = 0.05;
 
   constructor() {
     this.start();
@@ -16,11 +14,7 @@ export default class Loop {
   start() {
     if (this.isRunning) return;
     this.isRunning = true;
-
-    // Grab high-resolution real time in nanoseconds
     this.lastTime = process.hrtime.bigint();
-
-    // Start the recursive timeout loop
     this.tickLoop();
   }
 
@@ -34,29 +28,29 @@ export default class Loop {
   private tickLoop() {
     if (!this.isRunning) return;
 
-    // 1. Calculate delta time in milliseconds using BigInt arithmetic
+    // 1. Calculate real delta time in SECONDS
     const currentTime = process.hrtime.bigint();
-    // 1 millisecond = 1,000,000 nanoseconds
-    let deltaTime = Number(currentTime - this.lastTime) / 1_000_000;
+    // 1 second = 1,000,000,000 nanoseconds
+    let frameTime = Number(currentTime - this.lastTime) / 1_000_000_000;
     this.lastTime = currentTime;
 
-    // Safety: Cap deltaTime to avoid CPU spikes if the event loop gets bogged down
-    if (deltaTime > 250) deltaTime = 250;
+    // Safety spiral-of-death cap (e.g. max 0.25 seconds)
+    if (frameTime > 0.25) frameTime = 0.25;
 
-    // 2. Add real time passed to the tick accumulator
-    this.accumulator += deltaTime;
+    // 2. Add real time passed (in seconds) to accumulator
+    this.accumulator += frameTime;
 
-    // 3. Process Ticks (Fixed Timestep)
-    while (this.accumulator >= this.TICK_RATE_MS) {
+    // 3. Process Ticks using the fixed timestep delta (0.05s)
+    while (this.accumulator >= this.TICK_RATE_SEC) {
       this.tick += 1;
       if (this.onTick) {
-        this.onTick(this.tick, deltaTime);
+        // 🟢 Pass the fixed step size in SECONDS (0.05), NOT the raw variable frame time
+        this.onTick(this.tick, this.TICK_RATE_SEC);
       }
-      this.accumulator -= this.TICK_RATE_MS;
+      this.accumulator -= this.TICK_RATE_SEC;
     }
 
-    // 4. Schedule the next evaluation quickly
-    // Target 1ms to ensure we catch the next 50ms mark accurately
+    // 4. Schedule next iteration
     this.timeoutId = setTimeout(() => this.tickLoop(), 1);
   }
 }

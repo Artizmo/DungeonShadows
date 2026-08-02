@@ -15,7 +15,8 @@ import {
 import { CommandType } from "~/core/utils/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
 import type { StateManager } from "~/core/StateManager";
-import { FLAG_DESPAWN } from "~/shared/core/constants";
+// import { FLAG_DESPAWN } from "~/shared/core/constants";
+import { EntityInterpolator } from "./EntityInterpolator";
 
 export default class Game {
   events: EventEmitter;
@@ -28,8 +29,8 @@ export default class Game {
   keyboard: KeyboardController;
   stateManager: StateManager;
   sequenceId = 0;
+  private interpolator = new EntityInterpolator();
   private activeCommands = new Set<CommandType>();
-  private readonly DELTA_TIME = 1 / 20;
   private readonly MAX_INPUT_HISTORY = 10;
 
   constructor(
@@ -113,10 +114,12 @@ export default class Game {
         const handler = ActionRegistry.get(actionType);
         if (!handler) continue;
 
+        const { activeCommands } = this;
+        const { tickRate } = this.loop;
         handler.handle({
           data: {
-            activeCommands: this.activeCommands,
-            deltaTime: this.DELTA_TIME,
+            activeCommands,
+            tickRate,
           },
           game: this,
         });
@@ -136,20 +139,71 @@ export default class Game {
   }
 
   update(alpha: number): void {
+    // 🟢 Process incoming network packets
+    while (this.network.packetQueue.length > 0) {
+      const packet = this.network.packetQueue.shift();
+      if (!packet) continue;
+
+      try {
+        const data = Serialize.decode(packet);
+        if (!data) continue;
+
+        console.log("bingo data", data);
+
+        if (data.actionType) {
+          const handler = ActionRegistry.get(data.actionType);
+          handler?.handle({
+            data,
+            character: this.world.character,
+            game: this,
+          });
+        }
+
+        if (data.category === PacketCategory.SNAPSHOT) {
+          if (data.entities.length > 2) {
+            // console.log("bingo data", data);
+          }
+          if (Array.isArray(data.entities)) {
+            this.processEntityDeltas(data.entities);
+          }
+          if (this.world.character) {
+            this.handleServerReconciliation(data);
+          }
+        }
+      } catch (err) {
+        console.error("Error processing packet:", err);
+      }
+    }
+
+    // 🟢 2. Guard: If character isn't spawned/loaded yet, skip rendering this frame
     if (!this.world.character) return;
 
     const { character } = this.world;
+
+    // Safety check before destructuring
+    if (
+      !character.position ||
+      !character.prevPosition ||
+      !character.renderPosition
+    ) {
+      return;
+    }
+
     const { position, prevPosition, renderPosition } = character;
 
-    // 🟢 Calculate final render position and LERP
+    // 🟢 3. Local Player Interpolation
     renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
     renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
 
+    // 🟢 4. Remote Entities Interpolation
+    this.interpolator.interpolate(this.world.entities, 135);
+
+    // 🟢 5. Render Frame
     this.camera.update(character, this.renderer.canvas!);
     this.renderer.render(
       this.world.character,
       this.camera,
-      this.world.entities // The renderer will now draw them!
+      this.world.entities
     );
   }
 
@@ -159,73 +213,59 @@ export default class Game {
       this.world.character.tick();
       this.processInputs();
     }
-
-    // Process incoming network packets at fixed tick rate
-    while (this.network.packetQueue.length > 0) {
-      const packet = this.network.packetQueue.shift();
-      if (!packet) continue;
-
-      const data = Serialize.decode(packet);
-
-      // Process event-driven server responses directly
-      if (data.actionType) {
-        const handler = ActionRegistry.get(data.actionType);
-        const { character } = this.world;
-        handler?.handle({ data, character, game: this });
-      }
-
-      if (!this.world.character) continue;
-
-      // 🟢 Process state snapshot server responses
-      if (data.category === PacketCategory.SNAPSHOT) {
-        // 1. Process world entities (NPCs, other players)
-        if (data.entities.length > 1) {
-          console.log("bingo snapshot", data);
-        }
-        if (Array.isArray(data.entities)) {
-          this.processEntityDeltas(data.entities);
-        }
-
-        // 2. Perform local character input reconciliation
-        this.handleServerReconciliation(data);
-      }
-    }
   }
 
   private processEntityDeltas(entities: any[]): void {
-    const localPlayerId = this.world.character.id;
+    const localPlayerId = this.world.character?.id;
+    const now = performance.now();
 
     for (const delta of entities) {
-      // Skip local character reconciliation here (handled in handleServerReconciliation)
-      if (delta.id === localPlayerId) continue;
-
-      const { id, flags, position } = delta;
-      if (flags & FLAG_DESPAWN) {
-        this.world.entities.delete(id); // or remove from Map/Array depending on world.entities structure
+      // 🟢 Strict ID string match to prevent local player input fighting
+      if (
+        localPlayerId !== undefined &&
+        String(delta.id) === String(localPlayerId)
+      ) {
         continue;
       }
 
-      // 🟢 2. Handle Spawn or State Update
+      const { id, flags, position } = delta;
+
+      // 1. Handle Despawn
+      // if (flags & FLAG_DESPAWN) {
+      //   this.world.entities.delete(id);
+      //   this.interpolator.removeEntity(id);
+      //   continue;
+      // }
+
       let entity = this.world.entities.get(id);
 
+      // 2. Register New Entity (Spawn)
       if (!entity) {
-        // Construct or register new entity if it doesn't exist locally
+        const initialPos = position
+          ? { x: position.x, y: position.y }
+          : { x: 0, y: 0 };
+
         entity = {
           id: delta.id,
           name: delta.name,
           level: delta.level,
           type: delta.type,
-          position: delta.position ? { ...delta.position } : { x: 0, y: 0 },
+          position: { ...initialPos },
           width: delta.width ?? 32,
           height: delta.height ?? 32,
         };
+
         this.world.entities.set(id, entity);
-      } else {
-        // Update existing entity coordinates
+
         if (position) {
-          entity.position.x = position.x;
-          entity.position.y = position.y;
+          this.interpolator.pushSnapshot(id, position.x, position.y, now);
         }
+        continue;
+      }
+
+      // 3. Existing Entity: Push into buffer
+      if (position) {
+        this.interpolator.pushSnapshot(id, position.x, position.y, now);
       }
     }
   }
@@ -244,9 +284,9 @@ export default class Game {
       character.pendingActions.shift();
     }
 
-    // 🟢 2. Find local player delta inside entities array
+    // 2. Find local player delta inside entities array
     const localCharDelta = serverData.entities?.find(
-      (e: any) => e.id === character.id
+      (e: any) => String(e.id) === String(character.id)
     );
 
     // If local player isn't in this snapshot delta, skip reconciliation
@@ -255,19 +295,22 @@ export default class Game {
     // Apply baseline server state for local player
     this.stateManager.setState(character, localCharDelta);
 
-    // 3. Replay pending actions on top of server baseline
+    // 🟢 3. Replay pending actions using HISTORICAL saved activeCommands
+    const { tickRate } = this.loop;
+
     for (const savedInput of character.pendingActions) {
       const handler = ActionRegistry.get(savedInput.action);
-      if (handler) {
-        handler.handle({
-          data: {
-            activeCommands: savedInput.activeCommands,
-            deltaTime: this.DELTA_TIME,
-          },
-          character,
-          game: this,
-        });
-      }
+      if (!handler) continue;
+
+      // 🟢 Use savedInput.activeCommands instead of this.activeCommands!
+      handler.handle({
+        data: {
+          activeCommands: savedInput.activeCommands,
+          tickRate,
+        },
+        character,
+        game: this,
+      });
     }
 
     // 4. Compare replayed state vs predicted state
@@ -282,6 +325,10 @@ export default class Game {
   handleBindCanvas(canvas: HTMLCanvasElement): void {
     if (!canvas) return;
 
+    if (this.world.character) {
+      this.world.character.cameraWidth = canvas.width;
+      this.world.character.cameraHeight = canvas.height;
+    }
     this.renderer.bind(canvas);
   }
 }

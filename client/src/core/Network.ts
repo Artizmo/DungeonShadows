@@ -31,7 +31,7 @@ export default class Network {
       this.playerId = Number(decoded.playerId);
       this.characterId = Number(decoded.characterId);
       Log.NETWORK.INFO(
-        `🎯 Client hydrated local state: Player ${this.playerId}, Character ${this.characterId}`,
+        `🎯 Client hydrated local state: Player ${this.playerId}, Character ${this.characterId}`
       );
     }
 
@@ -43,7 +43,7 @@ export default class Network {
     const protocolPayload = `dimensions-${width}x${height}`;
     const ws: ManagedWebSocket = new WebSocket(
       authenticatedUrl,
-      protocolPayload,
+      protocolPayload
     );
     ws.wasIntentionallyClosed = false;
     ws.binaryType = "arraybuffer";
