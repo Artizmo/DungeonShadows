@@ -1,50 +1,57 @@
 import { CHUNK_SIZE, MAX_ENTITIES_PER_BUCKET } from "~/shared/core/constants";
-import type { ICamera, Vector2D } from "~/shared/core/types";
+
+export interface MapMetaData {
+  width: number;
+  height: number;
+  file: string;
+  totalChunks: number;
+  lastProcessedDate: Date;
+}
+
+const DEFAULT_MAP: Readonly<MapMetaData> = Object.freeze({
+  width: 0,
+  height: 0,
+  file: "",
+  totalChunks: 0,
+  lastProcessedDate: new Date(0),
+});
 
 export default class Zone {
   public id: string;
   public name: string;
   public areaId: string;
-  public map: {
-    width: number;
-    height: number;
-    file: string;
-    totalChunks: number;
-    lastProcessedDate: Date;
-  };
+  public map: MapMetaData;
 
-  public cols: number = 0;
-  public rows: number = 0;
-  public totalBuckets: number = 0;
+  public readonly cols: number;
+  public readonly rows: number;
+  public readonly totalBuckets: number;
 
   // --- FLAT MEMORY (Allocated once per zone instance) ---
   public readonly bucketEntities: Int32Array;
   public readonly bucketEntityCounts: Int32Array;
-  public readonly bucketUserCounts: Int32Array;
 
   constructor(zoneData: Partial<Zone>) {
-    this.id = zoneData.id!;
-    this.name = zoneData.name!;
-    this.areaId = zoneData.areaId!;
-    this.map = { ...zoneData.map! };
+    this.id = zoneData.id ?? "";
+    this.name = zoneData.name ?? "";
+    this.areaId = zoneData.areaId ?? "";
+    this.map = zoneData.map ? { ...zoneData.map } : { ...DEFAULT_MAP };
 
     this.cols = Math.ceil(this.map.width / CHUNK_SIZE);
     this.rows = Math.ceil(this.map.height / CHUNK_SIZE);
     this.totalBuckets = this.cols * this.rows;
 
-    // Direct TypedArray allocations — simple, clean, zero complex pool math!
+    // Guaranteed 0-GC allocations
     this.bucketEntities = new Int32Array(
       this.totalBuckets * MAX_ENTITIES_PER_BUCKET
     ).fill(-1);
-    this.bucketEntityCounts = new Int32Array(this.totalBuckets).fill(0);
-    this.bucketUserCounts = new Int32Array(this.totalBuckets).fill(0);
+    this.bucketEntityCounts = new Int32Array(this.totalBuckets); // Guaranteed 0-filled by JS spec
   }
 
-  // --- FAST NUMERIC SPATIAL LOOKUPS (Zero Strings!) ---
+  // --- FAST NUMERIC SPATIAL LOOKUPS (0 Strings, 0 Allocations) ---
 
   public getBucketIndexByCoords(x: number, y: number): number {
-    const col = (x / 256) | 0;
-    const row = (y / 256) | 0;
+    const col = (x / CHUNK_SIZE) | 0;
+    const row = (y / CHUNK_SIZE) | 0;
 
     if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return -1;
 
@@ -61,7 +68,7 @@ export default class Zone {
 
     const offset = bucketIndex * MAX_ENTITIES_PER_BUCKET + count;
     this.bucketEntities[offset] = entityId;
-    this.bucketEntityCounts[bucketIndex]++;
+    this.bucketEntityCounts[bucketIndex] = count + 1;
   }
 
   public removeEntity(bucketIndex: number, entityId: number): void {
@@ -73,10 +80,10 @@ export default class Zone {
     for (let i = 0; i < count; i++) {
       if (this.bucketEntities[baseOffset + i] === entityId) {
         // Swap-and-Pop O(1)
-        const lastEntityId = this.bucketEntities[baseOffset + count - 1];
-        this.bucketEntities[baseOffset + i] = lastEntityId;
-        this.bucketEntities[baseOffset + count - 1] = -1;
-        this.bucketEntityCounts[bucketIndex]--;
+        const lastIdx = baseOffset + count - 1;
+        this.bucketEntities[baseOffset + i] = this.bucketEntities[lastIdx];
+        this.bucketEntities[lastIdx] = -1;
+        this.bucketEntityCounts[bucketIndex] = count - 1;
         return;
       }
     }

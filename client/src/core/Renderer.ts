@@ -58,7 +58,7 @@ export default class Renderer {
     }
   }
 
-  public loadMap(chunks: IMapChunk[], unchunks: string[]): void {
+  public loadMap(chunks: IMapChunk[], unchunks: string[] = []): void {
     if (!chunks || !Array.isArray(chunks)) return;
 
     // Safely delete zone bucket image chunks out of view

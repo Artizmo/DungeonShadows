@@ -33,10 +33,10 @@ export default class Character implements Entity {
     this.zoneId = characterRecord.zoneId;
     this.transform = {
       position: {
-        x: characterRecord.x,
-        y: characterRecord.y,
+        x: characterRecord.x ?? 0,
+        y: characterRecord.y ?? 0,
       },
-      rotation: characterRecord.rotation,
+      rotation: characterRecord.rotation ?? 0,
     };
     this.width = characterRecord.width ?? this.width;
     this.height = characterRecord.height ?? this.height;

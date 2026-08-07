@@ -1,14 +1,17 @@
-import type World from "~/core/World";
 import type { Entity } from "~/shared/core/types";
+import type World from "~/core/World";
+import type StateManager from "~/core/StateManager";
 
 export type Act = (entity: Entity, world: World, tickRate: number) => void;
 
 export default class ActsManager {
   actsRegistry = new Map<string, Act>();
   private world: World;
+  private state: StateManager;
 
-  constructor(world: World) {
+  constructor(world: World, stateManager: StateManager) {
     this.world = world;
+    this.state = stateManager;
   }
 
   load(actsRegistry: Map<string, Act>): void {

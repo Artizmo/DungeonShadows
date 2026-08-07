@@ -1,8 +1,21 @@
-import type { ActionHandler } from "~/shared/core/types";
-import { CommandType } from "../utils/input-dictionary";
+import {
+  CommandType,
+  type IClientCharacter,
+  type IClientGame,
+} from "~/shared/core/types.js";
 
-export const Move: ActionHandler = {
-  handle: ({ data, game }): void => {
+interface ActionClientHandler {
+  handle(actionHandlerContext: ActionHandlerClientContext): void;
+}
+
+interface ActionHandlerClientContext {
+  data: any;
+  character?: IClientCharacter;
+  game?: IClientGame;
+}
+
+export const Move: ActionClientHandler = {
+  handle: ({ data, game }: ActionHandlerClientContext): void => {
     if (!game?.world) return;
     if (!game.world.character) return;
 
@@ -37,16 +50,22 @@ export const Move: ActionHandler = {
     character.move(velocity);
 
     // Limit movement to the bounds of the curernt zone map
-    if (character.zone && character.zone.map) {
+    console.log("bingo", game.world);
+    const zone = game.world.zoneManager.getZone(character.zoneId);
+    if (zone?.map) {
       const minBoundX = 0;
       const minBoundY = 0;
-      const maxBoundX = character.zone.map.width;
-      const maxBoundY = character.zone.map.height;
+      const maxBoundX = zone.map.width;
+      const maxBoundY = zone.map.height;
 
-      if (character.position.x < minBoundX) character.position.x = minBoundX;
-      if (character.position.x > maxBoundX) character.position.x = maxBoundX;
-      if (character.position.y < minBoundY) character.position.y = minBoundY;
-      if (character.position.y > maxBoundY) character.position.y = maxBoundY;
+      if (character.transform.position.x < minBoundX)
+        character.transform.position.x = minBoundX;
+      if (character.transform.position.x > maxBoundX)
+        character.transform.position.x = maxBoundX;
+      if (character.transform.position.y < minBoundY)
+        character.transform.position.y = minBoundY;
+      if (character.transform.position.y > maxBoundY)
+        character.transform.position.y = maxBoundY;
     }
   },
 };

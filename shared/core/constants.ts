@@ -19,4 +19,3 @@ export const MAX_ENTITIES = 10_000;
 export const MAX_ITEMS = 10_000;
 export const MAX_STRUCTURES = 10_000;
 export const MAX_CHARACTERS = 1000;
-export const MAX_CHUNKS = 32;

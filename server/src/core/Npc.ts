@@ -10,10 +10,9 @@ export default class Npc implements Entity {
   speed: number = 100;
   areaId: string;
   zoneId: string;
-  width: 32;
-  height: 32;
+  width = 32;
+  height = 32;
   acts: string[];
-  currentBucketIndex: number;
 
   constructor(npc: Npc) {
     this.id = npc.id;
@@ -22,8 +21,6 @@ export default class Npc implements Entity {
     this.transform = {
       ...npc.transform,
     };
-    this.width = npc.width;
-    this.height = npc.height;
     this.areaId = npc.areaId;
     this.zoneId = npc.zoneId;
     this.acts = npc.acts;

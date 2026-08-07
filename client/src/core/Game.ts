@@ -15,22 +15,28 @@ import {
 import { CommandType } from "~/core/utils/input-dictionary";
 import { ActionType, PacketCategory } from "~/shared/core/types";
 import type { StateManager } from "~/core/StateManager";
-// import { FLAG_DESPAWN } from "~/shared/core/constants";
 import { EntityInterpolator } from "./EntityInterpolator";
+import Zone from "./Zone";
+import Character from "./Character";
 
 export default class Game {
-  events: EventEmitter;
-  loop: Loop;
-  network: Network;
-  world: World;
-  renderer: Renderer;
-  camera: Camera = new Camera();
-  gamepad: GamepadController;
-  keyboard: KeyboardController;
-  stateManager: StateManager;
-  sequenceId = 0;
-  private interpolator = new EntityInterpolator();
-  private activeCommands = new Set<CommandType>();
+  // --- Core ---
+  public readonly events: EventEmitter;
+  public readonly loop: Loop;
+  public readonly network: Network;
+  public readonly world: World;
+  public readonly renderer: Renderer;
+  public readonly camera: Camera = new Camera();
+  public readonly stateManager: StateManager;
+
+  // --- Controllers ---
+  public readonly gamepad: GamepadController;
+  public readonly keyboard: KeyboardController;
+
+  // --- State ---
+  public sequenceId = 0;
+  private readonly interpolator = new EntityInterpolator();
+  private readonly activeCommands = new Set<CommandType>();
   private readonly MAX_INPUT_HISTORY = 10;
 
   constructor(
@@ -43,11 +49,11 @@ export default class Game {
     keyboard: KeyboardController,
     stateManager: StateManager
   ) {
-    this.events = events;
     this.world = world;
     this.renderer = renderer;
     this.loop = loop;
     this.network = network;
+    this.events = events;
     this.gamepad = gamepad;
     this.keyboard = keyboard;
     this.stateManager = stateManager;
@@ -56,77 +62,106 @@ export default class Game {
     this.loop.onTick = () => this.tick();
   }
 
-  processInputs(): void {
+  // ==========================================================================
+  // LIFECYCLE
+  // ==========================================================================
+
+  public start(ticket: string): void {
+    this.loop.start();
+    this.network.connect(ticket);
+  }
+
+  public tick(): void {
+    if (!this.world.character) return;
+
+    this.events.emit("game_update");
+    this.world.character.tick();
+    this.processInputs();
+  }
+
+  public update(alpha: number): void {
+    // 1. Drain network queues first
+    this.processPackets();
+
+    // 2. Guard: Ensure local character exists before rendering
     const { character } = this.world;
-    const keyboard = this.keyboard.activeKeys;
-    const gamepad = this.gamepad.activeKeys;
-    const context = "DEFAULT";
-    const actionTypeQueue: Set<ActionType> = new Set();
+    if (
+      !character?.position ||
+      !character?.prevPosition ||
+      !character?.renderPosition
+    ) {
+      return;
+    }
+
+    // 3. Interpolation
+    const { position, prevPosition, renderPosition } = character;
+    renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
+    renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
+
+    this.interpolator.interpolate(this.world.entities, 135);
+
+    // 4. Render
+    this.camera.update(character, this.renderer.canvas!);
+    this.renderer.render(character, this.camera, this.world.entities);
+  }
+
+  // ==========================================================================
+  // INPUT & PREDICTION
+  // ==========================================================================
+
+  private processInputs(): void {
+    const { character } = this.world;
+    if (!character) return;
 
     this.activeCommands.clear();
     this.gamepad.update();
 
-    // 🟢 Grab and process character input
-    const inputControllers = [
-      { control: keyboard, input: inputDictionary[context]?.["keyboard"] },
-      { control: gamepad, input: inputDictionary[context]?.["gamepad"] },
-    ];
+    const context = "DEFAULT";
+    const actionTypeQueue = new Set<ActionType>();
 
-    inputControllers.forEach((inputController) => {
-      if (!inputController.input) return;
+    // 1. Map raw inputs to commands
+    this.mapInputsToCommands(
+      this.keyboard.activeKeys,
+      inputDictionary[context]?.["keyboard"]
+    );
+    this.mapInputsToCommands(
+      this.gamepad.activeKeys,
+      inputDictionary[context]?.["gamepad"]
+    );
 
-      const inputCollection = new Set(inputController.control);
-      for (const input of inputCollection) {
-        const command = inputController.input[input];
-        if (command) {
-          this.activeCommands.add(command);
-        }
-      }
-    });
-
-    // 🟢 Collect actions
+    // 2. Map commands to actions
     for (const command of this.activeCommands) {
       const actionType = actionDictionary[command];
       if (actionType) actionTypeQueue.add(actionType);
     }
 
-    // 🟢 Add actions to history
-    const { tick } = this.loop;
-    const { pendingActions } = this.world.character;
-    const activeCommands = new Set(this.activeCommands);
-
-    // Increment sequenceId
+    // 3. Save to history for reconciliation
     this.sequenceId++;
-    const { sequenceId } = this;
+    const activeCommandsSnap = new Set(this.activeCommands);
 
     for (const action of actionTypeQueue) {
-      pendingActions.push({
-        sequenceId,
-        tick,
+      character.pendingActions.push({
+        sequenceId: this.sequenceId,
+        tick: this.loop.tick,
         action,
-        activeCommands,
+        activeCommands: activeCommandsSnap,
       });
     }
 
-    // 🟢 Loop actions, update local state (client prediction)
+    // 4. Client-side prediction (execute locally)
     if (actionTypeQueue.size > 0) {
       for (const actionType of actionTypeQueue) {
-        const handler = ActionRegistry.get(actionType);
-        if (!handler) continue;
-
-        const { activeCommands } = this;
-        const { tickRate } = this.loop;
-        handler.handle({
+        ActionRegistry.get(actionType)?.handle({
           data: {
-            activeCommands,
-            tickRate,
+            activeCommands: this.activeCommands,
+            tickRate: this.loop.tickRate,
           },
           game: this,
         });
       }
     }
 
-    // 🟢 Send action request to the server for notary
+    // 5. Send to server
     this.network.send(
       Serialize.action({
         characterId: character.id,
@@ -138,8 +173,22 @@ export default class Game {
     );
   }
 
-  update(alpha: number): void {
-    // 🟢 Process incoming network packets
+  private mapInputsToCommands(
+    activeKeys: Set<string>,
+    dictionary?: Record<string, CommandType>
+  ): void {
+    if (!dictionary) return;
+    for (const key of activeKeys) {
+      const command = dictionary[key];
+      if (command) this.activeCommands.add(command);
+    }
+  }
+
+  // ==========================================================================
+  // NETWORK & STATE SYNC
+  // ==========================================================================
+
+  private processPackets(): void {
     while (this.network.packetQueue.length > 0) {
       const packet = this.network.packetQueue.shift();
       if (!packet) continue;
@@ -148,11 +197,8 @@ export default class Game {
         const data = Serialize.decode(packet);
         if (!data) continue;
 
-        console.log("bingo data", data);
-
         if (data.actionType) {
-          const handler = ActionRegistry.get(data.actionType);
-          handler?.handle({
+          ActionRegistry.get(data.actionType)?.handle({
             data,
             character: this.world.character,
             game: this,
@@ -160,121 +206,108 @@ export default class Game {
         }
 
         if (data.category === PacketCategory.SNAPSHOT) {
-          if (data.entities.length > 2) {
-            // console.log("bingo data", data);
-          }
-          if (Array.isArray(data.entities)) {
-            this.processEntityDeltas(data.entities);
-          }
-          if (this.world.character) {
-            this.handleServerReconciliation(data);
-          }
+          this.handleSnapshot(data);
         }
       } catch (err) {
         console.error("Error processing packet:", err);
       }
     }
+  }
 
-    // 🟢 2. Guard: If character isn't spawned/loaded yet, skip rendering this frame
-    if (!this.world.character) return;
+  private handleSnapshot(data: any): void {
+    // 🟢 1. Bootstrapping / Initial Spawn
 
-    const { character } = this.world;
-
-    // Safety check before destructuring
-    if (
-      !character.position ||
-      !character.prevPosition ||
-      !character.renderPosition
-    ) {
+    console.log("bingo data", data);
+    if (!this.world.character) {
+      this.handleInitialSpawn(data);
       return;
     }
 
-    const { position, prevPosition, renderPosition } = character;
+    // 🟢 2. Streaming Updates (Regular Tick)
+    // Update streaming chunks if present
+    if (data.chunks || data.unchunks) {
+      this.renderer.loadMap(data.chunks, data.unchunks);
+    }
 
-    // 🟢 3. Local Player Interpolation
-    renderPosition.x = prevPosition.x + (position.x - prevPosition.x) * alpha;
-    renderPosition.y = prevPosition.y + (position.y - prevPosition.y) * alpha;
+    // Process remote entities & reconcile local state
+    if (Array.isArray(data.entities)) {
+      this.processEntityDeltas(data.entities);
+    }
 
-    // 🟢 4. Remote Entities Interpolation
-    this.interpolator.interpolate(this.world.entities, 135);
-
-    // 🟢 5. Render Frame
-    this.camera.update(character, this.renderer.canvas!);
-    this.renderer.render(
-      this.world.character,
-      this.camera,
-      this.world.entities
-    );
+    this.handleServerReconciliation(data);
+    this.events.emit("game_update");
   }
 
-  tick(): void {
-    if (this.world.character) {
-      this.events.emit("game_update");
-      this.world.character.tick();
-      this.processInputs();
+  private handleInitialSpawn(data: any): void {
+    const { chunks, unchunks, entities } = data;
+
+    // 1. Setup Character and Zone
+    const character = new Character(data.character);
+    const zone = new Zone(data.character.zoneId);
+    this.world.areas.get(zone.areaId)?.addZone(zone);
+    this.world.add(character);
+
+    // Explicitly set the local reference for the Game loop guard
+    this.world.character = character;
+
+    // 2. Load map textures into the renderer's cache
+    this.renderer.loadMap(chunks, unchunks);
+
+    // 3. Store the baseline entities in your client's World state
+    this.world.entities.clear();
+    if (entities?.length > 0) {
+      for (const entity of entities) {
+        this.world.entities.set(entity.id, entity);
+      }
     }
+
+    // Notify UI/Camera that the local player is ready
+    this.events.emit("character_spawned", this.world.character);
   }
 
   private processEntityDeltas(entities: any[]): void {
-    const localPlayerId = this.world.character?.id;
+    const localPlayerId = String(this.world.character?.id);
     const now = performance.now();
 
     for (const delta of entities) {
-      // 🟢 Strict ID string match to prevent local player input fighting
-      if (
-        localPlayerId !== undefined &&
-        String(delta.id) === String(localPlayerId)
-      ) {
+      // Skip local player delta to prevent input fighting
+      if (localPlayerId !== "undefined" && String(delta.id) === localPlayerId) {
         continue;
       }
 
-      const { id, flags, position } = delta;
+      let entity = this.world.entities.get(delta.id);
 
-      // 1. Handle Despawn
-      // if (flags & FLAG_DESPAWN) {
-      //   this.world.entities.delete(id);
-      //   this.interpolator.removeEntity(id);
-      //   continue;
-      // }
-
-      let entity = this.world.entities.get(id);
-
-      // 2. Register New Entity (Spawn)
       if (!entity) {
-        const initialPos = position
-          ? { x: position.x, y: position.y }
-          : { x: 0, y: 0 };
-
         entity = {
           id: delta.id,
           name: delta.name,
           level: delta.level,
           type: delta.type,
-          position: { ...initialPos },
+          position: delta.position
+            ? { x: delta.position.x, y: delta.position.y }
+            : { x: 0, y: 0 },
           width: delta.width ?? 32,
           height: delta.height ?? 32,
         };
-
-        this.world.entities.set(id, entity);
-
-        if (position) {
-          this.interpolator.pushSnapshot(id, position.x, position.y, now);
-        }
-        continue;
+        this.world.entities.set(delta.id, entity);
       }
 
-      // 3. Existing Entity: Push into buffer
-      if (position) {
-        this.interpolator.pushSnapshot(id, position.x, position.y, now);
+      if (delta.position) {
+        this.interpolator.pushSnapshot(
+          delta.id,
+          delta.position.x,
+          delta.position.y,
+          now
+        );
       }
     }
   }
 
   private handleServerReconciliation(serverData: any): void {
-    if (!this.world.character) return;
     const { character } = this.world;
+    if (!character) return;
 
-    // 1. Purge acknowledged inputs from history
+    // 1. Purge acknowledged inputs
     while (
       character.pendingActions.length > 0 &&
       (character.pendingActions[0].sequenceId <=
@@ -284,45 +317,35 @@ export default class Game {
       character.pendingActions.shift();
     }
 
-    // 2. Find local player delta inside entities array
+    // 2. Apply baseline server state
     const localCharDelta = serverData.entities?.find(
       (e: any) => String(e.id) === String(character.id)
     );
-
-    // If local player isn't in this snapshot delta, skip reconciliation
     if (!localCharDelta) return;
 
-    // Apply baseline server state for local player
     this.stateManager.setState(character, localCharDelta);
 
-    // 🟢 3. Replay pending actions using HISTORICAL saved activeCommands
-    const { tickRate } = this.loop;
-
+    // 3. Replay unacknowledged actions
     for (const savedInput of character.pendingActions) {
-      const handler = ActionRegistry.get(savedInput.action);
-      if (!handler) continue;
-
-      // 🟢 Use savedInput.activeCommands instead of this.activeCommands!
-      handler.handle({
+      ActionRegistry.get(savedInput.action)?.handle({
         data: {
           activeCommands: savedInput.activeCommands,
-          tickRate,
+          tickRate: this.loop.tickRate,
         },
         character,
         game: this,
       });
     }
 
-    // 4. Compare replayed state vs predicted state
+    // 4. Smooth discrepancy
     this.stateManager.reconcile(character);
   }
 
-  start(ticket: string): void {
-    this.loop.start();
-    this.network.connect(ticket);
-  }
+  // ==========================================================================
+  // UTILS
+  // ==========================================================================
 
-  handleBindCanvas(canvas: HTMLCanvasElement): void {
+  public handleBindCanvas(canvas: HTMLCanvasElement): void {
     if (!canvas) return;
 
     if (this.world.character) {

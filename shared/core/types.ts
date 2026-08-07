@@ -30,29 +30,33 @@ export const enum StructureFlags {
   POSITION = BaseFlags.POSITION,
 }
 
-export const enum ChunkFlags {
+export enum ZoneFlags {
   NONE = BaseFlags.NONE,
-  CHUNK = 1 << 0,
-  UNCHUNK = 1 << 1,
+  ZONED = 1 << 1,
+  CHUNK = 1 << 2,
+  UNCHUNK = 1 << 3,
+  WEATHER = 1 << 4, // Rain, snow, fog changes
+  DAY_NIGHT = 1 << 5, // Lighting / time-of-day progression
+  EFFECTS = 1 << 6, // Zone-wide buffs/debuffs or gravity modifiers
 }
 
 // Data interfaces
 export interface CharacterRecord {
-  id: number;
-  name: string;
-  level: number;
-  speed: number;
-  areaId: string;
-  zoneId: string;
-  rotation: number;
-  width: number;
-  height: number;
-  x: number;
-  y: number;
+  id?: number;
+  name?: string;
+  playerId?: number;
+  level?: number;
+  speed?: number;
+  areaId?: string;
+  zoneId?: string;
+  rotation?: number;
+  width?: number;
+  height?: number;
+  cameraWidth?: number;
+  cameraHeight?: number;
+  x?: number;
+  y?: number;
 }
-
-// World interfaces
-export interface IWorld {}
 
 export enum ActionType {
   GAME = 0,
@@ -113,7 +117,11 @@ export interface Vector2D {
 }
 
 // Zone interfaces
-export type Act = (entity: Entity, world: IWorld, tickRate: number) => void;
+export type Act = (
+  entity: Entity,
+  world: IServerWorld,
+  tickRate: number
+) => void;
 
 export interface Bucket {
   id: string;
@@ -129,7 +137,19 @@ export interface IZone {
   publishedDate: Date;
 }
 
-// Network Interfaces
+// Input & Network Interfaces
+export enum CommandType {
+  MOVE_UP = "MOVE_UP",
+  MOVE_DOWN = "MOVE_DOWN",
+  MOVE_LEFT = "MOVE_LEFT",
+  MOVE_RIGHT = "MOVE_RIGHT",
+  CAST_SPELL = "CAST_SPELL",
+  MENU_TOGGLE = "MENU_TOGGLE",
+  UI_UP = "UI_UP",
+  UI_DOWN = "UI_DOWN",
+  UI_SELECT = "UI_SELECT",
+}
+
 export interface ClientContext {
   characterId: number;
   playerId: number;
@@ -148,6 +168,35 @@ export enum PacketCategory {
 }
 
 // Core interfaces
+
+// Character interfaces
+export interface IClientCharacter {
+  transform: {
+    position: Vector2D;
+    rotation: number;
+  };
+  zoneId: string;
+  move(velocity: { x: number; y: number }): void;
+  speed: number;
+}
+export interface IServerCharacter {}
+
+// World interfaces
+export interface IClientWorld {
+  zoneManager: any;
+  character: IClientCharacter;
+}
+
+export interface IServerWorld {}
+
+export interface IClientGame {
+  world: IClientWorld;
+}
+
+export interface IServerGame {
+  world: IServerWorld;
+}
+
 export interface GameConfig {
   frameRate: number;
   frameSize: number;

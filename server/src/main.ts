@@ -1,9 +1,9 @@
 import { Log } from "~/shared/core/Logger";
+import config from "~/shared/data/config.json";
 import Game from "~/core/Game";
 import Loop from "~/core/Loop";
 import Network from "~/core/Network";
 import World from "~/core/World";
-import config from "~/shared/data/config.json";
 
 process.stdout.write("\x1b]0;⚔️ DS Game Server\x07");
 

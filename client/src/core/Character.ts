@@ -1,25 +1,21 @@
-import type { ActionType, ICoords } from "~/shared/core/types";
-import Zone from "~/core/Zone";
+import type {
+  ActionType,
+  CharacterRecord,
+  Vector2D,
+} from "~/shared/core/types";
 import type { CommandType } from "./utils/input-dictionary";
 
 export default class Character {
-  id: number;
-  playerId: number;
-  name: string;
-  level: number;
-  zone!: Zone;
-  position: ICoords;
-  prevPosition: ICoords;
-  renderPosition: ICoords;
-  cameraWidth: number;
-  cameraHeight: number;
-  stats: {
-    hp: number;
-    maxHp: number;
-    mana: number;
-    maxMana: number;
-  };
-  isAlive: boolean;
+  id: number = 0;
+  playerId: number = 0;
+  name: string = "";
+  level: number = 0;
+  zoneId: string = "";
+  position: Vector2D = { x: 0, y: 0 };
+  prevPosition: Vector2D = { x: 0, y: 0 };
+  renderPosition: Vector2D = { x: 0, y: 0 };
+  cameraWidth: number = 0;
+  cameraHeight: number = 0;
   pendingActions: Array<{
     sequenceId: number;
     tick: number;
@@ -28,35 +24,33 @@ export default class Character {
   }> = [];
   speed = 1;
   sequenceId: number = 0;
-  isMoving: boolean = false;
-  currentBucketId: string;
-  AOIBucketKeys: [];
 
-  constructor(character: Character) {
-    this.id = character.id;
-    this.playerId = character.playerId;
-    this.name = character.name;
-    this.level = character.level;
-    this.isAlive = character.isAlive;
-    this.stats = { ...character.stats };
-    this.position = { ...character.position };
-    this.prevPosition = { ...character.position };
-    this.cameraWidth = character.cameraWidth;
-    this.cameraHeight = character.cameraHeight;
+  constructor(character: CharacterRecord) {
+    this.id = character.id ?? 0;
+    this.playerId = character.playerId ?? 0;
+    this.name = character.name ?? "";
+    this.level = character.level ?? this.level;
+    this.zoneId = character.zoneId ?? this.zoneId;
+    this.position = {
+      x: character.x ?? 0,
+      y: character.y ?? 0,
+    };
+    this.prevPosition = {
+      x: character.x ?? 0,
+      y: character.y ?? 0,
+    };
+    this.cameraWidth = character.cameraWidth ?? 0;
+    this.cameraHeight = character.cameraHeight ?? 0;
     this.renderPosition = { ...this.position };
-    this.speed = character.speed;
-    this.currentBucketId = character.currentBucketId;
-    this.AOIBucketKeys = character.AOIBucketKeys;
+    this.speed = character.speed ?? this.speed;
   }
 
   tick() {
     this.prevPosition.x = this.position.x;
     this.prevPosition.y = this.position.y;
-    this.isMoving = false;
   }
 
   move(velocity: { x: number; y: number }): void {
-    this.isMoving = true;
     this.position.x += velocity.x;
     this.position.y += velocity.y;
   }

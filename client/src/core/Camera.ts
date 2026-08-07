@@ -10,8 +10,8 @@ export default class Camera {
     const viewWidth = canvas.width;
     const viewHeight = canvas.height;
 
-    const zoneWidth = character.zone.map.width;
-    const zoneHeight = character.zone.map.height;
+    // const zoneWidth = character.zone.map.width;
+    // const zoneHeight = character.zone.map.height;
 
     // 🟢 Centering Logic:
     // If the window is larger than the map, we center the map.
@@ -20,14 +20,14 @@ export default class Camera {
     const targetY = character.renderPosition.y - viewHeight / 2;
 
     // If map is smaller than view, force it to the center (offset = (view - zone) / 2)
-    const offsetX = Math.max(0, (viewWidth - zoneWidth) / 2);
-    const offsetY = Math.max(0, (viewHeight - zoneHeight) / 2);
+    const offsetX = Math.max(0, viewWidth / 2);
+    const offsetY = Math.max(0, viewWidth / 2);
 
     // Updated limits
     const minX = Math.min(0, offsetX);
     const minY = Math.min(0, offsetY);
-    const maxX = Math.max(minX, zoneWidth - viewWidth + offsetX);
-    const maxY = Math.max(minY, zoneHeight - viewHeight + offsetY);
+    const maxX = Math.max(minX, viewWidth + offsetX);
+    const maxY = Math.max(minY, viewWidth + offsetY);
 
     this.x = Math.max(minX, Math.min(targetX, maxX));
     this.y = Math.max(minY, Math.min(targetY, maxY));

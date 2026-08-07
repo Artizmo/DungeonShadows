@@ -63,7 +63,7 @@ export default class Network {
         const arrayBuffer = await message.data.arrayBuffer();
         packet = new Uint8Array(arrayBuffer);
       } else {
-        return; // Ignore text or malformed frames
+        return;
       }
 
       if (packet.length === 0) return;
@@ -72,6 +72,7 @@ export default class Network {
     };
 
     ws.onclose = () => {
+      console.log("bingo onclose");
       this.disconnect();
       Log.NETWORK.WARN("⚠️ Client disconnected from game server.");
     };
@@ -102,7 +103,7 @@ export default class Network {
       this.socket.readyState === WebSocket.OPEN ||
       this.socket.readyState === WebSocket.CONNECTING
     ) {
-      this.socket.close(1000, "Component unmounted");
+      this.socket.close(1000, "Client disconnected");
     }
 
     this.socket = null;

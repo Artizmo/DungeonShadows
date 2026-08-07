@@ -35,8 +35,8 @@ export default class Game {
       this.onConnect(clientContext);
     });
 
-    this.network.events.on("disconnect", (characterId: number) => {
-      this.onDisconnect(characterId);
+    this.network.events.on("disconnect", (clientContext: ClientContext) => {
+      this.onDisconnect(clientContext);
     });
   }
 
@@ -46,15 +46,17 @@ export default class Game {
     this.world.connect(character);
   }
 
-  async onDisconnect(characterId: number): Promise<void> {
-    // const handler = ActionRegistry.get(ActionType.DISCONNECT);
-    // if (handler) await handler.handle({ data: character, game: this });
+  async onDisconnect(clientContext: ClientContext): Promise<void> {
+    const { characterId } = clientContext;
+    this.world.disconnect(characterId);
   }
 
   async tick(tick: number, tickRate: number): Promise<void> {
-    // 1. Process packet queue without array reallocation
+    // -------------------------------------------------------------
+    // PHASE 1: Process incoming client packet queue
+    // -------------------------------------------------------------
     const packets = this.network.packetQueue;
-    const packetCount = packets.length;
+    const packetCount = this.network.packetCount;
 
     if (packetCount > 0) {
       for (let i = 0; i < packetCount; i++) {
@@ -63,11 +65,9 @@ export default class Game {
 
         const data = Serialize.decode(queueItem.buffer);
 
-        // Look up character from central EntityManager compendium
-        const character = this.world.compendium[data.characterId];
+        const character = this.world.characters[data.characterId];
         if (!character) continue;
 
-        // Out-of-order packet drop & empty check
         if (data.sequenceId <= character.sequenceId) continue;
         const actions = data.actions;
         if (!actions || actions.length === 0) continue;
@@ -78,7 +78,6 @@ export default class Game {
           const handler = ActionRegistry.get(actionType);
           if (!handler) continue;
 
-          // Direct positional arguments: Zero object wrapper allocations
           handler.handle(
             character,
             data.activeCommands,
@@ -91,58 +90,40 @@ export default class Game {
         character.sequenceId = data.sequenceId;
       }
 
-      // Clear queue in-place without reallocating memory
-      packets.length = 0;
-
-      // // 2. World Streaming (Spatial Updates & Chunk Delivery)
-      // const streamingPromises = [];
-      // for (const character of this.world.characters.values()) {
-      //   // if ((this.world.entityFlags[character.id] & FLAG_POSITION) !== 0) {
-      //   //   streamingPromises.push(
-      //   //     (async () => {
-      //   //       const spatialZone =
-      //   //         this.world.updateCharacterSpatialZone(character);
-      //   //       if (
-      //   //         spatialZone.chunks.length > 0 ||
-      //   //         spatialZone.unchunks.length > 0
-      //   //       ) {
-      //   //         this.network.broadcast.sendTo(
-      //   //           character.id,
-      //   //           Serialize.data({
-      //   //             actionType: ActionType.ZONE_UPDATE,
-      //   //             serverTick: tick,
-      //   //             character,
-      //   //             chunks: spatialZone.chunks,
-      //   //             unchunks: spatialZone.unchunks,
-      //   //             zone: { ...spatialZone.zone },
-      //   //           })
-      //   //         );
-      //   //       }
-      //   //     })()
-      //   //   );
-      //   // }
-      // }
-      // if (streamingPromises.length > 0) {
-      //   await Promise.all(streamingPromises);
-      // }
-      // // this.world.updateCharacterAOI();
-      // // 3. Delegate Snapshot Building to StateManager
-      // const recipientSnapshots = this.stateManager.buildSnapshots();
-      // // 4. Dispatch Tailored Snapshots
-      // for (const [recipientId, deltas] of recipientSnapshots.entries()) {
-      //   // if (deltas.length === 0) continue;
-      //   const recipientCharacter = this.world.characters.get(recipientId);
-      //   if (!recipientCharacter) continue;
-      //   const updatePayload = Serialize.snapshot({
-      //     tick,
-      //     lastProcessedSequenceId: recipientCharacter.lastProcessedSequenceId,
-      //     entities: deltas,
-      //   });
-      //   setTimeout(() => {
-      //     this.network.broadcast.sendTo(recipientId, updatePayload);
-      //   }, 38);
+      for (let i = 0; i < packets.length; i++) {
+        packets[i].buffer = null;
+      }
+      this.network.packetCount = 0;
     }
-    // 5. Cleanup Dirty Flags and Despawn Memory
-    // this.world.postTickCleanup();
+
+    // -------------------------------------------------------------
+    // PHASE 2: Process outgoing snapshots (Dirty Delta or Heartbeat)
+    // -------------------------------------------------------------
+    await this.processOutgoingSnapshots(tick);
+  }
+
+  /**
+   * 🟢 Serializes and broadcasts snapshots (or heartbeat ticks) to all connected players
+   */
+  private async processOutgoingSnapshots(tick: number): Promise<void> {
+    const characters = this.world.characters;
+
+    for (let i = 0; i < characters.length; i++) {
+      const character = characters[i];
+      if (!character) continue;
+
+      // 1. Fetch snapshot payload (either full dirty state or light heartbeat)
+      const snapshotPayload = await this.world.getSnapshot(character.id, tick);
+
+      // 🟢 Safety fallback: If getSnapshot returns null, skip broadcast
+      if (!snapshotPayload) continue;
+
+      // 2. Encode and send via direct WS/socket reference
+      const binaryBuffer = Serialize.snapshot(snapshotPayload);
+      this.network.broadcast.sendTo(character.id, binaryBuffer);
+
+      // 3. Clear target bitmasks for the next frame
+      this.world.clearState(character.id);
+    }
   }
 }
